@@ -71,7 +71,23 @@
         #page-library.active {
             display: block;
         }
-        #page-library-scroll {
+        #page-artist {
+            display: none;
+            width: 100%;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+        #page-artist.active {
+            display: block;
+        }
+        #page-library-scroll,
+        #page-artist-scroll {
             width: 100%;
             height: 100%;
             overflow-y: auto;
@@ -194,15 +210,44 @@
             pointer-events: none;
         }
 
-        /* Bottom Player Morphing Animation */
+        /* Bottom Player Morphing Animation & Hover Expansion */
         #bottom-player {
             transition: width 0.75s var(--parabola-ease),
                         max-width 0.75s var(--parabola-ease),
                         min-width 0.75s var(--parabola-ease),
-                        height 0.4s var(--parabola-ease),
-                        padding 0.75s var(--parabola-ease),
-                        transform 0.6s var(--parabola-ease),
+                        height 0.35s var(--parabola-ease),
+                        padding 0.35s var(--parabola-ease),
+                        transform 0.35s var(--parabola-ease),
+                        box-shadow 0.35s var(--parabola-ease),
+                        border-color 0.35s ease,
                         opacity 0.4s ease;
+        }
+
+        #bottom-player:not(.is-loading):hover {
+            height: 72px;
+            padding-left: 20px;
+            padding-right: 20px;
+            transform: translate(-50%, -6px) scale(1.015);
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.12), 0 4px 14px rgba(0, 0, 0, 0.05);
+            border-color: rgba(212, 212, 216, 0.95);
+        }
+
+        .bottom-thumb {
+            transition: width 0.35s var(--parabola-ease), height 0.35s var(--parabola-ease);
+        }
+
+        #bottom-player:not(.is-loading):hover .bottom-thumb {
+            width: 44px;
+            height: 44px;
+        }
+
+        #bottom-player:not(.is-loading):hover #bottom-player-title {
+            font-size: 0.95rem;
+        }
+
+        #bottom-player:not(.is-loading):hover #bottom-player-play-pause {
+            width: 42px;
+            height: 42px;
         }
 
         #bottom-player.is-loading {
@@ -556,12 +601,17 @@
 
                 <!-- Fullscreen Hero Header -->
                 <div class="flex flex-col md:flex-row items-center md:items-end gap-7 p-6 sm:p-8 bg-white/70 backdrop-blur-xl rounded-3xl border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-8">
-                    <div id="playlist-detail-art" class="w-44 h-44 sm:w-52 sm:h-52 md:w-60 md:h-60 rounded-2xl bg-gradient-to-br from-yolk-yellow to-yellow-200 flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.12)] border border-white/60 relative">
+                    <div id="playlist-detail-art" class="w-44 h-44 sm:w-52 sm:h-52 md:w-60 md:h-60 rounded-2xl bg-zinc-100 flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.12)] border border-white/60 relative group/art cursor-pointer" title="Click to upload album cover">
                         <img id="playlist-detail-img" src="" class="w-full h-full object-cover hidden" referrerpolicy="no-referrer">
                         <div id="playlist-detail-icon" class="text-zinc-900">
                             <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
                         </div>
+                        <div id="playlist-detail-upload-overlay" class="absolute inset-0 bg-black/40 backdrop-blur-[2px] opacity-0 group-hover/art:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-1.5 pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                            <span class="text-[11px] font-bold uppercase tracking-wider">Change Cover</span>
+                        </div>
                     </div>
+                    <input type="file" id="playlist-detail-cover-input" accept="image/*" class="hidden">
 
                     <div class="flex-1 text-center md:text-left min-w-0">
                         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/5 text-[10px] uppercase tracking-widest font-bold text-zinc-600 mb-2">
@@ -614,7 +664,7 @@
 
                 <div class="text-center mt-5 mb-1 w-full px-2">
                     <h1 id="now-playing-title" class="text-2xl font-bold tracking-tight text-zinc-900 truncate">Not Playing</h1>
-                    <p id="now-playing-artist" class="text-sm font-medium text-zinc-500 truncate mt-1">Select a song to start</p>
+                    <p id="now-playing-artist" class="text-sm font-medium text-zinc-500 truncate mt-1 hover:text-zinc-900 hover:underline cursor-pointer">Select a song to start</p>
                 </div>
 
                 <div class="w-full max-w-[320px] flex flex-col gap-1.5 my-3 shrink-0">
@@ -664,12 +714,68 @@
         </div>
     </div>
 
+    <!-- ==== PAGE: ARTIST ==== -->
+    <div id="page-artist" class="page relative overflow-hidden">
+        <!-- Fullscreen dynamic cover tint that fades from the top to normal bg in the top-middle -->
+        <div id="artist-bg-tint" class="pointer-events-none transition-opacity duration-700 opacity-0" style="position: absolute; top: 0; left: 0; right: 0; height: 560px; z-index: 0;"></div>
+
+        <main id="page-artist-scroll" class="relative z-10 w-full h-full overflow-y-auto">
+            <div class="w-full max-w-5xl mx-auto pb-28">
+                <button id="artist-back-btn" class="bubbly-hover mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 hover:bg-white backdrop-blur-md border border-zinc-200/80 shadow-sm text-xs font-semibold text-zinc-700 hover:text-zinc-950 transition-all cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    <span>Back</span>
+                </button>
+
+                <!-- Fullscreen Hero Header like in pinpoint-edu -->
+                <div class="flex flex-col md:flex-row items-center md:items-end gap-7 p-6 sm:p-8 bg-white/70 backdrop-blur-xl rounded-3xl border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-8">
+                    <div id="artist-hero-art" class="w-44 h-44 sm:w-52 sm:h-52 md:w-56 md:h-56 rounded-full bg-zinc-100 flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.12)] border border-white/80 relative">
+                        <img id="artist-hero-img" src="" class="w-full h-full object-cover hidden" referrerpolicy="no-referrer">
+                        <div id="artist-hero-placeholder" class="text-zinc-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 text-center md:text-left min-w-0">
+                        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200/60 text-[11px] font-bold text-blue-600 mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                            <span class="uppercase tracking-wider">Verified Artist</span>
+                        </div>
+                        <h1 id="artist-hero-name" class="text-3xl sm:text-4xl md:text-5xl font-extrabold text-zinc-900 tracking-tight leading-tight truncate">Artist Name</h1>
+                        <p id="artist-hero-desc" class="text-sm text-zinc-500 mt-2 line-clamp-2 max-w-xl font-medium"></p>
+                        <p id="artist-hero-track-count" class="text-xs font-semibold text-zinc-400 mt-2">Loading tracks...</p>
+
+                        <div class="flex items-center justify-center md:justify-start gap-3 mt-5 flex-wrap">
+                            <button id="artist-play-all-btn" class="bubbly-hover flex items-center gap-2 px-6 py-2.5 rounded-full bg-zinc-900 text-white text-xs font-semibold shadow-lg hover:bg-zinc-800 transition-all cursor-pointer">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                <span>Play Top Tracks</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Artist Tracks Container -->
+                <div class="bg-white/80 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-7 shadow-sm">
+                    <div class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-4 px-3 flex justify-between items-center border-b border-zinc-100 pb-2">
+                        <span>Popular Tracks</span>
+                        <span id="artist-tracks-header-count" class="text-[10px] font-medium text-zinc-400"></span>
+                    </div>
+                    <div id="artist-track-list" class="flex flex-col gap-1.5">
+                        <!-- Populated by JS -->
+                    </div>
+                    <div id="artist-loader" class="py-12 text-center hidden">
+                        <div class="inline-block w-6 h-6 border-2 border-zinc-300 border-t-zinc-800 rounded-full animate-spin"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
     <!-- Bottom Player Bar (Visible on search and library) -->
     <div id="bottom-player" class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-3rem)] max-w-4xl h-[56px] bg-white/85 backdrop-blur-lg border border-zinc-200/90 shadow-[0_8px_30px_rgb(0,0,0,0.06)] rounded-full px-4 box-border flex justify-between items-center z-20 group hidden-force">
         <div id="bottom-player-content" class="w-full h-full flex justify-between items-center">
             <!-- Left: Track info -->
             <div class="flex items-center gap-3 w-1/3 min-w-[170px] h-full cursor-pointer" id="bottom-player-info">
-                <div class="w-9 h-9 bg-zinc-100 border border-zinc-200 rounded-full shrink-0 flex items-center justify-center shadow-inner overflow-hidden relative">
+                <div class="bottom-thumb w-9 h-9 bg-zinc-100 border border-zinc-200 rounded-full shrink-0 flex items-center justify-center shadow-inner overflow-hidden relative">
                     <img id="bottom-player-img" src="" alt="Cover" class="w-full h-full object-cover hidden" referrerpolicy="no-referrer">
                     <div id="bottom-player-placeholder" class="flex items-center justify-center text-zinc-400">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
@@ -677,7 +783,7 @@
                 </div>
                 <div class="flex flex-col justify-center min-w-0 pr-2">
                     <span id="bottom-player-title" class="text-xs sm:text-sm font-semibold text-zinc-800 leading-none truncate">Not Playing</span>
-                    <span id="bottom-player-artist" class="player-artist text-[10px] sm:text-[11px] font-medium text-zinc-500 leading-none truncate mt-0.5">Select a song to start</span>
+                    <span id="bottom-player-artist" class="player-artist text-[10px] sm:text-[11px] font-medium text-zinc-500 leading-none truncate mt-0.5 hover:text-zinc-900 hover:underline">Select a song to start</span>
                 </div>
             </div>
 
@@ -721,6 +827,28 @@
         <div class="modal-card bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border border-zinc-100">
             <h3 id="playlist-modal-title" class="text-xl font-bold text-zinc-900 mb-4">New Playlist</h3>
             <div class="flex flex-col gap-4">
+                <!-- Cover upload area -->
+                <div class="flex items-center gap-4 p-3 rounded-2xl bg-zinc-50 border border-zinc-200/60">
+                    <div id="modal-cover-preview" class="w-16 h-16 rounded-xl bg-zinc-200 border border-zinc-300/80 overflow-hidden shrink-0 flex items-center justify-center relative cursor-pointer group" title="Click to upload cover">
+                        <img id="modal-cover-img" src="" class="w-full h-full object-cover hidden">
+                        <div id="modal-cover-placeholder" class="text-zinc-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                        </div>
+                        <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                        </div>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-semibold text-zinc-800">Playlist Cover</p>
+                        <p class="text-[11px] text-zinc-400 mt-0.5">Upload a custom image (optional)</p>
+                        <div class="flex items-center gap-2 mt-2">
+                            <button type="button" id="modal-cover-upload-btn" class="px-3 py-1 text-xs font-medium bg-white hover:bg-zinc-100 text-zinc-700 rounded-lg border border-zinc-200 transition-colors">Choose Image</button>
+                            <button type="button" id="modal-cover-remove-btn" class="px-2 py-1 text-xs font-medium text-red-500 hover:text-red-700 hidden transition-colors">Remove</button>
+                        </div>
+                    </div>
+                    <input type="file" id="playlist-modal-cover-input" accept="image/*" class="hidden">
+                </div>
+
                 <div>
                     <label class="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-1">Playlist Name</label>
                     <input id="playlist-name-input" type="text" placeholder="e.g. Chill Vibes, Night Drive" class="w-full h-11 px-4 rounded-xl border border-zinc-200 text-sm focus:outline-none focus:border-zinc-400 transition-all">
@@ -782,7 +910,8 @@
             const pages = {
                 search: document.getElementById('page-search'),
                 library: document.getElementById('page-library'),
-                'now-playing': document.getElementById('page-now-playing')
+                'now-playing': document.getElementById('page-now-playing'),
+                artist: document.getElementById('page-artist')
             };
 
             const navLinks = {
@@ -801,6 +930,10 @@
                 if (hash !== 'library') {
                     const tintEl = document.getElementById('playlist-bg-tint');
                     if (tintEl) tintEl.style.opacity = '0';
+                }
+                if (hash !== 'artist') {
+                    const artistTintEl = document.getElementById('artist-bg-tint');
+                    if (artistTintEl) artistTintEl.style.opacity = '0';
                 }
 
                 // Update nav links
