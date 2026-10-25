@@ -225,6 +225,63 @@ function getTrackQualityScore(track) {
   return 2;
 }
 
+function rankTracksForQuery(trackList, query) {
+  if (!Array.isArray(trackList)) return [];
+  const q = (query || '').toLowerCase().trim();
+  const cleanQ = q.replace(/[^\w\s]/g, '').trim();
+
+  // Deduplicate by youtube_id / videoId while tracking original order
+  const seen = new Set();
+  const unique = [];
+  let origIdx = 0;
+  for (const t of trackList) {
+    if (!t) continue;
+    const vid = t.youtube_id || t.videoId || (t.id && typeof t.id === 'string' && t.id.startsWith('ytm-') ? t.id.replace('ytm-', '') : t.id);
+    if (!vid || seen.has(vid)) continue;
+    seen.add(vid);
+    unique.push({ track: t, originalOrder: origIdx++ });
+  }
+
+  function getRelevanceScore(t) {
+    const title = (t.title || t.name || '').toLowerCase().trim();
+    const cleanTitle = title.replace(/[^\w\s]/g, '').trim();
+    const strippedTitle = title.replace(/\s*[\(\[][^\)\]]*(feat|ft|with|official|remaster|video|audio|version)[^\)\]]*[\)\]]/gi, '').trim();
+    const cleanStripped = strippedTitle.replace(/[^\w\s]/g, '').trim();
+    const artist = (t.artist_name || t.artist || '').toLowerCase().trim();
+
+    // 0: Exact title match or exact stripped title match (e.g. "Starboy (feat. Daft Punk)")
+    if (title === q || cleanTitle === cleanQ || strippedTitle === q || cleanStripped === cleanQ) return 0;
+    
+    // 1: Title starts with exact query or clean query
+    if (title.startsWith(q) || cleanTitle.startsWith(cleanQ) || strippedTitle.startsWith(q) || cleanStripped.startsWith(cleanQ)) return 1;
+
+    // 2: Title contains query as full phrase
+    if (title.includes(q) || cleanTitle.includes(cleanQ)) return 2;
+
+    // 3: Artist exact match
+    if (artist === q) return 3;
+
+    // 4: Artist starts with or includes query
+    if (artist.startsWith(q) || artist.includes(q)) return 4;
+
+    // 5: Partial word matches
+    const words = cleanQ.split(/\s+/).filter(Boolean);
+    if (words.length > 0 && words.every(w => cleanTitle.includes(w) || artist.includes(w))) return 5;
+
+    return 6;
+  }
+
+  unique.sort((a, b) => {
+    const relDiff = getRelevanceScore(a.track) - getRelevanceScore(b.track);
+    if (relDiff !== 0) return relDiff;
+    const qualDiff = getTrackQualityScore(a.track) - getTrackQualityScore(b.track);
+    if (qualDiff !== 0) return qualDiff;
+    return a.originalOrder - b.originalOrder;
+  });
+
+  return unique.map(item => item.track);
+}
+
 function sortTracksByQuality(trackList) {
   if (!Array.isArray(trackList)) return [];
   return [...trackList].sort((a, b) => getTrackQualityScore(a) - getTrackQualityScore(b));
@@ -297,17 +354,7 @@ export default async function handler(req, res) {
       const searchQuery = q || query;
       if (!searchQuery) return res.status(400).json({ error: 'Missing query' });
       
-      const [musicApiRes, ytmDirectResults, ytSearchData, argonRes, audiusRes] = await Promise.all([
-        fetchWithTimeout(`${MUSIC_API_BASE}/prepare/${encodeURIComponent(searchQuery)}`)
-            .then(r => r.ok ? r.json() : null)
-            .then(async data => {
-                if (data && data.ID) {
-                    const songData = await fetchWithTimeout(`${MUSIC_API_BASE}/fetch/${data.ID}`).then(r => r.ok ? r.json() : null);
-                    return songData;
-                }
-                return null;
-            })
-            .catch(() => null),
+      const [ytmDirectResults, ytSearchData] = await Promise.all([
         searchYTM(searchQuery).catch(() => []),
         getYoutube().then(async (yt) => {
             try {
@@ -325,13 +372,7 @@ export default async function handler(req, res) {
             } catch (e) {
                 return null;
             }
-        }).catch(() => null),
-        fetchWithTimeout(`https://argon.global.ssl.fastly.net/api/search?query=${encodeURIComponent(searchQuery)}&offset=${offset || 0}&limit=${limit || 25}`)
-            .then(r => r.ok ? r.json() : { collection: [] })
-            .catch(() => ({ collection: [] })),
-        fetchWithTimeout(`https://discoveryprovider.audius.co/v1/tracks/search?query=${encodeURIComponent(searchQuery)}&app_name=PinpointAudio`, {}, 4000)
-            .then(r => r.ok ? r.json() : null)
-            .catch(() => null)
+        }).catch(() => null)
       ]);
 
       let tracks = [];
@@ -344,7 +385,6 @@ export default async function handler(req, res) {
       let ytPlaylists = [];
 
       const ytMusicRes = ytSearchData?.music;
-      const ytGeneralRes = ytSearchData?.general;
 
       if (ytMusicRes && ytMusicRes.contents) {
           const shelves = ytMusicRes.contents || [];
@@ -420,83 +460,6 @@ export default async function handler(req, res) {
           tracks.push(...ytTracks);
       }
 
-      if (ytGeneralRes && (ytGeneralRes.results || ytGeneralRes.videos)) {
-          const generalItems = ytGeneralRes.results || ytGeneralRes.videos || [];
-          generalItems.forEach(item => {
-              const rawId = item.id;
-              if (!rawId || tracks.some(t => t.youtube_id === rawId)) return;
-              
-              let title = item.title?.toString() || 'Unknown Title';
-              let artist = item.author?.name || 'Unknown Artist';
-              
-              if (title.includes(' - ')) {
-                  const parts = title.split(' - ');
-                  if (parts.length === 2) {
-                      artist = parts[0].trim();
-                      title = parts[1].replace(/\[.*?\]|\(.*?\)/g, '').trim();
-                  }
-              }
-
-              tracks.push({
-                  id: `ytm-${rawId}`,
-                  title: title,
-                  artist_name: artist,
-                  artwork_url: optimizeThumbnailUrl(item.thumbnails?.[0]?.url || `https://i.ytimg.com/vi/${rawId}/hqdefault.jpg`),
-                  duration: (item.duration?.seconds || 0) * 1000,
-                  downloadUrl: [{ quality: '320kbps', link: `/api/music-api?endpoint=stream&id=${encodeURIComponent(rawId)}` }],
-                  youtube_id: rawId,
-                  source: 'YTMusic'
-              });
-          });
-      }
-
-      if (argonRes.collection && Array.isArray(argonRes.collection)) {
-          const ARGON_BASE = 'https://argon.global.ssl.fastly.net';
-          const argonTracks = argonRes.collection.map(item => {
-              let artwork = item.song?.img?.big || item.song?.img?.small || (Array.isArray(item.image) ? item.image[item.image.length-1].link : item.image);
-              if (artwork && artwork.startsWith('/api/')) artwork = ARGON_BASE + artwork;
-              const songUrl = item.song?.url || item.url || '';
-              const encodedId = Buffer.from(songUrl).toString('base64url');
-              const durationSecs = (item.song?.duration?.hours || 0) * 3600 + (item.song?.duration?.minutes || 0) * 60 + (item.song?.duration?.seconds || 0);
-
-              const artist = item.author?.name || 'Argon Artist';
-              if (artist === 'YT Music Artist') return null;
-
-              return {
-                  id: `argon-${encodedId}`,
-                  title: item.song?.name || item.name,
-                  artist_name: artist,
-                  artist_id: item.author?.id ? `argon-${item.author.id}` : null,
-                  artwork_url: optimizeThumbnailUrl(artwork),
-                  duration: durationSecs * 1000,
-                  url: songUrl,
-                  source: 'Argon'
-              };
-          }).filter(Boolean);
-          tracks.push(...argonTracks);
-      }
-
-      if (audiusRes && audiusRes.data && Array.isArray(audiusRes.data)) {
-          const audiusTracks = audiusRes.data.map(item => {
-              if (!item || !item.id) return null;
-              const title = item.title || 'Unknown Title';
-              const artist = item.user?.name || 'Unknown Artist';
-              const artwork = item.artwork?.['480x480'] || item.artwork?.['150x150'] || '';
-              const duration = (item.duration || 0) * 1000;
-              const streamUrl = `https://discoveryprovider.audius.co/v1/tracks/${item.id}/stream?app_name=PinpointAudio`;
-              return {
-                  id: `audius-${item.id}`,
-                  title: title,
-                  artist_name: artist,
-                  artwork_url: artwork,
-                  duration: duration,
-                  downloadUrl: [{ quality: '320kbps', link: `/api/gateway?url=${encodeURIComponent(streamUrl)}` }],
-                  source: 'Audius'
-              };
-          }).filter(Boolean);
-          tracks.push(...audiusTracks);
-      }
-
       const albums = ytAlbums.map(item => {
           const artist = item.author?.name || item.artists?.[0]?.name?.toString() || 'Unknown Artist';
           if (artist === 'YT Music Artist') return null;
@@ -521,8 +484,11 @@ export default async function handler(req, res) {
           song_count: item.song_count || 0
       })).filter(p => p.id);
 
+      // Rank tracks so exact title matches appear at the top, and only YouTube Music tracks are included
+      const rankedTracks = rankTracksForQuery(tracks, searchQuery);
+
       return res.status(200).json({
-        tracks: sortTracksByQuality(tracks),
+        tracks: rankedTracks,
         albums,
         artists,
         playlists
