@@ -544,8 +544,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 artwork: [{ src: getProxyUrl(track.artwork_url || track.image), sizes: '512x512', type: 'image/jpeg' }]
             });
             try {
-                navigator.mediaSession.setActionHandler('play', () => togglePlayPause());
-                navigator.mediaSession.setActionHandler('pause', () => togglePlayPause());
+                navigator.mediaSession.setActionHandler('play', () => {
+                    if (currentAudio.paused) togglePlayPause();
+                });
+                navigator.mediaSession.setActionHandler('pause', () => {
+                    if (!currentAudio.paused) togglePlayPause();
+                });
                 navigator.mediaSession.setActionHandler('nexttrack', () => playNext());
                 navigator.mediaSession.setActionHandler('previoustrack', () => playPrev());
             } catch (err) {}
@@ -582,6 +586,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     bottomPlayer.classList.remove('hidden-force');
                 }
             }).catch(async (err) => {
+                if (err.name === 'AbortError') {
+                    // Playback was intentionally interrupted by pause
+                    showSpinner(false);
+                    return;
+                }
                 console.warn('Audio play error, attempting fallback…', err.message);
                 if (!currentAudio._recovering) {
                     currentAudio._recovering = true;
@@ -595,7 +604,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                 showSpinner(false);
                                 isPlaying = true;
                                 updatePlayPauseButtons();
-                            }).catch(() => showSpinner(false));
+                            }).catch((fbErr) => {
+                                if (fbErr && fbErr.name === 'AbortError') return;
+                                showSpinner(false);
+                            });
                             return;
                         }
                     }
@@ -618,6 +630,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showSpinner(false);
         isPlaying = true;
         updatePlayPauseButtons();
+        if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
         if (document.body.getAttribute('data-page') !== 'now-playing') {
             bottomPlayer.classList.remove('hidden-force');
         }
@@ -625,6 +638,7 @@ document.addEventListener('DOMContentLoaded', () => {
     currentAudio.addEventListener('pause', () => {
         isPlaying = false;
         updatePlayPauseButtons();
+        if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
     });
 
     currentAudio.addEventListener('ended', () => {
@@ -701,10 +715,27 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (isPlaying) {
-            currentAudio.pause();
+        if (!currentAudio.src) {
+            playTrack(currentTrack);
+            return;
+        }
+
+        if (currentAudio.paused) {
+            const playPromise = currentAudio.play();
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    isPlaying = true;
+                    updatePlayPauseButtons();
+                }).catch(e => {
+                    if (e.name !== 'AbortError') {
+                        console.error('Play error:', e);
+                    }
+                });
+            }
         } else {
-            currentAudio.play().catch(e => console.error('Play error:', e));
+            currentAudio.pause();
+            isPlaying = false;
+            updatePlayPauseButtons();
         }
     }
 
@@ -724,21 +755,65 @@ document.addEventListener('DOMContentLoaded', () => {
         playTrack(currentQueue[currentQueueIndex]);
     }
 
-    if (npPlayPauseBtn) npPlayPauseBtn.onclick = togglePlayPause;
-    if (bpPlayPauseBtn) bpPlayPauseBtn.onclick = togglePlayPause;
-    if (npNextBtn) npNextBtn.onclick = playNext;
-    if (bpNextBtn) bpNextBtn.onclick = playNext;
-    if (npPrevBtn) npPrevBtn.onclick = playPrev;
-    if (bpPrevBtn) bpPrevBtn.onclick = playPrev;
+    if (npPlayPauseBtn) {
+        npPlayPauseBtn.onclick = (e) => {
+            if (e && e.currentTarget && typeof e.currentTarget.blur === 'function') e.currentTarget.blur();
+            togglePlayPause();
+        };
+    }
+    if (bpPlayPauseBtn) {
+        bpPlayPauseBtn.onclick = (e) => {
+            if (e && e.currentTarget && typeof e.currentTarget.blur === 'function') e.currentTarget.blur();
+            togglePlayPause();
+        };
+    }
+    if (npNextBtn) {
+        npNextBtn.onclick = (e) => {
+            if (e && e.currentTarget && typeof e.currentTarget.blur === 'function') e.currentTarget.blur();
+            playNext();
+        };
+    }
+    if (bpNextBtn) {
+        bpNextBtn.onclick = (e) => {
+            if (e && e.currentTarget && typeof e.currentTarget.blur === 'function') e.currentTarget.blur();
+            playNext();
+        };
+    }
+    if (npPrevBtn) {
+        npPrevBtn.onclick = (e) => {
+            if (e && e.currentTarget && typeof e.currentTarget.blur === 'function') e.currentTarget.blur();
+            playPrev();
+        };
+    }
+    if (bpPrevBtn) {
+        bpPrevBtn.onclick = (e) => {
+            if (e && e.currentTarget && typeof e.currentTarget.blur === 'function') e.currentTarget.blur();
+            playPrev();
+        };
+    }
 
     // Keyboard Shortcuts (Spacebar to toggle Play/Pause)
     document.addEventListener('keydown', (e) => {
-        if (e.code === 'Space' || e.key === ' ') {
+        if (e.code === 'Space' || e.key === ' ' || e.keyCode === 32) {
             const active = document.activeElement;
             const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
             if (!isInput) {
                 e.preventDefault();
+                if (e.repeat) return;
+                if (active && typeof active.blur === 'function') {
+                    active.blur();
+                }
                 togglePlayPause();
+            }
+        }
+    });
+
+    document.addEventListener('keyup', (e) => {
+        if (e.code === 'Space' || e.key === ' ' || e.keyCode === 32) {
+            const active = document.activeElement;
+            const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
+            if (!isInput) {
+                e.preventDefault();
             }
         }
     });
