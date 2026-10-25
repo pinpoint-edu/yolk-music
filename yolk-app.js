@@ -246,7 +246,7 @@ function parseLyrics(lyricsText, duration) {
     return finalParsed;
 }
 
-// Synced lyrics highlight & smooth scroll
+// Synced lyrics highlight & smooth scroll with Pinpoint-Edu 3-dots animation
 function updateLyricsSync(currentTime) {
     const container = document.getElementById('lyrics-container');
     if (!container || !parsedLyrics || parsedLyrics.length === 0) return;
@@ -256,7 +256,7 @@ function updateLyricsSync(currentTime) {
 
     for (let i = 0; i < parsedLyrics.length; i++) {
         const item = parsedLyrics[i];
-        if (item.type === 'line' && item.time !== null && adjustedTime >= item.time && adjustedTime < (item.endTime || Infinity)) {
+        if ((item.type === 'line' || item.type === 'dots') && item.time !== null && adjustedTime >= item.time && adjustedTime < (item.endTime || Infinity)) {
             activeIndex = i;
             break;
         }
@@ -270,8 +270,57 @@ function updateLyricsSync(currentTime) {
         if (idx === activeIndex) {
             activeLineEl = el;
             el.classList.add('active');
+            el.classList.remove('next-up');
+
+            const currentItem = parsedLyrics[idx];
+            if (currentItem && currentItem.type === 'dots') {
+                const dots = el.querySelector('.lyric-dots');
+                if (dots) {
+                    dots.classList.add('active');
+                    const dotEls = dots.querySelectorAll('.lyric-dot');
+                    const startTime = currentItem.time || 0;
+                    const endTime = currentItem.endTime || (startTime + 3.5);
+                    const lineDuration = Math.max(0.1, endTime - startTime);
+                    const dotProgress = Math.min(1, Math.max(0, (adjustedTime - startTime) / lineDuration));
+
+                    dotEls.forEach((dot, i) => {
+                        const slotStart = i * (1 / 3);
+                        const slotEnd = (i + 1) * (1 / 3);
+                        const animDuration = (1 / 3) * 0.4;
+                        const animStart = slotEnd - animDuration;
+
+                        let scale = 1.0;
+                        if (dotProgress >= animStart) {
+                            const p = Math.min(1, (dotProgress - animStart) / animDuration);
+                            const smoothP = p * p * (3 - 2 * p);
+                            scale = 1.0 + (smoothP * 0.55);
+                        }
+
+                        dot.style.setProperty('--dot-scale', scale.toFixed(3));
+                        if (dotProgress >= animStart + (animDuration * 0.25)) {
+                            dot.classList.add('highlight');
+                        } else {
+                            dot.classList.remove('highlight');
+                        }
+                    });
+                }
+            }
         } else {
             el.classList.remove('active');
+            if (idx === activeIndex + 1) {
+                el.classList.add('next-up');
+            } else {
+                el.classList.remove('next-up');
+            }
+            const dots = el.querySelector('.lyric-dots');
+            if (dots) {
+                dots.classList.remove('active');
+                const dotEls = dots.querySelectorAll('.lyric-dot');
+                dotEls.forEach(dot => {
+                    dot.style.removeProperty('--dot-scale');
+                    dot.classList.remove('highlight');
+                });
+            }
         }
     });
 
@@ -1168,7 +1217,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (item.type === 'dots') {
                 return `
-                    <div class="lyric-line dots-line flex items-center justify-center cursor-pointer my-2" data-index="${idx}" onclick="seekToLyrics(${item.time})">
+                    <div class="lyric-line dots-line cursor-pointer my-3" data-index="${idx}" onclick="seekToLyrics(${item.time})">
                         <div class="lyric-dots">
                             <div class="lyric-dot"></div>
                             <div class="lyric-dot"></div>
@@ -1243,6 +1292,65 @@ document.addEventListener('DOMContentLoaded', () => {
     // PLAYLIST MANAGEMENT & PLAYLIST UI
     // ============================================
 
+    // Dynamic Cover Tint Extraction & Application
+    function extractDominantColor(imgUrl, callback) {
+        if (!imgUrl) {
+            callback(null);
+            return;
+        }
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.src = imgUrl.startsWith('data:') ? imgUrl : getProxyUrl(imgUrl, '100x100');
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 40;
+                canvas.height = 40;
+                ctx.drawImage(img, 0, 0, 40, 40);
+                const data = ctx.getImageData(0, 0, 40, 40).data;
+                let r = 0, g = 0, b = 0, count = 0;
+                let bestScore = -1, vibR = 253, vibG = 224, vibB = 71;
+
+                for (let i = 0; i < data.length; i += 4) {
+                    const pr = data[i], pg = data[i+1], pb = data[i+2], pa = data[i+3];
+                    if (pa < 128) continue;
+                    r += pr; g += pg; b += pb; count++;
+
+                    const max = Math.max(pr, pg, pb);
+                    const min = Math.min(pr, pg, pb);
+                    const delta = max - min;
+                    const lum = (max + min) / 510;
+                    if (lum > 0.15 && lum < 0.85) {
+                        const score = delta * (1 - Math.abs(lum - 0.5));
+                        if (score > bestScore) {
+                            bestScore = score;
+                            vibR = pr; vibG = pg; vibB = pb;
+                        }
+                    }
+                }
+
+                if (bestScore > 18) {
+                    callback({ r: vibR, g: vibG, b: vibB });
+                } else if (count > 0) {
+                    callback({ r: Math.round(r / count), g: Math.round(g / count), b: Math.round(b / count) });
+                } else {
+                    callback(null);
+                }
+            } catch (_) {
+                callback(null);
+            }
+        };
+        img.onerror = () => callback(null);
+    }
+
+    function applyPlaylistTint(r, g, b) {
+        const tintEl = document.getElementById('playlist-bg-tint');
+        if (!tintEl) return;
+        tintEl.style.background = `linear-gradient(180deg, rgba(${r}, ${g}, ${b}, 0.38) 0%, rgba(${r}, ${g}, ${b}, 0.22) 22%, rgba(${r}, ${g}, ${b}, 0.08) 45%, rgba(252, 251, 248, 0.95) 65%, #FCFBF8 85%)`;
+        tintEl.style.opacity = '1';
+    }
+
     function renderLibrary() {
         if (!libraryGrid) return;
         libraryGrid.innerHTML = '';
@@ -1311,9 +1419,11 @@ document.addEventListener('DOMContentLoaded', () => {
             playlistDesc = 'Your liked songs collection';
             trackList = favorites;
 
+            applyPlaylistTint(253, 224, 71);
+
             detailArtImg.classList.add('hidden');
             detailArtIcon.classList.remove('hidden');
-            detailArtIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
+            detailArtIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
             editBtn.classList.add('hidden');
             deleteBtn.classList.add('hidden');
         } else {
@@ -1323,15 +1433,20 @@ document.addEventListener('DOMContentLoaded', () => {
             playlistDesc = pl.description || 'Custom Playlist';
             trackList = pl.tracks || [];
 
-            const firstArt = trackList[0] ? getProxyUrl(trackList[0].artwork_url || trackList[0].image, '150x150') : '';
+            const firstArt = trackList[0] ? getProxyUrl(trackList[0].artwork_url || trackList[0].image, '300x300') : '';
             if (firstArt) {
                 detailArtImg.src = firstArt;
                 detailArtImg.classList.remove('hidden');
                 detailArtIcon.classList.add('hidden');
+                extractDominantColor(firstArt, (rgb) => {
+                    if (rgb) applyPlaylistTint(rgb.r, rgb.g, rgb.b);
+                    else applyPlaylistTint(253, 224, 71);
+                });
             } else {
                 detailArtImg.classList.add('hidden');
                 detailArtIcon.classList.remove('hidden');
-                detailArtIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>`;
+                detailArtIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>`;
+                applyPlaylistTint(220, 220, 228);
             }
 
             editBtn.classList.remove('hidden');
@@ -1354,6 +1469,9 @@ document.addEventListener('DOMContentLoaded', () => {
         detailName.textContent = playlistName;
         detailDesc.textContent = playlistDesc;
         detailMeta.textContent = `${trackList.length} ${trackList.length === 1 ? 'song' : 'songs'}`;
+
+        const tracksCountEl = document.getElementById('playlist-tracks-count');
+        if (tracksCountEl) tracksCountEl.textContent = `${trackList.length} ${trackList.length === 1 ? 'track' : 'tracks'}`;
 
         playAllBtn.onclick = () => {
             if (trackList.length > 0) {
@@ -1396,10 +1514,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         libraryOverview.classList.add('hidden');
         playlistDetailView.classList.remove('hidden');
+
+        // Scroll playlist view to top smoothly
+        const scrollContainer = document.getElementById('page-library-scroll');
+        if (scrollContainer) scrollContainer.scrollTop = 0;
     }
 
     function closePlaylistDetail() {
         currentPlaylistContextId = null;
+        const tintEl = document.getElementById('playlist-bg-tint');
+        if (tintEl) tintEl.style.opacity = '0';
         playlistDetailView.classList.add('hidden');
         libraryOverview.classList.remove('hidden');
         renderLibrary();

@@ -322,7 +322,7 @@
             }
         }
 
-        /* Lyrics Styling */
+        /* Lyrics Styling - Smooth Fullscreen Animations (from pinpoint-edu) */
         #lyrics-container {
             position: relative;
             flex: 1;
@@ -331,67 +331,104 @@
             overflow-x: hidden;
             scroll-behavior: smooth;
             box-sizing: border-box;
-            padding-top: 130px;
-            padding-bottom: 150px;
-            mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 86%, transparent 100%);
-            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 86%, transparent 100%);
+            padding-top: 150px;
+            padding-bottom: 170px;
+            padding-left: 8px;
+            padding-right: 8px;
+            mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%);
             scrollbar-width: none;
             -ms-overflow-style: none;
+            user-select: none;
+            -webkit-user-select: none;
         }
         #lyrics-container::-webkit-scrollbar {
             display: none;
         }
         .lyric-line {
-            padding: 8px 14px;
-            border-radius: 12px;
-            font-size: 1.15rem;
-            line-height: 1.5;
-            font-weight: 600;
-            color: #a1a1aa;
-            opacity: 0.6;
+            padding: 10px 16px;
+            border-radius: 14px;
+            font-size: clamp(1.15rem, 1.8vw, 1.35rem);
+            line-height: 1.45;
+            font-weight: 700;
+            color: #71717a;
+            opacity: 0.38;
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: color 0.4s ease, opacity 0.45s ease, font-size 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), filter 0.4s ease;
             transform-origin: left center;
             max-width: 100%;
             user-select: none;
             -webkit-user-select: none;
             text-align: left;
+            filter: blur(0.5px);
+            transform: scale(0.96);
+            letter-spacing: -0.01em;
         }
         .lyric-line:hover {
-            color: #3f3f46;
-            opacity: 1;
+            color: #27272a;
+            opacity: 0.75;
+            filter: blur(0px);
             background: rgba(0, 0, 0, 0.03);
         }
         .lyric-line.active {
-            color: #18181b !important;
+            color: #09090b !important;
             opacity: 1 !important;
-            font-size: 1.35rem !important;
+            font-size: clamp(1.4rem, 2.2vw, 1.85rem) !important;
             font-weight: 800 !important;
-            transform: scale(1.02);
-            text-shadow: 0 2px 20px rgba(253, 224, 71, 0.45);
+            transform: scale(1.03) translateX(4px) !important;
+            filter: blur(0px) !important;
+            text-shadow: 0 4px 24px rgba(253, 224, 71, 0.5), 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+        .lyric-line.next-up {
+            opacity: 0.55;
+            filter: blur(0.2px);
         }
         .lyric-line.untimed {
             color: #27272a;
             opacity: 0.85;
-            font-size: 1.05rem;
-            font-weight: 500;
+            font-size: 1.1rem;
+            font-weight: 600;
+            filter: blur(0px);
+            transform: scale(1);
             cursor: default;
         }
         .lyric-line.untimed:hover {
             background: transparent;
         }
+        .dots-line {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            transform-origin: left center !important;
+            padding: 8px 14px;
+        }
         .lyric-dots {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 18px;
+            gap: 10px;
+            padding: 10px 18px;
+            border-radius: 9999px;
+            background: rgba(0, 0, 0, 0.04);
+            transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .lyric-dots.active {
+            background: rgba(253, 224, 71, 0.25);
+            box-shadow: 0 4px 16px rgba(253, 224, 71, 0.35);
         }
         .lyric-dot {
-            width: 7px;
-            height: 7px;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
-            background-color: #d4d4d8;
-            transition: transform 0.25s ease, background-color 0.25s ease;
+            background-color: #a1a1aa;
+            transform: scale(var(--dot-scale, 1));
+            transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.25s ease, box-shadow 0.25s ease;
+        }
+        .lyric-dots.active .lyric-dot {
+            background-color: #71717a;
+        }
+        .lyric-dots.active .lyric-dot.highlight {
+            background-color: #09090b !important;
+            box-shadow: 0 0 12px rgba(253, 224, 71, 0.9), 0 0 4px #09090b;
         }
         .lyric-section-label {
             font-size: 0.75rem;
@@ -402,6 +439,7 @@
             margin-top: 1.5rem;
             margin-bottom: 0.5rem;
             user-select: none;
+            padding-left: 14px;
         }
         .lyric-spacer {
             height: 1.25rem;
@@ -486,72 +524,76 @@
     </div>
 
     <!-- ==== PAGE: LIBRARY ==== -->
-    <div id="page-library" class="page">
-        <main id="page-library-scroll">
-            <div class="library-shell">
-                <!-- Library Overview (Grid of Playlists & Collections) -->
-                <div id="library-overview">
-                    <div class="flex items-center justify-between mb-6">
-                        <div>
-                            <h1 class="text-3xl font-bold tracking-tight text-zinc-900">Your Library</h1>
-                            <p class="text-sm text-zinc-500 mt-1">Playlists, collections, and saved tracks</p>
+    <div id="page-library" class="page relative overflow-hidden">
+        <!-- Fullscreen dynamic cover tint that fades from the top to normal bg in the top-middle -->
+        <div id="playlist-bg-tint" class="pointer-events-none transition-opacity duration-700 opacity-0" style="position: absolute; top: 0; left: 0; right: 0; height: 560px; z-index: 0;"></div>
+
+        <main id="page-library-scroll" class="relative z-10">
+            <!-- Library Overview (Grid of Playlists & Collections) -->
+            <div id="library-overview" class="library-shell">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h1 class="text-3xl font-bold tracking-tight text-zinc-900">Your Library</h1>
+                        <p class="text-sm text-zinc-500 mt-1">Playlists, collections, and saved tracks</p>
+                    </div>
+                    <button id="create-playlist-btn" class="bubbly-hover flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900 text-white text-xs font-semibold shadow hover:bg-zinc-800 transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        <span>New Playlist</span>
+                    </button>
+                </div>
+
+                <div id="library-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Fullscreen Playlist Detail View -->
+            <div id="playlist-detail-view" class="w-full max-w-5xl mx-auto hidden pb-24">
+                <button id="playlist-back-btn" class="bubbly-hover mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 hover:bg-white backdrop-blur-md border border-zinc-200/80 shadow-sm text-xs font-semibold text-zinc-700 hover:text-zinc-950 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    <span>Back to Library</span>
+                </button>
+
+                <!-- Fullscreen Hero Header -->
+                <div class="flex flex-col md:flex-row items-center md:items-end gap-7 p-6 sm:p-8 bg-white/70 backdrop-blur-xl rounded-3xl border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-8">
+                    <div id="playlist-detail-art" class="w-44 h-44 sm:w-52 sm:h-52 md:w-60 md:h-60 rounded-2xl bg-gradient-to-br from-yolk-yellow to-yellow-200 flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.12)] border border-white/60 relative">
+                        <img id="playlist-detail-img" src="" class="w-full h-full object-cover hidden" referrerpolicy="no-referrer">
+                        <div id="playlist-detail-icon" class="text-zinc-900">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
                         </div>
-                        <button id="create-playlist-btn" class="bubbly-hover flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900 text-white text-xs font-semibold shadow hover:bg-zinc-800 transition-all">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                            <span>New Playlist</span>
-                        </button>
                     </div>
 
-                    <div id="library-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                        <!-- Populated by JS -->
+                    <div class="flex-1 text-center md:text-left min-w-0">
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/5 text-[10px] uppercase tracking-widest font-bold text-zinc-600 mb-2">
+                            <span>Playlist Collection</span>
+                        </div>
+                        <h2 id="playlist-detail-name" class="text-3xl sm:text-4xl md:text-5xl font-extrabold text-zinc-900 tracking-tight leading-tight truncate">Playlist Name</h2>
+                        <p id="playlist-detail-desc" class="text-sm text-zinc-500 mt-2 line-clamp-2 max-w-xl font-medium">Playlist description</p>
+                        <p id="playlist-detail-meta" class="text-xs font-semibold text-zinc-400 mt-2">0 songs</p>
+
+                        <div class="flex items-center justify-center md:justify-start gap-3 mt-5 flex-wrap">
+                            <button id="playlist-play-all-btn" class="bubbly-hover flex items-center gap-2 px-6 py-2.5 rounded-full bg-zinc-900 text-white text-xs font-semibold shadow-lg hover:bg-zinc-800 transition-all">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                <span>Play All</span>
+                            </button>
+                            <button id="playlist-edit-btn" class="bubbly-hover px-4 py-2.5 rounded-full bg-white/90 text-zinc-700 text-xs font-semibold hover:bg-white transition-all border border-zinc-200/70 shadow-sm">
+                                Edit Playlist
+                            </button>
+                            <button id="playlist-delete-btn" class="bubbly-hover px-4 py-2.5 rounded-full bg-red-50 text-red-600 text-xs font-semibold hover:bg-red-100 transition-all border border-red-200/50 shadow-sm">
+                                Delete
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Playlist Detail View -->
-                <div id="playlist-detail-view" class="hidden">
-                    <button id="playlist-back-btn" class="sleek-hover mb-4 inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-900 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                        <span>Back to Library</span>
-                    </button>
-
-                    <!-- Playlist Header Card -->
-                    <div class="flex flex-col sm:flex-row items-center sm:items-center gap-5 p-5 bg-white/80 backdrop-blur-md rounded-2xl border border-zinc-200/70 shadow-sm mb-5">
-                        <div id="playlist-detail-art" class="w-32 h-32 rounded-xl bg-gradient-to-br from-yolk-yellow to-yellow-200 flex items-center justify-center overflow-hidden shrink-0 shadow-sm relative">
-                            <img id="playlist-detail-img" src="" class="w-full h-full object-cover hidden" referrerpolicy="no-referrer">
-                            <div id="playlist-detail-icon" class="text-zinc-800">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
-                            </div>
-                        </div>
-
-                        <div class="flex-1 text-center sm:text-left min-w-0">
-                            <span class="text-[10px] uppercase tracking-widest font-bold text-zinc-400">Playlist</span>
-                            <h2 id="playlist-detail-name" class="text-2xl font-bold text-zinc-900 truncate mt-0.5">Playlist Name</h2>
-                            <p id="playlist-detail-desc" class="text-xs text-zinc-500 mt-1 line-clamp-2">Playlist description</p>
-                            <p id="playlist-detail-meta" class="text-xs font-medium text-zinc-400 mt-1.5">0 songs</p>
-
-                            <div class="flex items-center justify-center sm:justify-start gap-2.5 mt-4">
-                                <button id="playlist-play-all-btn" class="bubbly-hover flex items-center gap-1.5 px-4 py-2 rounded-full bg-zinc-900 text-white text-xs font-semibold shadow hover:bg-zinc-800 transition-all">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                                    <span>Play All</span>
-                                </button>
-                                <button id="playlist-edit-btn" class="bubbly-hover px-3.5 py-2 rounded-full bg-zinc-100 text-zinc-700 text-xs font-medium hover:bg-zinc-200 transition-all border border-zinc-200/50">
-                                    Edit
-                                </button>
-                                <button id="playlist-delete-btn" class="bubbly-hover px-3.5 py-2 rounded-full bg-red-50 text-red-600 text-xs font-medium hover:bg-red-100 transition-all border border-red-200/50">
-                                    Delete
-                                </button>
-                            </div>
-                        </div>
+                <!-- Fullscreen Contained Track List -->
+                <div class="bg-white/80 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-7 shadow-sm">
+                    <div class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-4 px-3 flex justify-between items-center border-b border-zinc-100 pb-2">
+                        <span>Tracks</span>
+                        <span id="playlist-tracks-count" class="text-[10px] font-medium text-zinc-400"></span>
                     </div>
-
-                    <!-- Contained Track List Card -->
-                    <div class="bg-white/70 backdrop-blur-md rounded-2xl border border-zinc-200/70 p-4 shadow-sm">
-                        <div class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-3 px-2 flex justify-between items-center">
-                            <span>Tracks</span>
-                        </div>
-                        <div id="playlist-track-list" class="flex flex-col gap-1.5">
-                            <!-- Populated by JS -->
-                        </div>
+                    <div id="playlist-track-list" class="flex flex-col gap-1.5">
+                        <!-- Populated by JS -->
                     </div>
                 </div>
             </div>
@@ -755,6 +797,11 @@
 
                 // Set body data attribute for conditional CSS (like hiding bottom player)
                 body.setAttribute('data-page', hash);
+
+                if (hash !== 'library') {
+                    const tintEl = document.getElementById('playlist-bg-tint');
+                    if (tintEl) tintEl.style.opacity = '0';
+                }
 
                 // Update nav links
                 Object.keys(navLinks).forEach(key => {
