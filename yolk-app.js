@@ -536,6 +536,21 @@ document.addEventListener('DOMContentLoaded', () => {
         updateBottomPlayerUI(track);
         updateNowPlayingFavButton();
 
+        // System Media Session Integration
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: track.title || track.name || 'Unknown Title',
+                artist: track.artist_name || track.artist || 'Unknown Artist',
+                artwork: [{ src: getProxyUrl(track.artwork_url || track.image), sizes: '512x512', type: 'image/jpeg' }]
+            });
+            try {
+                navigator.mediaSession.setActionHandler('play', () => togglePlayPause());
+                navigator.mediaSession.setActionHandler('pause', () => togglePlayPause());
+                navigator.mediaSession.setActionHandler('nexttrack', () => playNext());
+                navigator.mediaSession.setActionHandler('previoustrack', () => playPrev());
+            } catch (err) {}
+        }
+
         // Fetch lyrics
         fetchLyrics(track);
 
@@ -716,6 +731,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (npPrevBtn) npPrevBtn.onclick = playPrev;
     if (bpPrevBtn) bpPrevBtn.onclick = playPrev;
 
+    // Keyboard Shortcuts (Spacebar to toggle Play/Pause)
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' || e.key === ' ') {
+            const active = document.activeElement;
+            const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
+            if (!isInput) {
+                e.preventDefault();
+                togglePlayPause();
+            }
+        }
+    });
+
     function updatePlayPauseButtons() {
         const playIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
         const pauseIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
@@ -860,15 +887,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const container = document.getElementById('lyrics-container');
         if (!container) return;
 
+        const badge = document.getElementById('lyrics-badge');
+        if (badge) {
+            badge.textContent = 'Loading…';
+            badge.style.display = 'inline-block';
+        }
+
         const uid = getTrackUid(track);
         currentLyricsTrackId = uid;
         container._lastActiveIndex = -1;
         parsedLyrics = [];
 
         container.innerHTML = `
-            <div class="py-12 flex flex-col items-center gap-3 text-zinc-400">
-                <div class="w-6 h-6 border-2 border-zinc-200 border-t-zinc-600 rounded-full animate-spin"></div>
-                <span class="text-xs font-medium tracking-wide">Loading lyrics…</span>
+            <div class="h-full flex flex-col items-center justify-center gap-3 text-zinc-400 select-none py-16">
+                <div class="w-6 h-6 border-2 border-zinc-200 border-t-zinc-700 rounded-full animate-spin"></div>
+                <span class="text-xs font-medium tracking-wide">Loading synced lyrics…</span>
             </div>
         `;
 
@@ -907,6 +940,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!parsedLyrics || parsedLyrics.length === 0) {
             renderNoLyricsFound(trackUid);
             return;
+        }
+
+        const badge = document.getElementById('lyrics-badge');
+        if (badge) {
+            const hasTimestamps = parsedLyrics.some(p => p.time !== null && p.time !== undefined);
+            badge.textContent = hasTimestamps ? 'Synced' : 'Plain';
+            badge.style.display = 'inline-block';
         }
 
         const html = parsedLyrics.map((item, idx) => {
@@ -948,9 +988,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const container = document.getElementById('lyrics-container');
         if (!container || currentLyricsTrackId !== trackUid) return;
         parsedLyrics = [];
+
+        const badge = document.getElementById('lyrics-badge');
+        if (badge) {
+            badge.style.display = 'none';
+        }
+
         container.innerHTML = `
-            <div class="py-14 text-center text-zinc-400">
-                <span class="text-sm font-medium">No lyrics available for this track</span>
+            <div class="h-full flex flex-col items-center justify-center gap-2 text-zinc-400 select-none py-16 text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="opacity-40 mb-1"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                <span class="text-sm font-semibold text-zinc-600">No lyrics available</span>
+                <span class="text-xs text-zinc-400">Enjoy the song!</span>
             </div>
         `;
     }

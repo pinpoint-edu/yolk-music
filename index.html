@@ -35,8 +35,57 @@
             opacity: 1;
         }
 
+        #page-now-playing {
+            box-sizing: border-box;
+            padding-top: 88px;
+            padding-bottom: 36px;
+            padding-left: 20px;
+            padding-right: 20px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
         #page-now-playing.active {
-            display: flex; /* Special flex layout for now playing */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @media (max-height: 680px) {
+            #page-now-playing.active {
+                align-items: flex-start;
+            }
+        }
+
+        /* Library Page Layout & Containment */
+        #page-library {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+        #page-library.active {
+            display: block;
+        }
+        #page-library-scroll {
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-top: 100px;
+            padding-bottom: 140px;
+            padding-left: 20px;
+            padding-right: 20px;
+            box-sizing: border-box;
+        }
+        .library-shell {
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
         }
 
         /* 
@@ -222,19 +271,86 @@
             box-shadow: 0px 4px 10px rgba(24, 24, 27, 0.15);
         }
 
+        /* Now Playing Layout */
+        .now-playing-container {
+            width: 100%;
+            max-width: 1040px;
+            margin: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 32px;
+        }
+        @media (min-width: 768px) {
+            .now-playing-container {
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+                gap: 56px;
+            }
+        }
+        .np-left-col {
+            width: 100%;
+            max-width: 380px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .np-right-col {
+            flex: 1;
+            width: 100%;
+            max-width: 560px;
+            height: 480px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(228, 228, 231, 0.8);
+            border-radius: 28px;
+            padding: 20px 24px;
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.04);
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        @media (max-width: 767px) {
+            .np-right-col {
+                height: 360px;
+                max-width: 100%;
+            }
+        }
+
         /* Lyrics Styling */
         #lyrics-container {
+            position: relative;
+            flex: 1;
+            width: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
             scroll-behavior: smooth;
+            box-sizing: border-box;
+            padding-top: 130px;
+            padding-bottom: 150px;
+            mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 86%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 86%, transparent 100%);
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        #lyrics-container::-webkit-scrollbar {
+            display: none;
         }
         .lyric-line {
             padding: 8px 14px;
-            border-radius: 1rem;
-            font-size: 1.1rem;
+            border-radius: 12px;
+            font-size: 1.15rem;
             line-height: 1.5;
-            font-weight: 500;
+            font-weight: 600;
             color: #a1a1aa;
+            opacity: 0.6;
             cursor: pointer;
-            transition: color 0.3s ease, font-size 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
             transform-origin: left center;
             max-width: 100%;
             user-select: none;
@@ -242,18 +358,21 @@
             text-align: left;
         }
         .lyric-line:hover {
-            color: #52525b;
-            background: rgba(0, 0, 0, 0.025);
+            color: #3f3f46;
+            opacity: 1;
+            background: rgba(0, 0, 0, 0.03);
         }
         .lyric-line.active {
-            color: #18181b;
-            font-size: 1.35rem;
-            font-weight: 700;
+            color: #18181b !important;
+            opacity: 1 !important;
+            font-size: 1.35rem !important;
+            font-weight: 800 !important;
             transform: scale(1.02);
-            text-shadow: 0 4px 24px rgba(253, 224, 71, 0.35);
+            text-shadow: 0 2px 20px rgba(253, 224, 71, 0.45);
         }
         .lyric-line.untimed {
-            color: #3f3f46;
+            color: #27272a;
+            opacity: 0.85;
             font-size: 1.05rem;
             font-weight: 500;
             cursor: default;
@@ -368,66 +487,71 @@
 
     <!-- ==== PAGE: LIBRARY ==== -->
     <div id="page-library" class="page">
-        <main class="w-full h-full pt-20 pb-28 px-4 sm:px-6 overflow-y-auto">
-            <div class="max-w-4xl mx-auto">
+        <main id="page-library-scroll">
+            <div class="library-shell">
                 <!-- Library Overview (Grid of Playlists & Collections) -->
                 <div id="library-overview">
-                    <div class="flex items-center justify-between mb-5">
+                    <div class="flex items-center justify-between mb-6">
                         <div>
-                            <h1 class="text-2xl font-bold tracking-tight text-zinc-900">Your Library</h1>
-                            <p class="text-xs text-zinc-500 mt-0.5">Playlists and saved tracks</p>
+                            <h1 class="text-3xl font-bold tracking-tight text-zinc-900">Your Library</h1>
+                            <p class="text-sm text-zinc-500 mt-1">Playlists, collections, and saved tracks</p>
                         </div>
-                        <button id="create-playlist-btn" class="bubbly-hover flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-zinc-900 text-white text-xs font-semibold shadow hover:bg-zinc-800 transition-all">
+                        <button id="create-playlist-btn" class="bubbly-hover flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900 text-white text-xs font-semibold shadow hover:bg-zinc-800 transition-all">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                             <span>New Playlist</span>
                         </button>
                     </div>
 
-                    <div id="library-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+                    <div id="library-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                         <!-- Populated by JS -->
                     </div>
                 </div>
 
                 <!-- Playlist Detail View -->
                 <div id="playlist-detail-view" class="hidden">
-                    <button id="playlist-back-btn" class="sleek-hover mb-3.5 flex items-center gap-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-900 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    <button id="playlist-back-btn" class="sleek-hover mb-4 inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-900 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                         <span>Back to Library</span>
                     </button>
 
-                    <!-- Playlist Header -->
-                    <div class="flex flex-col sm:flex-row items-center sm:items-center gap-4 mb-4 p-4 bg-white/80 backdrop-blur-md rounded-2xl border border-zinc-200/60 shadow-sm">
-                        <div id="playlist-detail-art" class="w-28 h-28 sm:w-32 sm:h-32 rounded-xl bg-gradient-to-br from-yolk-yellow to-yellow-200 flex items-center justify-center overflow-hidden shrink-0 shadow-sm relative">
+                    <!-- Playlist Header Card -->
+                    <div class="flex flex-col sm:flex-row items-center sm:items-center gap-5 p-5 bg-white/80 backdrop-blur-md rounded-2xl border border-zinc-200/70 shadow-sm mb-5">
+                        <div id="playlist-detail-art" class="w-32 h-32 rounded-xl bg-gradient-to-br from-yolk-yellow to-yellow-200 flex items-center justify-center overflow-hidden shrink-0 shadow-sm relative">
                             <img id="playlist-detail-img" src="" class="w-full h-full object-cover hidden" referrerpolicy="no-referrer">
                             <div id="playlist-detail-icon" class="text-zinc-800">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
                             </div>
                         </div>
 
                         <div class="flex-1 text-center sm:text-left min-w-0">
                             <span class="text-[10px] uppercase tracking-widest font-bold text-zinc-400">Playlist</span>
-                            <h2 id="playlist-detail-name" class="text-xl sm:text-2xl font-bold text-zinc-900 truncate mt-0.5">Playlist Name</h2>
-                            <p id="playlist-detail-desc" class="text-xs text-zinc-500 mt-0.5 line-clamp-1">Playlist description</p>
-                            <p id="playlist-detail-meta" class="text-[11px] font-medium text-zinc-400 mt-1">0 songs</p>
+                            <h2 id="playlist-detail-name" class="text-2xl font-bold text-zinc-900 truncate mt-0.5">Playlist Name</h2>
+                            <p id="playlist-detail-desc" class="text-xs text-zinc-500 mt-1 line-clamp-2">Playlist description</p>
+                            <p id="playlist-detail-meta" class="text-xs font-medium text-zinc-400 mt-1.5">0 songs</p>
 
-                            <div class="flex items-center justify-center sm:justify-start gap-2 mt-3">
-                                <button id="playlist-play-all-btn" class="bubbly-hover flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-zinc-900 text-white text-xs font-semibold shadow hover:bg-zinc-800 transition-all">
+                            <div class="flex items-center justify-center sm:justify-start gap-2.5 mt-4">
+                                <button id="playlist-play-all-btn" class="bubbly-hover flex items-center gap-1.5 px-4 py-2 rounded-full bg-zinc-900 text-white text-xs font-semibold shadow hover:bg-zinc-800 transition-all">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                                     <span>Play All</span>
                                 </button>
-                                <button id="playlist-edit-btn" class="bubbly-hover px-3 py-1.5 rounded-full bg-zinc-100 text-zinc-700 text-xs font-medium hover:bg-zinc-200 transition-all border border-zinc-200/50">
+                                <button id="playlist-edit-btn" class="bubbly-hover px-3.5 py-2 rounded-full bg-zinc-100 text-zinc-700 text-xs font-medium hover:bg-zinc-200 transition-all border border-zinc-200/50">
                                     Edit
                                 </button>
-                                <button id="playlist-delete-btn" class="bubbly-hover px-3 py-1.5 rounded-full bg-red-50 text-red-600 text-xs font-medium hover:bg-red-100 transition-all border border-red-200/50">
+                                <button id="playlist-delete-btn" class="bubbly-hover px-3.5 py-2 rounded-full bg-red-50 text-red-600 text-xs font-medium hover:bg-red-100 transition-all border border-red-200/50">
                                     Delete
                                 </button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Playlist Track List -->
-                    <div id="playlist-track-list" class="flex flex-col gap-1.5">
-                        <!-- Populated by JS -->
+                    <!-- Contained Track List Card -->
+                    <div class="bg-white/70 backdrop-blur-md rounded-2xl border border-zinc-200/70 p-4 shadow-sm">
+                        <div class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-3 px-2 flex justify-between items-center">
+                            <span>Tracks</span>
+                        </div>
+                        <div id="playlist-track-list" class="flex flex-col gap-1.5">
+                            <!-- Populated by JS -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -435,42 +559,42 @@
     </div>
 
     <!-- ==== PAGE: NOW PLAYING ==== -->
-    <div id="page-now-playing" class="page flex items-center justify-center px-4 sm:px-8 pt-20 pb-20 sm:pb-24 overflow-y-auto">
-        <div class="w-full max-w-5xl flex flex-col md:flex-row items-center md:items-center justify-between gap-8 md:gap-12 my-auto">
+    <div id="page-now-playing" class="page">
+        <div class="now-playing-container">
             <!-- Left Side: Cover Art, Metadata, Progress & Buttons -->
-            <div class="w-full md:w-[360px] lg:w-[400px] flex flex-col items-center shrink-0">
-                <div id="now-playing-art" class="w-48 h-48 sm:w-56 sm:h-56 lg:w-64 lg:h-64 bg-zinc-100 rounded-[2rem] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] border border-zinc-200/70 flex items-center justify-center relative overflow-hidden mb-5 shrink-0 transition-transform duration-500 hover:scale-[1.02]">
+            <div class="np-left-col">
+                <div id="now-playing-art" class="w-64 h-64 sm:w-72 sm:h-72 bg-zinc-100 rounded-[2rem] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] border border-zinc-200/80 flex items-center justify-center relative overflow-hidden shrink-0 transition-transform duration-500 hover:scale-[1.02]">
                     <img id="now-playing-img" src="" alt="Album Art" class="absolute inset-0 w-full h-full object-cover hidden z-10 transition-opacity duration-300" referrerpolicy="no-referrer">
-                    <div id="now-playing-vinyl" class="w-20 h-20 rounded-full bg-zinc-800 flex items-center justify-center shadow-inner spin-slow z-0">
-                        <div class="w-7 h-7 rounded-full bg-zinc-100 shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)]"></div>
+                    <div id="now-playing-vinyl" class="w-24 h-24 rounded-full bg-zinc-800 flex items-center justify-center shadow-inner spin-slow z-0">
+                        <div class="w-8 h-8 rounded-full bg-zinc-100 shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)]"></div>
                     </div>
                 </div>
 
-                <div class="text-center mb-4 w-full px-2">
-                    <h1 id="now-playing-title" class="text-xl sm:text-2xl font-bold tracking-tight text-zinc-900 mb-1 truncate">Not Playing</h1>
-                    <p id="now-playing-artist" class="text-xs sm:text-sm font-medium text-zinc-500 truncate">Select a song to start</p>
+                <div class="text-center mt-5 mb-1 w-full px-2">
+                    <h1 id="now-playing-title" class="text-2xl font-bold tracking-tight text-zinc-900 truncate">Not Playing</h1>
+                    <p id="now-playing-artist" class="text-sm font-medium text-zinc-500 truncate mt-1">Select a song to start</p>
                 </div>
 
-                <div class="w-full max-w-sm flex flex-col gap-1.5 mb-5 shrink-0">
+                <div class="w-full max-w-[320px] flex flex-col gap-1.5 my-3 shrink-0">
                     <div id="now-playing-progress-bar" class="w-full h-1.5 bg-zinc-200/80 hover:h-2 rounded-full overflow-hidden relative cursor-pointer transition-all">
                         <div id="now-playing-progress-fill" class="absolute left-0 top-0 w-0 h-full bg-zinc-900 rounded-full pointer-events-none"></div>
                     </div>
                     <div class="flex justify-between w-full">
-                        <span id="now-playing-current-time" class="text-[11px] text-zinc-400 font-medium select-none">0:00</span>
-                        <span id="now-playing-duration" class="text-[11px] text-zinc-400 font-medium select-none">0:00</span>
+                        <span id="now-playing-current-time" class="text-[11px] text-zinc-400 font-semibold select-none">0:00</span>
+                        <span id="now-playing-duration" class="text-[11px] text-zinc-400 font-semibold select-none">0:00</span>
                     </div>
                 </div>
 
                 <!-- Controls Cluster (Buttons on Left) -->
-                <div class="flex items-center justify-center gap-5 sm:gap-6 shrink-0">
+                <div class="flex items-center justify-center gap-5 sm:gap-6 mt-2 shrink-0">
                     <button id="now-playing-fav-btn" class="sleek-hover text-zinc-400 hover:text-red-500 transition-colors p-2" title="Favorite">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                     </button>
                     <button id="now-playing-prev" class="sleek-hover text-zinc-500 hover:text-zinc-900 transition-colors p-2" title="Previous Track">
                         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
                     </button>
-                    <button id="now-playing-play-pause" class="flex items-center justify-center w-12 h-12 rounded-full bg-zinc-900 text-white shadow-lg hover:scale-105 active:scale-95 transition-all" title="Play / Pause">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    <button id="now-playing-play-pause" class="flex items-center justify-center w-14 h-14 rounded-full bg-zinc-900 text-white shadow-lg hover:scale-105 active:scale-95 transition-all" title="Play / Pause">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                     </button>
                     <button id="now-playing-next" class="sleek-hover text-zinc-500 hover:text-zinc-900 transition-colors p-2" title="Next Track">
                         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
@@ -481,12 +605,18 @@
                 </div>
             </div>
 
-            <!-- Right Side: Synced Lyrics -->
-            <div class="flex-1 w-full md:max-w-xl h-[360px] sm:h-[440px] md:h-[500px] flex flex-col justify-start relative bg-white/50 backdrop-blur-md rounded-3xl border border-zinc-200/60 p-6 shadow-sm overflow-hidden">
-                <div class="text-[11px] uppercase font-bold tracking-widest text-zinc-400 mb-3 shrink-0 flex items-center justify-between">
-                    <span>Lyrics</span>
+            <!-- Right Side: Synced Lyrics Card -->
+            <div class="np-right-col">
+                <div class="flex items-center justify-between mb-2 shrink-0 select-none pb-2 border-b border-zinc-200/50">
+                    <span class="text-[11px] uppercase font-bold tracking-widest text-zinc-400">Lyrics</span>
+                    <span id="lyrics-badge" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-500">Synced</span>
                 </div>
-                <div id="lyrics-container" class="w-full flex-1 overflow-y-auto pr-1 flex flex-col items-start gap-2.5 select-none">
+                <div id="lyrics-container">
+                    <div class="h-full flex flex-col items-center justify-center gap-2 text-zinc-400 select-none py-16 text-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="opacity-40 mb-1"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                        <span class="text-sm font-semibold text-zinc-600">No song playing</span>
+                        <span class="text-xs text-zinc-400">Select a song to view synced lyrics</span>
+                    </div>
                 </div>
             </div>
         </div>
