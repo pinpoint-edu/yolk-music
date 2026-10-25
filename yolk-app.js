@@ -33,34 +33,6 @@ dynamicStyle.innerHTML = `
         transform: scale(0.97) !important;
     }
     
-    #loading-spinner-container {
-        position: fixed;
-        bottom: 24px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 50;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.4s ease;
-    }
-    #loading-spinner-container.active {
-        opacity: 1;
-    }
-    .parabola-spin {
-        width: 38px;
-        height: 38px;
-        border: 3px solid rgba(0, 0, 0, 0.08);
-        border-top-color: #FDE047;
-        border-right-color: #FDE047;
-        border-radius: 50%;
-        animation: spin-parabola 1.2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
-    }
-    
-    @keyframes spin-parabola {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    
     .hidden-force {
         opacity: 0 !important;
         pointer-events: none !important;
@@ -302,14 +274,11 @@ function updateLyricsSync(currentTime) {
 
     if (activeLineEl && container._lastActiveIndex !== activeIndex) {
         container._lastActiveIndex = activeIndex;
-        const pageNowPlaying = document.getElementById('page-now-playing');
-        if (pageNowPlaying && document.body.getAttribute('data-page') === 'now-playing') {
-            const targetScrollTop = activeLineEl.offsetTop - (pageNowPlaying.clientHeight / 2) + (activeLineEl.offsetHeight / 2);
-            pageNowPlaying.scrollTo({
-                top: Math.max(0, targetScrollTop),
-                behavior: 'smooth'
-            });
-        }
+        const targetScrollTop = activeLineEl.offsetTop - (container.clientHeight / 2) + (activeLineEl.offsetHeight / 2);
+        container.scrollTo({
+            top: Math.max(0, targetScrollTop),
+            behavior: 'smooth'
+        });
     }
 }
 
@@ -376,6 +345,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const bpPlayPauseBtn = document.getElementById('bottom-player-play-pause');
     const bpPrevBtn = document.getElementById('bottom-player-prev');
     const bpNextBtn = document.getElementById('bottom-player-next');
+    const bpFavBtn = document.getElementById('bottom-player-fav-btn');
+    const bpAddBtn = document.getElementById('bottom-player-add-btn');
     const bpProgressBar = document.getElementById('bottom-player-progress-bar');
     const bpProgressFill = document.getElementById('bottom-player-progress-fill');
     const bpCurrentTime = document.getElementById('bottom-player-current-time');
@@ -395,17 +366,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const addToPlaylistOptions = document.getElementById('add-to-playlist-options');
     const addToPlaylistNewBtn = document.getElementById('add-to-playlist-new-btn');
 
-    // Loading spinner
-    const spinnerContainer = document.createElement('div');
-    spinnerContainer.id = 'loading-spinner-container';
-    const spinner = document.createElement('div');
-    spinner.className = 'parabola-spin';
-    spinnerContainer.appendChild(spinner);
-    document.body.appendChild(spinnerContainer);
-
+    // Loading spinner (morphs bottom bar into circle with parabola animation)
     function showSpinner(show) {
-        if (show) spinnerContainer.classList.add('active');
-        else spinnerContainer.classList.remove('active');
+        if (!bottomPlayer) return;
+        if (show) {
+            if (document.body.getAttribute('data-page') !== 'now-playing') {
+                bottomPlayer.classList.remove('hidden-force');
+            }
+            bottomPlayer.classList.add('is-loading');
+        } else {
+            bottomPlayer.classList.remove('is-loading');
+        }
     }
 
     // Bottom Player Routing
@@ -488,7 +459,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Creates track list item with Play, Add to Playlist, and Favorite buttons
     function createTrackElement(track, onPlayClick, onRemoveClick = null) {
         const div = document.createElement('div');
-        div.className = 'group flex items-center justify-between p-3 rounded-2xl bg-white/80 backdrop-blur-sm border border-zinc-100 hover:border-zinc-200 hover:shadow-md transition-all cursor-pointer bubbly-hover mb-2';
+        div.className = 'group flex items-center justify-between p-2 sm:p-2.5 rounded-xl bg-white/90 backdrop-blur-sm border border-zinc-200/70 hover:border-zinc-300 hover:shadow-sm transition-all cursor-pointer bubbly-hover mb-1.5';
         
         const artwork = getProxyUrl(track.artwork_url || track.image, '50x50');
         const title = track.title || track.name || 'Unknown Title';
@@ -496,29 +467,29 @@ document.addEventListener('DOMContentLoaded', () => {
         const durStr = track.duration ? formatTime(track.duration > 1000 ? track.duration / 1000 : track.duration) : '';
 
         div.innerHTML = `
-            <div class="flex items-center gap-3.5 min-w-0 flex-1 mr-2">
-                <div class="w-12 h-12 bg-zinc-100 rounded-xl overflow-hidden flex-shrink-0 relative border border-zinc-200/50 flex items-center justify-center">
+            <div class="flex items-center gap-3 min-w-0 flex-1 mr-2">
+                <div class="w-10 h-10 bg-zinc-100 rounded-lg overflow-hidden flex-shrink-0 relative border border-zinc-200/50 flex items-center justify-center">
                     ${artwork ? `<img src="${artwork}" alt="${escapeHtml(title)}" class="w-full h-full object-cover" referrerpolicy="no-referrer" onerror="this.style.display='none'">` : ''}
                     <div class="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-[1px]">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                     </div>
                 </div>
                 <div class="flex flex-col text-left min-w-0">
-                    <span class="font-semibold text-zinc-900 text-sm truncate">${escapeHtml(title)}</span>
-                    <span class="text-xs text-zinc-500 truncate">${escapeHtml(artist)}</span>
+                    <span class="font-semibold text-zinc-900 text-xs sm:text-sm truncate">${escapeHtml(title)}</span>
+                    <span class="text-[11px] text-zinc-500 truncate">${escapeHtml(artist)}</span>
                 </div>
             </div>
             <div class="flex items-center gap-1 shrink-0">
-                ${durStr ? `<span class="text-xs text-zinc-400 font-medium mr-2 hidden sm:inline">${durStr}</span>` : ''}
-                <button class="add-to-pl-btn text-zinc-300 hover:text-zinc-700 transition-colors p-2 rounded-full hover:bg-zinc-100" title="Add to Playlist">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+                ${durStr ? `<span class="text-[11px] text-zinc-400 font-medium mr-1.5 hidden sm:inline">${durStr}</span>` : ''}
+                <button class="add-to-pl-btn text-zinc-400 hover:text-zinc-800 transition-colors p-1.5 rounded-full hover:bg-zinc-100" title="Add to Playlist">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
                 </button>
-                <button class="favorite-btn text-zinc-300 hover:text-yolk-yellow transition-colors p-2 rounded-full hover:bg-zinc-100" title="Favorite">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="${isFavorite(track.id) ? '#FDE047' : 'none'}" stroke="${isFavorite(track.id) ? '#FDE047' : 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                <button class="favorite-btn text-zinc-400 hover:text-yolk-yellow transition-colors p-1.5 rounded-full hover:bg-zinc-100" title="Favorite">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="${isFavorite(track.id) ? '#FDE047' : 'none'}" stroke="${isFavorite(track.id) ? '#FDE047' : 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                 </button>
                 ${onRemoveClick ? `
-                <button class="remove-btn text-zinc-300 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50" title="Remove from playlist">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                <button class="remove-btn text-zinc-400 hover:text-red-500 transition-colors p-1.5 rounded-full hover:bg-red-50" title="Remove from playlist">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                 </button>
                 ` : ''}
             </div>
@@ -766,6 +737,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function updateBottomPlayerFavButton() {
+        if (!bpFavBtn || !currentTrack) return;
+        const fav = isFavorite(currentTrack.id);
+        const svg = bpFavBtn.querySelector('svg');
+        if (svg) {
+            svg.setAttribute('fill', fav ? '#FDE047' : 'none');
+            svg.setAttribute('stroke', fav ? '#FDE047' : 'currentColor');
+        }
+    }
+
     if (npFavBtn) {
         npFavBtn.onclick = () => {
             if (currentTrack) {
@@ -776,6 +757,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (npAddBtn) {
         npAddBtn.onclick = () => {
+            if (currentTrack) {
+                openAddToPlaylistModal(currentTrack);
+            }
+        };
+    }
+
+    if (bpFavBtn) {
+        bpFavBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (currentTrack) {
+                toggleFavorite(currentTrack, bpFavBtn.querySelector('svg'));
+            }
+        };
+    }
+
+    if (bpAddBtn) {
+        bpAddBtn.onclick = (e) => {
+            e.stopPropagation();
             if (currentTrack) {
                 openAddToPlaylistModal(currentTrack);
             }
@@ -852,6 +851,8 @@ document.addEventListener('DOMContentLoaded', () => {
             imgEl.classList.add('hidden');
             if (placeholderEl) placeholderEl.classList.remove('hidden');
         }
+
+        updateBottomPlayerFavButton();
     }
 
     // Synced Lyrics Fetching & Clean Formatting
@@ -974,6 +975,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         saveFavorites();
         updateNowPlayingFavButton();
+        updateBottomPlayerFavButton();
         if (!playlistDetailView.classList.contains('hidden') && currentPlaylistContextId === 'favorites') {
             openPlaylistDetail('favorites');
         } else {
@@ -993,11 +995,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const favCard = document.createElement('div');
         favCard.className = 'group cursor-pointer bubbly-hover text-left';
         favCard.innerHTML = `
-            <div class="w-full aspect-square bg-gradient-to-br from-yolk-yellow to-yellow-200 rounded-3xl border border-zinc-200/60 mb-3 relative overflow-hidden flex items-center justify-center shadow-sm group-hover:shadow-md transition-all">
-                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+            <div class="w-full aspect-square bg-gradient-to-br from-yolk-yellow to-yellow-200 rounded-2xl border border-zinc-200/60 mb-2 relative overflow-hidden flex items-center justify-center shadow-sm group-hover:shadow-md transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
             </div>
-            <h3 class="font-bold text-sm text-zinc-900 truncate">Favorites</h3>
-            <p class="text-xs text-zinc-500 mt-0.5">${favorites.length} ${favorites.length === 1 ? 'song' : 'songs'}</p>
+            <h3 class="font-semibold text-xs sm:text-sm text-zinc-900 truncate">Favorites</h3>
+            <p class="text-[11px] text-zinc-500 mt-0.5">${favorites.length} ${favorites.length === 1 ? 'song' : 'songs'}</p>
         `;
         favCard.addEventListener('click', () => {
             openPlaylistDetail('favorites');
@@ -1011,15 +1013,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const firstArt = pl.tracks && pl.tracks[0] ? getProxyUrl(pl.tracks[0].artwork_url || pl.tracks[0].image, '150x150') : '';
 
             plCard.innerHTML = `
-                <div class="w-full aspect-square bg-zinc-100 rounded-3xl border border-zinc-200/60 mb-3 relative overflow-hidden flex items-center justify-center shadow-sm group-hover:shadow-md transition-all">
+                <div class="w-full aspect-square bg-zinc-100 rounded-2xl border border-zinc-200/60 mb-2 relative overflow-hidden flex items-center justify-center shadow-sm group-hover:shadow-md transition-all">
                     ${firstArt ? `<img src="${firstArt}" class="w-full h-full object-cover" referrerpolicy="no-referrer">` : `
                         <div class="text-zinc-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
                         </div>
                     `}
                 </div>
-                <h3 class="font-bold text-sm text-zinc-900 truncate">${escapeHtml(pl.name)}</h3>
-                <p class="text-xs text-zinc-500 mt-0.5">${pl.tracks ? pl.tracks.length : 0} ${pl.tracks && pl.tracks.length === 1 ? 'song' : 'songs'}</p>
+                <h3 class="font-semibold text-xs sm:text-sm text-zinc-900 truncate">${escapeHtml(pl.name)}</h3>
+                <p class="text-[11px] text-zinc-500 mt-0.5">${pl.tracks ? pl.tracks.length : 0} ${pl.tracks && pl.tracks.length === 1 ? 'song' : 'songs'}</p>
             `;
             plCard.addEventListener('click', () => {
                 openPlaylistDetail(pl.id);
