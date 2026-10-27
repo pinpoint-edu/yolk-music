@@ -251,12 +251,14 @@
         }
 
         .bottom-thumb {
-            transition: width 0.35s var(--parabola-ease), height 0.35s var(--parabola-ease);
+            border-radius: 11px !important;
+            transition: width 0.35s var(--parabola-ease), height 0.35s var(--parabola-ease), border-radius 0.35s ease;
         }
 
         #bottom-player:not(.is-loading):hover .bottom-thumb {
             width: 44px;
             height: 44px;
+            border-radius: 13px !important;
         }
 
         #bottom-player:not(.is-loading):hover #bottom-player-title {
@@ -347,6 +349,7 @@
             align-items: center;
             justify-content: center;
             gap: 28px;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
         @media (min-width: 768px) {
             .now-playing-container {
@@ -356,6 +359,33 @@
                 gap: 56px;
             }
         }
+        .now-playing-container.no-lyrics,
+        .now-playing-container.lyrics-hidden {
+            justify-content: center !important;
+            align-items: center !important;
+        }
+        .now-playing-container.no-lyrics .np-right-col,
+        .now-playing-container.lyrics-hidden .np-right-col {
+            display: none !important;
+        }
+        .now-playing-container.no-lyrics .np-left-col,
+        .now-playing-container.lyrics-hidden .np-left-col {
+            margin: 0 auto !important;
+            max-width: 440px;
+        }
+        .now-playing-container.no-lyrics #now-playing-art,
+        .now-playing-container.lyrics-hidden #now-playing-art {
+            width: 300px;
+            height: 300px;
+            transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1), height 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @media (min-width: 640px) {
+            .now-playing-container.no-lyrics #now-playing-art,
+            .now-playing-container.lyrics-hidden #now-playing-art {
+                width: 340px;
+                height: 340px;
+            }
+        }
         .np-left-col {
             width: 100%;
             max-width: 380px;
@@ -363,6 +393,7 @@
             flex-direction: column;
             align-items: center;
             flex-shrink: 0;
+            transition: max-width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .np-right-col {
             flex: 1.3;
@@ -466,36 +497,52 @@
             display: flex;
             align-items: center;
             justify-content: flex-start;
-            transform-origin: left center !important;
-            padding: 8px 14px;
+            padding: 14px 16px;
+            opacity: 0.35;
+            transition: opacity 0.3s ease;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .dots-line.active {
+            opacity: 1;
         }
         .lyric-dots {
             display: inline-flex;
             align-items: center;
-            gap: 10px;
-            padding: 10px 18px;
+            gap: 8px;
+            padding: 8px 14px;
             border-radius: 9999px;
-            background: rgba(0, 0, 0, 0.04);
-            transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            background: rgba(0, 0, 0, 0.05);
+            transition: background-color 0.3s ease;
         }
-        .lyric-dots.active {
-            background: rgba(253, 224, 71, 0.25);
-            box-shadow: 0 4px 16px rgba(253, 224, 71, 0.35);
+        .dots-line.active .lyric-dots {
+            background: rgba(0, 0, 0, 0.08);
         }
         .lyric-dot {
-            width: 8px;
-            height: 8px;
+            width: 7px;
+            height: 7px;
             border-radius: 50%;
-            background-color: #a1a1aa;
-            transform: scale(var(--dot-scale, 1));
-            transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.25s ease, box-shadow 0.25s ease;
-        }
-        .lyric-dots.active .lyric-dot {
             background-color: #71717a;
+            transition: transform 0.2s ease, background-color 0.2s ease, opacity 0.2s ease;
         }
-        .lyric-dots.active .lyric-dot.highlight {
-            background-color: #09090b !important;
-            box-shadow: 0 0 12px rgba(253, 224, 71, 0.9), 0 0 4px #09090b;
+        .dots-line.active .lyric-dot {
+            animation: modernDotPulse 1.4s ease-in-out infinite;
+        }
+        .dots-line.active .lyric-dot:nth-child(1) { animation-delay: 0s; }
+        .dots-line.active .lyric-dot:nth-child(2) { animation-delay: 0.2s; }
+        .dots-line.active .lyric-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes modernDotPulse {
+            0%, 100% {
+                transform: scale(0.85);
+                opacity: 0.35;
+                background-color: #71717a;
+            }
+            50% {
+                transform: scale(1.35);
+                opacity: 1;
+                background-color: #18181b;
+            }
         }
         .lyric-section-label {
             font-size: 0.75rem;
@@ -688,7 +735,7 @@
         <!-- Fullscreen dynamic cover tint that fades smoothly -->
         <div id="now-playing-bg-tint" class="pointer-events-none transition-all duration-700 opacity-0 absolute inset-0 z-0"></div>
 
-        <div class="now-playing-container relative z-10">
+        <div id="now-playing-container" class="now-playing-container relative z-10">
             <!-- Left Side: Cover Art, Metadata, Progress & Buttons -->
             <div class="np-left-col">
                 <div id="now-playing-art" class="w-64 h-64 sm:w-72 sm:h-72 bg-zinc-100 rounded-[2rem] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] border border-zinc-200/80 flex items-center justify-center relative overflow-hidden shrink-0 transition-transform duration-500 hover:scale-[1.02]">
@@ -715,8 +762,8 @@
 
                 <!-- Controls Cluster (Buttons on Left) -->
                 <div class="flex items-center justify-center gap-5 sm:gap-6 mt-2 shrink-0">
-                    <button id="now-playing-fav-btn" class="sleek-hover text-zinc-400 hover:text-red-500 transition-colors p-2" title="Favorite">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                    <button id="now-playing-fav-btn" class="sleek-hover text-zinc-900 transition-transform hover:scale-110 p-2" title="Favorite">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#18181b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                     </button>
                     <button id="now-playing-prev" class="sleek-hover text-zinc-500 hover:text-zinc-900 transition-colors p-2" title="Previous Track">
                         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
@@ -734,7 +781,7 @@
             </div>
 
             <!-- Right Side: Invisible, Expansive Synced Lyrics Container -->
-            <div class="np-right-col">
+            <div id="np-lyrics-col" class="np-right-col">
                 <div class="flex items-center justify-between mb-3 shrink-0 select-none px-2">
                     <span class="text-[11px] uppercase font-bold tracking-widest text-zinc-400">Lyrics</span>
                     <span id="lyrics-badge" class="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-zinc-200/50 text-zinc-600">Synced</span>
@@ -747,6 +794,13 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Bottom Right Lyrics Toggle Button -->
+        <div class="fixed bottom-6 right-6 z-30">
+            <button id="np-lyrics-toggle-btn" class="flex items-center justify-center w-10 h-10 rounded-full bg-zinc-900 text-white border border-zinc-800 shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer" title="Toggle Lyrics">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path><path d="M8 9h8"></path><path d="M8 13h6"></path></svg>
+            </button>
         </div>
     </div>
 
@@ -811,7 +865,7 @@
         <div id="bottom-player-content" class="w-full h-full flex justify-between items-center">
             <!-- Left: Track info -->
             <div class="flex items-center gap-3 w-1/3 min-w-[170px] h-full cursor-pointer" id="bottom-player-info">
-                <div class="bottom-thumb w-9 h-9 bg-zinc-100 border border-zinc-200 rounded-full shrink-0 flex items-center justify-center shadow-inner overflow-hidden relative">
+                <div class="bottom-thumb w-9 h-9 bg-zinc-100 border border-zinc-200 rounded-[11px] shrink-0 flex items-center justify-center shadow-inner overflow-hidden relative">
                     <img id="bottom-player-img" src="" alt="Cover" class="w-full h-full object-cover hidden" referrerpolicy="no-referrer">
                     <div id="bottom-player-placeholder" class="flex items-center justify-center text-zinc-400">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
@@ -825,8 +879,8 @@
 
             <!-- Center: Controls (Fav, Prev, Play/Pause, Next, Add to Playlist) -->
             <div class="flex items-center justify-center gap-3 sm:gap-4 shrink-0">
-                <button id="bottom-player-fav-btn" class="sleek-hover text-zinc-400 hover:text-red-500 transition-colors p-1.5 rounded-full hover:bg-black/5" title="Favorite">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                <button id="bottom-player-fav-btn" class="sleek-hover text-zinc-900 transition-transform hover:scale-110 p-1.5 rounded-full hover:bg-black/5" title="Favorite">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#18181b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                 </button>
                 <button id="bottom-player-prev" class="sleek-hover text-zinc-400 hover:text-zinc-800 transition-colors p-1" title="Previous Track">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
@@ -969,6 +1023,9 @@
                 } else {
                     const npTintEl = document.getElementById('now-playing-bg-tint');
                     if (npTintEl) npTintEl.style.opacity = '0';
+                }
+                if (typeof window.updateTopNavTint === 'function') {
+                    window.updateTopNavTint();
                 }
 
                 // Update nav links

@@ -265,10 +265,8 @@ function updateLyricsSync(currentTime, force = false) {
         }
     }
 
-    const currentItem = activeIndex >= 0 ? parsedLyrics[activeIndex] : null;
-
-    // Fast-path: If active index hasn't changed and not animating dots, skip DOM work
-    if (!force && container._lastActiveIndex === activeIndex && (!currentItem || currentItem.type !== 'dots')) {
+    // Fast-path: If active index hasn't changed, skip DOM work
+    if (!force && container._lastActiveIndex === activeIndex) {
         return;
     }
 
@@ -283,54 +281,12 @@ function updateLyricsSync(currentTime, force = false) {
             activeLineEl = el;
             el.classList.add('active');
             el.classList.remove('next-up');
-
-            if (currentItem && currentItem.type === 'dots') {
-                const dots = el.querySelector('.lyric-dots');
-                if (dots) {
-                    dots.classList.add('active');
-                    const dotEls = dots.querySelectorAll('.lyric-dot');
-                    const startTime = currentItem.time || 0;
-                    const endTime = currentItem.endTime || (startTime + 3.5);
-                    const lineDuration = Math.max(0.1, endTime - startTime);
-                    const dotProgress = Math.min(1, Math.max(0, (adjustedTime - startTime) / lineDuration));
-
-                    dotEls.forEach((dot, i) => {
-                        const slotStart = i * (1 / 3);
-                        const slotEnd = (i + 1) * (1 / 3);
-                        const animDuration = (1 / 3) * 0.4;
-                        const animStart = slotEnd - animDuration;
-
-                        let scale = 1.0;
-                        if (dotProgress >= animStart) {
-                            const p = Math.min(1, (dotProgress - animStart) / animDuration);
-                            const smoothP = p * p * (3 - 2 * p);
-                            scale = 1.0 + (smoothP * 0.55);
-                        }
-
-                        dot.style.setProperty('--dot-scale', scale.toFixed(3));
-                        if (dotProgress >= animStart + (animDuration * 0.25)) {
-                            dot.classList.add('highlight');
-                        } else {
-                            dot.classList.remove('highlight');
-                        }
-                    });
-                }
-            }
         } else {
             el.classList.remove('active');
             if (idx === activeIndex + 1) {
                 el.classList.add('next-up');
             } else {
                 el.classList.remove('next-up');
-            }
-            const dots = el.querySelector('.lyric-dots');
-            if (dots) {
-                dots.classList.remove('active');
-                const dotEls = dots.querySelectorAll('.lyric-dot');
-                dotEls.forEach(dot => {
-                    dot.style.removeProperty('--dot-scale');
-                    dot.classList.remove('highlight');
-                });
             }
         }
     });
@@ -421,6 +377,47 @@ document.addEventListener('DOMContentLoaded', () => {
     const npProgressFill = document.getElementById('now-playing-progress-fill');
     const npCurrentTime = document.getElementById('now-playing-current-time');
     const npDuration = document.getElementById('now-playing-duration');
+
+    const npLyricsToggleBtn = document.getElementById('np-lyrics-toggle-btn');
+    const nowPlayingContainer = document.getElementById('now-playing-container');
+    let isLyricsAvailable = false;
+    let isLyricsUserEnabled = true;
+
+    function updateLyricsVisibilityUI() {
+        if (!nowPlayingContainer || !npLyricsToggleBtn) return;
+
+        if (!isLyricsAvailable) {
+            nowPlayingContainer.classList.add('no-lyrics');
+            nowPlayingContainer.classList.remove('lyrics-hidden');
+            npLyricsToggleBtn.disabled = true;
+            npLyricsToggleBtn.className = 'flex items-center justify-center w-10 h-10 rounded-full bg-zinc-100/80 text-zinc-300 border border-zinc-200/50 shadow-none cursor-not-allowed opacity-40 pointer-events-none transition-all';
+            npLyricsToggleBtn.title = 'No lyrics available for this song';
+        } else {
+            nowPlayingContainer.classList.remove('no-lyrics');
+            npLyricsToggleBtn.disabled = false;
+            npLyricsToggleBtn.title = 'Toggle Lyrics';
+
+            if (isLyricsUserEnabled) {
+                nowPlayingContainer.classList.remove('lyrics-hidden');
+                npLyricsToggleBtn.className = 'flex items-center justify-center w-10 h-10 rounded-full bg-zinc-900 text-white border border-zinc-800 shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer';
+            } else {
+                nowPlayingContainer.classList.add('lyrics-hidden');
+                npLyricsToggleBtn.className = 'flex items-center justify-center w-10 h-10 rounded-full bg-white/80 text-zinc-500 border border-zinc-200/80 shadow-sm transition-all hover:scale-105 active:scale-95 cursor-pointer';
+            }
+        }
+    }
+
+    if (npLyricsToggleBtn) {
+        npLyricsToggleBtn.onclick = () => {
+            if (!isLyricsAvailable) return;
+            isLyricsUserEnabled = !isLyricsUserEnabled;
+            updateLyricsVisibilityUI();
+            if (isLyricsUserEnabled && typeof window.syncLyricsOnNavigate === 'function') {
+                window.syncLyricsOnNavigate();
+            }
+        };
+    }
+    updateLyricsVisibilityUI();
 
     const bpPlayPauseBtn = document.getElementById('bottom-player-play-pause');
     const bpPrevBtn = document.getElementById('bottom-player-prev');
@@ -602,8 +599,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button class="add-to-pl-btn text-zinc-400 hover:text-zinc-800 transition-colors p-1.5 rounded-full hover:bg-zinc-100" title="Add to Playlist">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
                 </button>
-                <button class="favorite-btn text-zinc-400 hover:text-yolk-yellow transition-colors p-1.5 rounded-full hover:bg-zinc-100" title="Favorite">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="${isFavorite(track.id) ? '#FDE047' : 'none'}" stroke="${isFavorite(track.id) ? '#FDE047' : 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                <button class="favorite-btn text-zinc-900 hover:scale-110 transition-transform p-1.5 rounded-full hover:bg-zinc-100" title="Favorite">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="${isFavorite(track.id) ? '#18181b' : 'none'}" stroke="#18181b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                 </button>
                 ${onRemoveClick ? `
                 <button class="remove-btn text-zinc-400 hover:text-red-500 transition-colors p-1.5 rounded-full hover:bg-red-50" title="Remove from playlist">
@@ -1106,8 +1103,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const fav = isFavorite(currentTrack.id);
         const svg = npFavBtn.querySelector('svg');
         if (svg) {
-            svg.setAttribute('fill', fav ? '#FDE047' : 'none');
-            svg.setAttribute('stroke', fav ? '#FDE047' : 'currentColor');
+            svg.setAttribute('fill', fav ? '#18181b' : 'none');
+            svg.setAttribute('stroke', '#18181b');
         }
     }
 
@@ -1116,8 +1113,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const fav = isFavorite(currentTrack.id);
         const svg = bpFavBtn.querySelector('svg');
         if (svg) {
-            svg.setAttribute('fill', fav ? '#FDE047' : 'none');
-            svg.setAttribute('stroke', fav ? '#FDE047' : 'currentColor');
+            svg.setAttribute('fill', fav ? '#18181b' : 'none');
+            svg.setAttribute('stroke', '#18181b');
         }
     }
 
@@ -1157,6 +1154,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentCoverColor = null;
 
+    function updateTopNavTint() {
+        const topNav = document.getElementById('top-nav-bar');
+        if (!topNav) return;
+        const page = document.body.getAttribute('data-page');
+        if (page === 'now-playing' && currentCoverColor) {
+            const { r, g, b } = currentCoverColor;
+            topNav.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.18)`;
+            topNav.style.borderColor = `rgba(${r}, ${g}, ${b}, 0.35)`;
+            topNav.style.boxShadow = `0 8px 25px rgba(${r}, ${g}, ${b}, 0.12)`;
+        } else {
+            topNav.style.backgroundColor = '';
+            topNav.style.borderColor = '';
+            topNav.style.boxShadow = '';
+        }
+    }
+    window.updateTopNavTint = updateTopNavTint;
+
     function applyNowPlayingTint(r, g, b) {
         currentCoverColor = { r, g, b };
         const tintEl = document.getElementById('now-playing-bg-tint');
@@ -1166,13 +1180,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 tintEl.style.opacity = '1';
             }
         }
-
-        const topNav = document.getElementById('top-nav-bar');
-        if (topNav) {
-            topNav.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.18)`;
-            topNav.style.borderColor = `rgba(${r}, ${g}, ${b}, 0.35)`;
-            topNav.style.boxShadow = `0 8px 25px rgba(${r}, ${g}, ${b}, 0.12)`;
-        }
+        updateTopNavTint();
     }
 
     // Now Playing UI update (Cover Art & Track Details)
@@ -1354,6 +1362,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         container.innerHTML = html;
         container._lastActiveIndex = -1;
+        isLyricsAvailable = true;
+        updateLyricsVisibilityUI();
 
         if (currentAudio.currentTime > 0) {
             updateLyricsSync(currentAudio.currentTime);
@@ -1364,6 +1374,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const container = document.getElementById('lyrics-container');
         if (!container || currentLyricsTrackId !== trackUid) return;
         parsedLyrics = [];
+        isLyricsAvailable = false;
+        updateLyricsVisibilityUI();
 
         const badge = document.getElementById('lyrics-badge');
         if (badge) {
@@ -1386,14 +1398,14 @@ document.addEventListener('DOMContentLoaded', () => {
             favorites.splice(favIndex, 1);
             if (svgElement) {
                 svgElement.setAttribute('fill', 'none');
-                svgElement.setAttribute('stroke', 'currentColor');
+                svgElement.setAttribute('stroke', '#18181b');
             }
             showToast('Removed from Favorites');
         } else {
             favorites.push(track);
             if (svgElement) {
-                svgElement.setAttribute('fill', '#FDE047');
-                svgElement.setAttribute('stroke', '#FDE047');
+                svgElement.setAttribute('fill', '#18181b');
+                svgElement.setAttribute('stroke', '#18181b');
             }
             showToast('Saved to Favorites');
         }
