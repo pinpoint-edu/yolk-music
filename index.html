@@ -84,7 +84,8 @@
         #page-library.active {
             display: block;
         }
-        #page-artist {
+        #page-artist,
+        #page-album {
             display: none;
             width: 100%;
             height: 100vh;
@@ -96,11 +97,13 @@
             overflow: hidden;
             box-sizing: border-box;
         }
-        #page-artist.active {
+        #page-artist.active,
+        #page-album.active {
             display: block;
         }
         #page-library-scroll,
-        #page-artist-scroll {
+        #page-artist-scroll,
+        #page-album-scroll {
             width: 100%;
             height: 100%;
             overflow-y: auto;
@@ -642,6 +645,15 @@
                 </div>
             </div>
 
+            <!-- Search Category Tabs -->
+            <div id="search-tabs-container" class="w-full flex items-center justify-start gap-2 pt-3 pb-1 overflow-x-auto no-scrollbar hidden">
+                <button type="button" data-tab="all" class="search-tab-pill px-4 py-1.5 rounded-full text-xs font-semibold bg-zinc-900 text-white shadow-sm transition-all cursor-pointer">All</button>
+                <button type="button" data-tab="songs" class="search-tab-pill px-4 py-1.5 rounded-full text-xs font-semibold bg-white/90 text-zinc-600 hover:text-zinc-950 border border-zinc-200/80 hover:bg-zinc-100 transition-all cursor-pointer">Songs</button>
+                <button type="button" data-tab="albums" class="search-tab-pill px-4 py-1.5 rounded-full text-xs font-semibold bg-white/90 text-zinc-600 hover:text-zinc-950 border border-zinc-200/80 hover:bg-zinc-100 transition-all cursor-pointer">Albums</button>
+                <button type="button" data-tab="artists" class="search-tab-pill px-4 py-1.5 rounded-full text-xs font-semibold bg-white/90 text-zinc-600 hover:text-zinc-950 border border-zinc-200/80 hover:bg-zinc-100 transition-all cursor-pointer">Artists</button>
+                <button type="button" data-tab="playlists" class="search-tab-pill px-4 py-1.5 rounded-full text-xs font-semibold bg-white/90 text-zinc-600 hover:text-zinc-950 border border-zinc-200/80 hover:bg-zinc-100 transition-all cursor-pointer">Playlists</button>
+            </div>
+
             <!-- Search Results -->
             <div id="searchResults" class="flex flex-col gap-3">
                 <div class="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest text-left w-full mb-1 pl-5">Top Results</div>
@@ -657,15 +669,21 @@
         <main id="page-library-scroll" class="relative z-10">
             <!-- Library Overview (Grid of Playlists & Collections) -->
             <div id="library-overview" class="library-shell">
-                <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
                     <div>
                         <h1 class="text-3xl font-bold tracking-tight text-zinc-900">Your Library</h1>
                         <p class="text-sm text-zinc-500 mt-1">Playlists, collections, and saved tracks</p>
                     </div>
-                    <button id="create-playlist-btn" class="bubbly-hover flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900 text-white text-xs font-semibold shadow hover:bg-zinc-800 transition-all">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                        <span>New Playlist</span>
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <button id="import-yt-playlist-btn" class="bubbly-hover flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 hover:bg-white text-zinc-800 border border-zinc-200/90 text-xs font-semibold shadow-sm hover:border-zinc-300 transition-all cursor-pointer">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" class="text-red-600"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                            <span>Import YT Playlist</span>
+                        </button>
+                        <button id="create-playlist-btn" class="bubbly-hover flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900 text-white text-xs font-semibold shadow hover:bg-zinc-800 transition-all cursor-pointer">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            <span>New Playlist</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div id="library-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -865,6 +883,66 @@
         </main>
     </div>
 
+    <!-- ==== PAGE: ALBUM ==== -->
+    <div id="page-album" class="page relative overflow-hidden">
+        <!-- Fullscreen dynamic cover tint that fades from the top to normal bg in the top-middle -->
+        <div id="album-bg-tint" class="pointer-events-none transition-opacity duration-700 opacity-0" style="position: absolute; top: 0; left: 0; right: 0; height: 560px; z-index: 0;"></div>
+
+        <main id="page-album-scroll" class="relative z-10 w-full h-full overflow-y-auto">
+            <div class="w-full max-w-5xl mx-auto pb-28">
+                <button id="album-back-btn" class="bubbly-hover mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 hover:bg-white backdrop-blur-md border border-zinc-200/80 shadow-sm text-xs font-semibold text-zinc-700 hover:text-zinc-950 transition-all cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    <span>Back</span>
+                </button>
+
+                <!-- Fullscreen Hero Header for Album -->
+                <div class="flex flex-col md:flex-row items-center md:items-end gap-7 p-6 sm:p-8 bg-white/70 backdrop-blur-xl rounded-3xl border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-8">
+                    <div id="album-hero-art" class="w-44 h-44 sm:w-52 sm:h-52 md:w-56 md:h-56 rounded-3xl bg-zinc-100 flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.12)] border border-white/80 relative">
+                        <img id="album-hero-img" src="" class="w-full h-full object-cover hidden" referrerpolicy="no-referrer">
+                        <div id="album-hero-placeholder" class="text-zinc-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 text-center md:text-left min-w-0">
+                        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 border border-zinc-200/60 text-[11px] font-bold text-zinc-800 mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+                            <span id="album-hero-badge" class="uppercase tracking-wider">Album</span>
+                        </div>
+                        <h1 id="album-hero-name" class="text-3xl sm:text-4xl md:text-5xl font-extrabold text-zinc-900 tracking-tight leading-tight truncate">Album Title</h1>
+                        <div class="flex items-center justify-center md:justify-start gap-2 mt-2 flex-wrap">
+                            <button id="album-hero-artist" class="text-sm sm:text-base font-semibold text-zinc-800 hover:text-black hover:underline cursor-pointer transition-colors">Artist Name</button>
+                            <span class="text-zinc-400">•</span>
+                            <span id="album-hero-meta" class="text-xs sm:text-sm font-medium text-zinc-500">2024</span>
+                        </div>
+                        <p id="album-hero-track-count" class="text-xs font-semibold text-zinc-400 mt-2">Loading tracklist...</p>
+
+                        <div class="flex items-center justify-center md:justify-start gap-3 mt-5 flex-wrap">
+                            <button id="album-play-all-btn" class="bubbly-hover flex items-center gap-2 px-6 py-2.5 rounded-full bg-zinc-900 text-white text-xs font-semibold shadow-lg hover:bg-zinc-800 transition-all cursor-pointer">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                <span>Play Album</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Album Tracks Container -->
+                <div class="bg-white/80 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-7 shadow-sm">
+                    <div class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-4 px-3 flex justify-between items-center border-b border-zinc-100 pb-2">
+                        <span>Tracklist</span>
+                        <span id="album-tracks-header-count" class="text-[10px] font-medium text-zinc-400"></span>
+                    </div>
+                    <div id="album-track-list" class="flex flex-col gap-1.5">
+                        <!-- Populated by JS -->
+                    </div>
+                    <div id="album-loader" class="py-12 text-center hidden">
+                        <div class="inline-block w-6 h-6 border-2 border-zinc-300 border-t-zinc-800 rounded-full animate-spin"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
     <!-- Bottom Player Bar (Visible on search and library) -->
     <div id="bottom-player" class="fixed bottom-6 left-1/2 w-[calc(100%-3rem)] max-w-4xl h-[56px] bg-white/85 backdrop-blur-lg border border-zinc-200/90 shadow-[0_8px_30px_rgb(0,0,0,0.06)] rounded-full px-4 box-border flex justify-between items-center z-20 group hidden-force">
         <div id="bottom-player-content" class="w-full h-full flex justify-between items-center">
@@ -1038,6 +1116,49 @@
         </div>
     </div>
 
+    <!-- Modal: Import YouTube Playlist (Songs Only) -->
+    <div id="yt-import-modal" class="modal-overlay fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="modal-card bg-white rounded-3xl p-6 sm:p-7 w-full max-w-md shadow-2xl border border-zinc-100 flex flex-col">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-full bg-red-100 text-red-600 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                    </div>
+                    <h3 class="text-lg font-bold text-zinc-900">Import YouTube Playlist</h3>
+                </div>
+                <button id="yt-import-close-btn" class="text-zinc-400 hover:text-zinc-700 p-1 rounded-full hover:bg-zinc-100 transition-colors cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <p class="text-xs text-zinc-500 mb-4">Paste any YouTube or YouTube Music playlist link. Non-music videos will be automatically filtered out to import songs only.</p>
+            
+            <div class="flex flex-col gap-3">
+                <div>
+                    <label class="block text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Playlist Link or ID</label>
+                    <input 
+                        id="yt-import-input" 
+                        type="text" 
+                        placeholder="https://music.youtube.com/playlist?list=... or PL..." 
+                        class="w-full px-4 py-2.5 rounded-xl border border-zinc-200 text-xs text-zinc-900 outline-none focus:border-zinc-800 transition-colors shadow-sm"
+                        autocomplete="off"
+                    >
+                </div>
+                <div id="yt-import-status" class="text-xs font-medium text-zinc-500 hidden items-center gap-2 py-1">
+                    <div class="inline-block w-3.5 h-3.5 border-2 border-zinc-300 border-t-zinc-900 rounded-full animate-spin"></div>
+                    <span id="yt-import-status-text">Fetching playlist tracks…</span>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2.5 mt-6 pt-3 border-t border-zinc-100">
+                <button id="yt-import-cancel-btn" type="button" class="px-4 py-2 rounded-full text-zinc-600 text-xs font-semibold hover:bg-zinc-100 transition-all cursor-pointer">Cancel</button>
+                <button id="yt-import-submit-btn" type="button" class="px-5 py-2 rounded-full bg-zinc-900 text-white text-xs font-semibold shadow hover:bg-zinc-800 transition-all cursor-pointer flex items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    <span>Import Songs</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const body = document.body;
@@ -1053,7 +1174,8 @@
                 search: document.getElementById('page-search'),
                 library: document.getElementById('page-library'),
                 'now-playing': document.getElementById('page-now-playing'),
-                artist: document.getElementById('page-artist')
+                artist: document.getElementById('page-artist'),
+                album: document.getElementById('page-album')
             };
 
             const navLinks = {
@@ -1076,6 +1198,10 @@
                 if (hash !== 'artist') {
                     const artistTintEl = document.getElementById('artist-bg-tint');
                     if (artistTintEl) artistTintEl.style.opacity = '0';
+                }
+                if (hash !== 'album') {
+                    const albumTintEl = document.getElementById('album-bg-tint');
+                    if (albumTintEl) albumTintEl.style.opacity = '0';
                 }
                 if (hash === 'now-playing') {
                     const npTintEl = document.getElementById('now-playing-bg-tint');

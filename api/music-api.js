@@ -248,27 +248,35 @@ function rankTracksForQuery(trackList, query) {
     const strippedTitle = title.replace(/\s*[\(\[][^\)\]]*(feat|ft|with|official|remaster|video|audio|version)[^\)\]]*[\)\]]/gi, '').trim();
     const cleanStripped = strippedTitle.replace(/[^\w\s]/g, '').trim();
     const artist = (t.artist_name || t.artist || '').toLowerCase().trim();
+    const cleanArtist = artist.replace(/[^\w\s]/g, '').trim();
 
-    // 0: Exact title match or exact stripped title match (e.g. "Starboy (feat. Daft Punk)")
-    if (title === q || cleanTitle === cleanQ || strippedTitle === q || cleanStripped === cleanQ) return 0;
+    const isExactTitle = (title === q || cleanTitle === cleanQ || strippedTitle === q || cleanStripped === cleanQ);
+    const isExactArtist = (artist === q || cleanArtist === cleanQ);
+
+    // 0: Exact match for both title AND artist
+    if (isExactTitle && isExactArtist) return 0;
     
-    // 1: Title starts with exact query or clean query
-    if (title.startsWith(q) || cleanTitle.startsWith(cleanQ) || strippedTitle.startsWith(q) || cleanStripped.startsWith(cleanQ)) return 1;
+    // 1: When user searches for an artist or a song title, exact matches rank equally at the top
+    if (isExactArtist) return 1;
+    if (isExactTitle) return 1;
 
-    // 2: Title contains query as full phrase
-    if (title.includes(q) || cleanTitle.includes(cleanQ)) return 2;
+    // 2: Artist starts with query (e.g. searching "Kendrick" -> "Kendrick Lamar")
+    if (artist.startsWith(q) || cleanArtist.startsWith(cleanQ)) return 2;
 
-    // 3: Artist exact match
-    if (artist === q) return 3;
+    // 3: Title starts with exact query
+    if (title.startsWith(q) || cleanTitle.startsWith(cleanQ) || strippedTitle.startsWith(q) || cleanStripped.startsWith(cleanQ)) return 3;
 
-    // 4: Artist starts with or includes query
-    if (artist.startsWith(q) || artist.includes(q)) return 4;
+    // 4: Artist includes query
+    if (artist.includes(q) || cleanArtist.includes(cleanQ)) return 4;
 
-    // 5: Partial word matches
+    // 5: Title contains query as full phrase
+    if (title.includes(q) || cleanTitle.includes(cleanQ)) return 5;
+
+    // 6: Partial word matches
     const words = cleanQ.split(/\s+/).filter(Boolean);
-    if (words.length > 0 && words.every(w => cleanTitle.includes(w) || artist.includes(w))) return 5;
+    if (words.length > 0 && words.every(w => cleanTitle.includes(w) || cleanArtist.includes(w))) return 6;
 
-    return 6;
+    return 7;
   }
 
   unique.sort((a, b) => {
@@ -300,10 +308,10 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  const { pathname } = new URL(req.url, `http://${req.headers.host}`);
+  const { pathname } = new URL(req.url || '/', `http://${req.headers?.host || 'localhost'}`);
   const pathParts = pathname.split('/').filter(Boolean);
   const endpointFromPath = pathParts[pathParts.length - 1];
-  let { q, query, offset, limit, id, endpoint: endpointFromQuery } = req.query;
+  let { q, query, offset, limit, id, endpoint: endpointFromQuery } = req.query || {};
   let endpoint = (endpointFromQuery || endpointFromPath);
   if (endpoint && (endpoint.startsWith('stream/') || endpoint.startsWith('stream'))) {
     if (endpoint.includes('/')) {
@@ -417,6 +425,7 @@ export default async function handler(req, res) {
 
               items.forEach(item => {
                   const itemType = item.item_type?.toLowerCase() || '';
+                  if (itemType === 'non_music_track' || itemType === 'podcast_show' || itemType === 'podcast_episode') return;
                   let targetGroup = null;
                   if (itemType.includes('song') || shelfTitle.includes('song')) targetGroup = ytSongs;
                   else if (itemType.includes('album') || shelfTitle.includes('album')) targetGroup = ytAlbums;
@@ -500,15 +509,20 @@ export default async function handler(req, res) {
     }
 
     if (endpoint === 'album' || pathname.includes('/album/')) {
-        const albumId = id || pathParts[pathParts.length - 1];
+        const rawAlbumId = (id || pathParts[pathParts.length - 1] || '').replace('ytm-', '');
         try {
             const yt = await getYoutube();
-            const album = await yt.music.getAlbum(albumId.replace('ytm-', ''));
-            const tracks = (album.contents || []).map(item => {
+            const album = await yt.music.getAlbum(rawAlbumId);
+            const albumArtist = album.header?.strapline_text_one?.toString() || album.header?.author?.name || album.header?.artist?.name?.toString() || 'Unknown Artist';
+            const albumArtwork = optimizeThumbnailUrl(album.header?.thumbnail?.contents?.[0]?.url || album.header?.thumbnails?.[0]?.url || '');
+            const albumYear = album.header?.subtitle?.toString() || '';
+            const albumMeta = album.header?.second_subtitle?.toString() || '';
+
+            const tracks = (album.contents || []).map((item, idx) => {
                 const title = item.title?.toString() || 'Unknown Title';
-                const artist = item.artists?.[0]?.name?.toString() || album.header?.artist?.name?.toString() || 'Unknown Artist';
+                const artist = item.artists?.[0]?.name?.toString() || albumArtist;
                 const artistId = item.artists?.[0]?.id;
-                const thumbnail = optimizeThumbnailUrl(item.thumbnails?.[0]?.url || album.header?.thumbnails?.[0]?.url);
+                const thumbnail = optimizeThumbnailUrl(item.thumbnails?.[0]?.url || albumArtwork);
                 const duration = (item.duration?.seconds || 0) * 1000;
                 const rawId = item.id || item.video_id;
 
@@ -523,20 +537,58 @@ export default async function handler(req, res) {
                     duration: duration,
                     downloadUrl: downloadLink ? [{ quality: '320kbps', link: downloadLink }] : [],
                     youtube_id: rawId,
+                    track_number: idx + 1,
                     source: 'YTMusic'
                 };
             }).filter(Boolean);
 
             return res.status(200).json({
-                id: `ytm-${albumId}`,
+                id: `ytm-${rawAlbumId}`,
                 name: album.header?.title?.toString() || 'Unknown Album',
+                artist_name: albumArtist,
+                release_date: albumYear,
+                meta: albumMeta,
                 description: album.header?.description?.toString() || '',
-                artwork_url: optimizeThumbnailUrl(album.header?.thumbnails?.[0]?.url || ''),
+                artwork_url: albumArtwork || (tracks.length > 0 ? tracks[0].artwork_url : ''),
                 song_count: tracks.length,
                 tracks: tracks
             });
         } catch (e) {
             return res.status(500).json({ error: 'Failed to load album details', message: e.message });
+        }
+    }
+
+    if (endpoint === 'up-next' || pathname.includes('/up-next')) {
+        const rawId = (id || req.query.id || req.query.videoId || q || pathParts[pathParts.length - 1] || '').replace('ytm-', '');
+        if (!rawId) return res.status(400).json({ error: 'Missing track id' });
+        try {
+            const yt = await getYoutube();
+            const upNext = await yt.music.getUpNext(rawId);
+            const contents = upNext.contents || [];
+            const tracks = contents.map(item => {
+                const vid = item.video_id || item.id;
+                if (!vid) return null;
+                const title = item.title?.text || item.title?.toString() || 'Unknown Title';
+                const artist = item.author || item.artists?.[0]?.name || 'Unknown Artist';
+                const thumbnail = optimizeThumbnailUrl(item.thumbnail?.[0]?.url || item.thumbnails?.[0]?.url);
+                const duration = (item.duration?.seconds || 0) * 1000;
+                const downloadLink = `/api/music-api?endpoint=stream&id=${encodeURIComponent(vid)}&q=${encodeURIComponent(title + ' ' + artist)}`;
+
+                return {
+                    id: `ytm-${vid}`,
+                    title: title,
+                    artist_name: artist,
+                    artwork_url: thumbnail,
+                    duration: duration,
+                    downloadUrl: [{ quality: '320kbps', link: downloadLink }],
+                    youtube_id: vid,
+                    source: 'YTMusic'
+                };
+            }).filter(Boolean);
+
+            return res.status(200).json({ tracks });
+        } catch (e) {
+            return res.status(500).json({ error: 'Failed to fetch up-next tracks', message: e.message });
         }
     }
 
@@ -686,40 +738,98 @@ export default async function handler(req, res) {
     }
 
     if (endpoint === 'playlist' || pathname.includes('/playlist/')) {
-        const playlistId = id || pathParts[pathParts.length - 1];
+        const rawPlaylistId = (id || pathParts[pathParts.length - 1] || '').replace('ytm-', '');
         try {
             const yt = await getYoutube();
-            const playlist = await yt.music.getPlaylist(playlistId.replace('ytm-', ''));
-            const tracks = (playlist.contents || []).map(item => {
-                const title = item.title?.toString() || 'Unknown Title';
-                const artist = item.artists?.[0]?.name?.toString() || 'Unknown Artist';
-                const artistId = item.artists?.[0]?.id;
-                const thumbnail = optimizeThumbnailUrl(item.thumbnails?.[0]?.url);
-                const duration = (item.duration?.seconds || 0) * 1000;
-                const rawId = item.id || item.video_id;
+            let playlist = null;
+            let tracks = [];
+            let name = 'Unknown Playlist';
+            let description = '';
+            let artworkUrl = '';
 
-                if (artist === 'YT Music Artist') return null;
+            // Try YouTube Music playlist first
+            try {
+                playlist = await yt.music.getPlaylist(rawPlaylistId);
+            } catch (err) {
+                playlist = null;
+            }
 
-                const downloadLink = rawId ? `/api/music-api?endpoint=stream&id=${encodeURIComponent(rawId)}&q=${encodeURIComponent(title + ' ' + artist)}` : null;
+            if (playlist && playlist.contents && playlist.contents.length > 0) {
+                name = playlist.header?.title?.toString() || 'Unknown Playlist';
+                description = playlist.header?.description?.toString() || '';
+                artworkUrl = optimizeThumbnailUrl(playlist.header?.thumbnails?.[0]?.url || playlist.header?.thumbnail?.contents?.[0]?.url || '');
+                tracks = (playlist.contents || []).map(item => {
+                    const title = item.title?.toString() || 'Unknown Title';
+                    const artist = item.artists?.[0]?.name?.toString() || item.author?.name || 'Unknown Artist';
+                    const artistId = item.artists?.[0]?.id;
+                    const thumbnail = optimizeThumbnailUrl(item.thumbnails?.[0]?.url || item.thumbnail?.url);
+                    const duration = (item.duration?.seconds || 0) * 1000;
+                    const rawId = item.id || item.video_id;
 
-                return {
-                    id: rawId ? `ytm-${rawId}` : `ytm-gen-${Math.random().toString(36).substr(2, 9)}`,
-                    title: title,
-                    artist_name: artist,
-                    artist_id: artistId ? `ytm-${artistId}` : null,
-                    artwork_url: thumbnail,
-                    duration: duration,
-                    downloadUrl: downloadLink ? [{ quality: '320kbps', link: downloadLink }] : [],
-                    youtube_id: rawId,
-                    source: 'YTMusic'
-                };
-            }).filter(Boolean);
+                    if (artist === 'YT Music Artist') return null;
+                    if (item.item_type === 'non_music_track' || item.item_type === 'podcast_show') return null;
+
+                    const downloadLink = rawId ? `/api/music-api?endpoint=stream&id=${encodeURIComponent(rawId)}&q=${encodeURIComponent(title + ' ' + artist)}` : null;
+
+                    return {
+                        id: rawId ? `ytm-${rawId}` : `ytm-gen-${Math.random().toString(36).substr(2, 9)}`,
+                        title: title,
+                        artist_name: artist,
+                        artist_id: artistId ? `ytm-${artistId}` : null,
+                        artwork_url: thumbnail,
+                        duration: duration,
+                        downloadUrl: downloadLink ? [{ quality: '320kbps', link: downloadLink }] : [],
+                        youtube_id: rawId,
+                        source: 'YTMusic'
+                    };
+                }).filter(Boolean);
+            }
+
+            // Fallback to standard YouTube playlist if music playlist had no tracks
+            if (tracks.length === 0) {
+                try {
+                    const ytPlaylist = await yt.getPlaylist(rawPlaylistId);
+                    if (ytPlaylist) {
+                        name = ytPlaylist.info?.title?.toString() || name;
+                        description = ytPlaylist.info?.description?.toString() || description;
+                        artworkUrl = artworkUrl || optimizeThumbnailUrl(ytPlaylist.info?.thumbnails?.[0]?.url || '');
+                        tracks = (ytPlaylist.videos || []).map(item => {
+                            const rawId = item.id;
+                            if (!rawId) return null;
+                            const title = item.title?.text || item.title?.toString() || 'Unknown Title';
+                            const artist = item.author?.name?.toString() || 'Unknown Artist';
+                            const durSec = item.duration?.seconds || 0;
+                            // Songs only: filter out clips under 20s or super long videos > 20 mins
+                            if (durSec > 0 && (durSec < 20 || durSec > 1200)) return null;
+                            const thumbnail = optimizeThumbnailUrl(item.thumbnails?.[0]?.url);
+                            const downloadLink = `/api/music-api?endpoint=stream&id=${encodeURIComponent(rawId)}&q=${encodeURIComponent(title + ' ' + artist)}`;
+
+                            return {
+                                id: `ytm-${rawId}`,
+                                title: title,
+                                artist_name: artist,
+                                artwork_url: thumbnail,
+                                duration: durSec * 1000,
+                                downloadUrl: [{ quality: '320kbps', link: downloadLink }],
+                                youtube_id: rawId,
+                                source: 'YouTube'
+                            };
+                        }).filter(Boolean);
+                    }
+                } catch (fallbackErr) {
+                    console.warn('Fallback yt.getPlaylist failed:', fallbackErr.message);
+                }
+            }
+
+            if (!artworkUrl && tracks.length > 0) {
+                artworkUrl = tracks[0].artwork_url;
+            }
 
             return res.status(200).json({
-                id: `ytm-${playlistId}`,
-                name: playlist.header?.title?.toString() || 'Unknown Playlist',
-                description: playlist.header?.description?.toString() || '',
-                artwork_url: optimizeThumbnailUrl(playlist.header?.thumbnails?.[0]?.url || (tracks.length > 0 ? tracks[0].artwork_url : '')),
+                id: `ytm-${rawPlaylistId}`,
+                name: name,
+                description: description,
+                artwork_url: artworkUrl,
                 song_count: tracks.length,
                 tracks: tracks
             });
