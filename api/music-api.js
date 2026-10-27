@@ -402,23 +402,29 @@ export default async function handler(req, res) {
               
               if (shelf.type === 'MusicCardShelf') {
                   const subtitle = shelf.subtitle?.toString().toLowerCase() || '';
-                  const title = shelf.title?.toString() || '';
+                  const title = shelf.title?.text || shelf.title?.toString() || '';
+                  const browseId = shelf.on_tap?.payload?.browseId 
+                      || shelf.title?.endpoint?.payload?.browseId 
+                      || shelf.endpoint?.payload?.browseId 
+                      || shelf.id;
+                  const thumb = shelf.thumbnail?.contents?.[0]?.url || shelf.thumbnails?.[0]?.url;
                   const rawId = extractVideoId(shelf);
+
                   if (subtitle.includes('song') || rawId) {
-                      ytSongs.push({
+                      ytSongs.unshift({
                           id: rawId,
                           title: title,
                           artist_name: extractArtistName(shelf, shelf.header?.title?.toString()),
-                          artwork_url: shelf.thumbnail?.contents?.[0]?.url,
+                          artwork_url: thumb,
                           duration: 0,
                           youtube_id: rawId,
                           source: 'YTMusic'
                       });
-                  } else if (subtitle.includes('artist')) {
-                      ytArtists.push({
-                          id: shelf.id ? `ytm-${shelf.id}` : (shelf.endpoint?.payload?.browseId ? `ytm-${shelf.endpoint.payload.browseId}` : null),
+                  } else if (subtitle.includes('artist') || (!rawId && !subtitle.includes('album'))) {
+                      ytArtists.unshift({
+                          id: browseId ? (browseId.startsWith('ytm-') ? browseId : `ytm-${browseId}`) : `ytm-${encodeURIComponent(title)}`,
                           name: title,
-                          artwork_url: shelf.thumbnail?.contents?.[0]?.url
+                          artwork_url: thumb
                       });
                   }
               }
@@ -480,11 +486,46 @@ export default async function handler(req, res) {
           };
       }).filter(a => a && a.id);
 
-      const artists = ytArtists.map(item => ({
-          id: item.id ? `ytm-${item.id}` : null,
-          name: item.name?.toString() || item.title?.toString(),
-          artwork_url: optimizeThumbnailUrl(item.thumbnails?.[0]?.url || item.thumbnail?.url || item.artwork_url)
-      })).filter(a => a.id);
+      const cleanQ = searchQuery.toLowerCase().trim();
+      const mappedArtists = ytArtists.map(item => {
+          const rawId = item.id ? item.id.replace(/^ytm-/, '') : (item.endpoint?.payload?.browseId || null);
+          const name = item.name?.toString() || item.title?.toString() || '';
+          if (!name || name === 'Unknown Artist') return null;
+          return {
+              id: rawId ? `ytm-${rawId}` : `ytm-${encodeURIComponent(name)}`,
+              name: name,
+              artwork_url: optimizeThumbnailUrl(item.thumbnails?.[0]?.url || item.thumbnail?.url || item.artwork_url)
+          };
+      }).filter(Boolean);
+
+      // Check if queried artist is present in tracks (e.g. searching "Taylor Swift", tracks are by "Taylor Swift")
+      const exactTrackArtist = tracks.find(t => (t.artist_name || t.artist || '').toLowerCase().trim() === cleanQ);
+      if (exactTrackArtist && !mappedArtists.some(a => (a.name || '').toLowerCase().trim() === cleanQ)) {
+          const aName = exactTrackArtist.artist_name || exactTrackArtist.artist;
+          mappedArtists.unshift({
+              id: exactTrackArtist.artist_id || `ytm-${encodeURIComponent(aName)}`,
+              name: aName,
+              artwork_url: exactTrackArtist.artwork_url
+          });
+      }
+
+      // Deduplicate and rank exact match first
+      const seenArtistNames = new Set();
+      const artists = [];
+      for (const a of mappedArtists) {
+          const key = a.name.toLowerCase().trim();
+          if (seenArtistNames.has(key)) continue;
+          seenArtistNames.add(key);
+          artists.push(a);
+      }
+
+      artists.sort((a, b) => {
+          const aName = (a.name || '').toLowerCase().trim();
+          const bName = (b.name || '').toLowerCase().trim();
+          const aScore = aName === cleanQ ? 0 : (aName.startsWith(cleanQ) ? 1 : (aName.includes(cleanQ) ? 2 : 3));
+          const bScore = bName === cleanQ ? 0 : (bName.startsWith(cleanQ) ? 1 : (bName.includes(cleanQ) ? 2 : 3));
+          return aScore - bScore;
+      });
 
       const playlists = ytPlaylists.map(item => ({
           id: item.id ? `ytm-${item.id}` : null,

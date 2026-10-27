@@ -348,14 +348,75 @@ function isFavorite(id) {
     return favorites.some(f => f.id === id);
 }
 
+let activeToastTimeout = null;
+let activeToastEl = null;
+
 function showToast(msg) {
+    if (!msg) return;
+    if (activeToastEl) {
+        clearTimeout(activeToastTimeout);
+        activeToastEl.remove();
+        activeToastEl = null;
+    }
+
     const toast = document.createElement('div');
-    toast.textContent = msg;
-    toast.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#18181b;color:#f4f4f5;padding:8px 18px;border-radius:999px;font-size:12px;z-index:9999;pointer-events:none;opacity:1;transition:opacity 0.5s ease;box-shadow:0 10px 25px rgba(0,0,0,0.2)';
+    toast.className = 'yolk-toast';
+    
+    // Determine icon based on message content
+    let iconSvg = '';
+    const lower = msg.toLowerCase();
+    if (lower.includes('imported') || lower.includes('saved') || lower.includes('added') || lower.includes('success')) {
+        iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+    } else if (lower.includes('error') || lower.includes('fail') || lower.includes('unable') || lower.includes('restricted')) {
+        iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
+    } else {
+        iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+    }
+
+    toast.innerHTML = `
+        ${iconSvg}
+        <span class="text-xs font-semibold text-zinc-100 tracking-tight select-none">${escapeHtml(msg)}</span>
+    `;
+
+    toast.style.cssText = `
+        position: fixed;
+        top: 24px;
+        left: 50%;
+        transform: translate(-50%, -24px) scale(0.92);
+        opacity: 0;
+        background: rgba(18, 18, 20, 0.94);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        color: #f4f4f5;
+        padding: 9px 18px;
+        border-radius: 9999px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.35), 0 4px 12px rgba(0, 0, 0, 0.15);
+        z-index: 9999;
+        pointer-events: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        max-width: calc(100vw - 32px);
+        transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+    `;
+
     document.body.appendChild(toast);
-    setTimeout(() => {
+    activeToastEl = toast;
+
+    // Trigger enter animation
+    requestAnimationFrame(() => {
+        toast.style.transform = 'translate(-50%, 0) scale(1)';
+        toast.style.opacity = '1';
+    });
+
+    activeToastTimeout = setTimeout(() => {
+        toast.style.transform = 'translate(-50%, -16px) scale(0.96)';
         toast.style.opacity = '0';
-        setTimeout(() => toast.remove(), 500);
+        setTimeout(() => {
+            if (toast.parentNode) toast.remove();
+            if (activeToastEl === toast) activeToastEl = null;
+        }, 400);
     }, 2800);
 }
 
@@ -644,10 +705,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderSearchAllTab(tracks, albums, artists, playlists) {
         // 1. Check for Best Match / Top Result Card (Artist or Album or Top Track)
         const q = (currentSearchQuery || '').toLowerCase().trim();
-        let topArtistMatch = artists.find(a => (a.name || '').toLowerCase().trim() === q) || (artists.length > 0 ? artists[0] : null);
+        let topArtistMatch = artists.find(a => (a.name || '').toLowerCase().trim() === q) 
+            || (artists.length > 0 && (artists[0].name || '').toLowerCase().trim().startsWith(q) ? artists[0] : null)
+            || (artists.length > 0 && tracks.some(t => (t.artist_name || '').toLowerCase().trim() === (artists[0].name || '').toLowerCase().trim()) ? artists[0] : null);
         let topAlbumMatch = albums.find(a => (a.name || '').toLowerCase().trim() === q);
 
-        if (topArtistMatch && ((topArtistMatch.name || '').toLowerCase().trim() === q || tracks.some(t => (t.artist_name || '').toLowerCase().trim() === (topArtistMatch.name || '').toLowerCase().trim()))) {
+        if (topArtistMatch) {
             const bestCard = document.createElement('div');
             bestCard.className = 'group p-4 rounded-2xl bg-white/95 backdrop-blur-md border border-zinc-200/80 hover:border-zinc-300 hover:shadow-md transition-all cursor-pointer bubbly-hover flex items-center justify-between mb-4';
             const art = getProxyUrl(topArtistMatch.artwork_url, '200x200');
@@ -1080,13 +1143,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadYouTubePlayer(videoId) {
         if (!videoId) {
             showSpinner(false);
-            showToast('Unable to stream this track.');
             return;
         }
         activeSource = 'youtube';
         try {
             currentAudio.pause();
-            currentAudio.src = '';
+            currentAudio.removeAttribute('src');
+            currentAudio.load();
         } catch (_) {}
 
         if (!window.YT || !window.YT.Player) {
@@ -1114,9 +1177,10 @@ document.addEventListener('DOMContentLoaded', () => {
             fs: 0,
             rel: 0,
             modestbranding: 1,
-            playsinline: 1
+            playsinline: 1,
+            enablejsapi: 1
         };
-        if (window.location.origin && window.location.origin !== 'null' && !window.location.origin.startsWith('file')) {
+        if (window.location.protocol.startsWith('http') && window.location.hostname !== 'localhost') {
             playerVars.origin = window.location.origin;
         }
 
@@ -1159,7 +1223,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     onError: (err) => {
                         console.warn('YouTube playback error:', err);
                         showSpinner(false);
-                        showToast('Unable to play track');
+                        const errCode = err?.data;
+                        if (errCode === 150 || errCode === 101) {
+                            showToast('Track embed restricted. Playing next track…');
+                            playNext();
+                        }
                     }
                 }
             });
@@ -1295,12 +1363,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     currentAudio.addEventListener('ended', () => {
-        playNext();
+        if (activeSource === 'audio') {
+            playNext();
+        }
     });
 
     currentAudio.addEventListener('error', async () => {
+        // Do nothing if audio is not active or if src is empty/null/cleared
+        if (activeSource !== 'audio' || !currentAudio.src || currentAudio.src === window.location.href) {
+            return;
+        }
         showSpinner(false);
-        if (currentTrack && activeSource === 'audio' && !currentAudio._recovering) {
+        if (currentTrack && !currentAudio._recovering) {
             currentAudio._recovering = true;
             const videoId = await getYoutubeId(currentTrack);
             if (videoId) {

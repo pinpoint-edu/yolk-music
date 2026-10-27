@@ -1398,6 +1398,9 @@
   .text-white {
     color: var(--color-white);
   }
+  .text-zinc-100 {
+    color: var(--color-zinc-100);
+  }
   .text-zinc-400 {
     color: var(--color-zinc-400);
   }
