@@ -338,12 +338,15 @@
         /* Now Playing Layout */
         .now-playing-container {
             width: 100%;
-            max-width: 1040px;
+            max-width: 1280px;
+            height: 100%;
+            max-height: calc(100vh - 100px);
             margin: auto;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 32px;
+            justify-content: center;
+            gap: 28px;
         }
         @media (min-width: 768px) {
             .now-playing-container {
@@ -362,26 +365,27 @@
             flex-shrink: 0;
         }
         .np-right-col {
-            flex: 1;
+            flex: 1.3;
             width: 100%;
-            max-width: 560px;
-            height: 480px;
+            max-width: 760px;
+            height: 100%;
+            max-height: calc(100vh - 110px);
             display: flex;
             flex-direction: column;
             position: relative;
-            background: rgba(255, 255, 255, 0.72);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(228, 228, 231, 0.8);
-            border-radius: 28px;
-            padding: 20px 24px;
-            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.04);
+            background: transparent !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            border: none !important;
+            border-radius: 0 !important;
+            padding: 0 !important;
+            box-shadow: none !important;
             box-sizing: border-box;
             overflow: hidden;
         }
         @media (max-width: 767px) {
             .np-right-col {
-                height: 360px;
+                height: 380px;
                 max-width: 100%;
             }
         }
@@ -391,16 +395,17 @@
             position: relative;
             flex: 1;
             width: 100%;
+            height: 100%;
             overflow-y: auto;
             overflow-x: hidden;
             scroll-behavior: smooth;
             box-sizing: border-box;
-            padding-top: 150px;
-            padding-bottom: 170px;
+            padding-top: 36vh;
+            padding-bottom: 40vh;
             padding-left: 8px;
             padding-right: 8px;
-            mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%);
-            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%);
+            mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
             scrollbar-width: none;
             -ms-overflow-style: none;
             user-select: none;
@@ -410,42 +415,40 @@
             display: none;
         }
         .lyric-line {
-            padding: 10px 16px;
-            border-radius: 14px;
-            font-size: clamp(1.15rem, 1.8vw, 1.35rem);
-            line-height: 1.45;
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: clamp(1.3rem, 2.2vw, 1.85rem);
+            line-height: 1.4;
             font-weight: 700;
             color: #71717a;
-            opacity: 0.38;
+            opacity: 0.35;
             cursor: pointer;
-            transition: color 0.4s ease, opacity 0.45s ease, font-size 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), filter 0.4s ease;
+            transition: color 0.3s ease, opacity 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
             transform-origin: left center;
             max-width: 100%;
             user-select: none;
             -webkit-user-select: none;
             text-align: left;
-            filter: blur(0.5px);
-            transform: scale(0.96);
+            transform: scale(0.97);
             letter-spacing: -0.01em;
+            will-change: transform, opacity;
         }
         .lyric-line:hover {
             color: #27272a;
             opacity: 0.75;
-            filter: blur(0px);
             background: rgba(0, 0, 0, 0.03);
         }
         .lyric-line.active {
             color: #09090b !important;
             opacity: 1 !important;
-            font-size: clamp(1.4rem, 2.2vw, 1.85rem) !important;
+            font-size: clamp(1.65rem, 2.8vw, 2.45rem) !important;
+            line-height: 1.32 !important;
             font-weight: 800 !important;
-            transform: scale(1.03) translateX(4px) !important;
-            filter: blur(0px) !important;
-            text-shadow: 0 4px 24px rgba(253, 224, 71, 0.5), 0 1px 2px rgba(0, 0, 0, 0.05);
+            transform: scale(1.02) translateX(4px) !important;
+            text-shadow: 0 4px 24px rgba(253, 224, 71, 0.4), 0 1px 2px rgba(0, 0, 0, 0.05);
         }
         .lyric-line.next-up {
             opacity: 0.55;
-            filter: blur(0.2px);
         }
         .lyric-line.untimed {
             color: #27272a;
@@ -550,7 +553,7 @@
 
     <!-- Top Navigation Bar -->
     <header class="fixed top-6 left-1/2 -translate-x-1/2 z-30 flex justify-center w-[calc(100%-3rem)] max-w-fit">
-        <nav class="flex gap-1.5 items-center bg-white/70 backdrop-blur-md p-[10px] h-[56px] rounded-full border border-zinc-200 shadow-sm transition-all duration-300">
+        <nav id="top-nav-bar" class="flex gap-1.5 items-center bg-white/70 backdrop-blur-md p-[10px] h-[56px] rounded-full border border-zinc-200 shadow-sm transition-all duration-500">
             <a href="#search" id="nav-search" class="yolk-active text-sm font-medium px-5 h-8 flex items-center justify-center rounded-full sleek-transition">
                 Search
             </a>
@@ -681,8 +684,11 @@
     </div>
 
     <!-- ==== PAGE: NOW PLAYING ==== -->
-    <div id="page-now-playing" class="page">
-        <div class="now-playing-container">
+    <div id="page-now-playing" class="page relative overflow-hidden">
+        <!-- Fullscreen dynamic cover tint that fades smoothly -->
+        <div id="now-playing-bg-tint" class="pointer-events-none transition-all duration-700 opacity-0 absolute inset-0 z-0"></div>
+
+        <div class="now-playing-container relative z-10">
             <!-- Left Side: Cover Art, Metadata, Progress & Buttons -->
             <div class="np-left-col">
                 <div id="now-playing-art" class="w-64 h-64 sm:w-72 sm:h-72 bg-zinc-100 rounded-[2rem] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] border border-zinc-200/80 flex items-center justify-center relative overflow-hidden shrink-0 transition-transform duration-500 hover:scale-[1.02]">
@@ -727,11 +733,11 @@
                 </div>
             </div>
 
-            <!-- Right Side: Synced Lyrics Card -->
+            <!-- Right Side: Invisible, Expansive Synced Lyrics Container -->
             <div class="np-right-col">
-                <div class="flex items-center justify-between mb-2 shrink-0 select-none pb-2 border-b border-zinc-200/50">
+                <div class="flex items-center justify-between mb-3 shrink-0 select-none px-2">
                     <span class="text-[11px] uppercase font-bold tracking-widest text-zinc-400">Lyrics</span>
-                    <span id="lyrics-badge" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-500">Synced</span>
+                    <span id="lyrics-badge" class="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-zinc-200/50 text-zinc-600">Synced</span>
                 </div>
                 <div id="lyrics-container">
                     <div class="h-full flex flex-col items-center justify-center gap-2 text-zinc-400 select-none py-16 text-center">
@@ -955,6 +961,14 @@
                 if (hash !== 'artist') {
                     const artistTintEl = document.getElementById('artist-bg-tint');
                     if (artistTintEl) artistTintEl.style.opacity = '0';
+                }
+                if (hash === 'now-playing') {
+                    const npTintEl = document.getElementById('now-playing-bg-tint');
+                    if (npTintEl && npTintEl.style.background) npTintEl.style.opacity = '1';
+                    if (typeof window.syncLyricsOnNavigate === 'function') window.syncLyricsOnNavigate();
+                } else {
+                    const npTintEl = document.getElementById('now-playing-bg-tint');
+                    if (npTintEl) npTintEl.style.opacity = '0';
                 }
 
                 // Update nav links

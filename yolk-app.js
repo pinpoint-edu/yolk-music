@@ -247,7 +247,10 @@ function parseLyrics(lyricsText, duration) {
 }
 
 // Synced lyrics highlight & smooth scroll with Pinpoint-Edu 3-dots animation
-function updateLyricsSync(currentTime) {
+function updateLyricsSync(currentTime, force = false) {
+    // Only process lyrics when on Now Playing page or forced on navigation
+    if (!force && document.body.getAttribute('data-page') !== 'now-playing') return;
+
     const container = document.getElementById('lyrics-container');
     if (!container || !parsedLyrics || parsedLyrics.length === 0) return;
 
@@ -262,6 +265,15 @@ function updateLyricsSync(currentTime) {
         }
     }
 
+    const currentItem = activeIndex >= 0 ? parsedLyrics[activeIndex] : null;
+
+    // Fast-path: If active index hasn't changed and not animating dots, skip DOM work
+    if (!force && container._lastActiveIndex === activeIndex && (!currentItem || currentItem.type !== 'dots')) {
+        return;
+    }
+
+    container._lastActiveIndex = activeIndex;
+
     const lineElements = container.querySelectorAll('.lyric-line');
     let activeLineEl = null;
 
@@ -272,7 +284,6 @@ function updateLyricsSync(currentTime) {
             el.classList.add('active');
             el.classList.remove('next-up');
 
-            const currentItem = parsedLyrics[idx];
             if (currentItem && currentItem.type === 'dots') {
                 const dots = el.querySelector('.lyric-dots');
                 if (dots) {
@@ -324,15 +335,24 @@ function updateLyricsSync(currentTime) {
         }
     });
 
-    if (activeLineEl && container._lastActiveIndex !== activeIndex) {
-        container._lastActiveIndex = activeIndex;
+    if (activeLineEl) {
         const targetScrollTop = activeLineEl.offsetTop - (container.clientHeight / 2) + (activeLineEl.offsetHeight / 2);
         container.scrollTo({
             top: Math.max(0, targetScrollTop),
-            behavior: 'smooth'
+            behavior: force ? 'auto' : 'smooth'
         });
     }
 }
+
+window.syncLyricsOnNavigate = function() {
+    let curTime = 0;
+    if (activeSource === 'youtube' && ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
+        curTime = ytPlayer.getCurrentTime() || 0;
+    } else if (currentAudio) {
+        curTime = currentAudio.currentTime || 0;
+    }
+    updateLyricsSync(curTime, true);
+};
 
 window.seekToLyrics = function(time) {
     if (typeof time === 'number' && !isNaN(time)) {
@@ -469,44 +489,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Initial Popular Tracks & Search Logic
-    let initialPopularTracks = [];
+    // Search Logic (Top tracks list removed to prevent animation bugs and reduce lag)
     let searchTimeout;
-
-    async function loadInitialTracks() {
-        try {
-            const res = await fetch(`${API_BASE}?endpoint=popular`);
-            if (res.ok) {
-                const data = await res.json();
-                if (data && Array.isArray(data.tracks) && data.tracks.length > 0) {
-                    initialPopularTracks = data.tracks;
-                    if (!currentSearchQuery) {
-                        renderInitialPopularTracks();
-                    }
-                }
-            }
-        } catch (_) {}
-    }
-
-    function renderInitialPopularTracks() {
-        if (!searchResults || currentSearchQuery) return;
-        searchResults.innerHTML = '<div class="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest text-left w-full mb-1 pl-5">Top Tracks</div>';
-        initialPopularTracks.forEach((track, idx) => {
-            const el = createTrackElement(track, () => {
-                currentQueue = [...initialPopularTracks];
-                currentQueueIndex = idx;
-                currentPlaylistContextId = null;
-                playTrack(track);
-            });
-            searchResults.appendChild(el);
-        });
-    }
 
     if (searchInput) {
         searchInput.addEventListener('focus', () => {
-            document.body.classList.add('is-searching');
-            if (!searchInput.value.trim() && initialPopularTracks.length > 0) {
-                renderInitialPopularTracks();
+            if (searchInput.value.trim().length > 0) {
+                document.body.classList.add('is-searching');
             }
         });
 
@@ -519,15 +508,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     currentSearchQuery = val;
                     searchOffset = 0;
                     performSearch(val, true);
-                }, 300);
+                }, 250);
             } else {
                 currentSearchQuery = '';
-                if (initialPopularTracks.length > 0) {
-                    renderInitialPopularTracks();
-                } else {
-                    document.body.classList.remove('is-searching');
-                    searchResults.innerHTML = '<div class="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest text-left w-full mb-1 pl-5">Top Results</div>';
-                }
+                document.body.classList.remove('is-searching');
+                if (searchResults) searchResults.innerHTML = '';
             }
         });
 
@@ -1170,6 +1155,26 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
+    let currentCoverColor = null;
+
+    function applyNowPlayingTint(r, g, b) {
+        currentCoverColor = { r, g, b };
+        const tintEl = document.getElementById('now-playing-bg-tint');
+        if (tintEl) {
+            tintEl.style.background = `radial-gradient(ellipse at 70% 30%, rgba(${r}, ${g}, ${b}, 0.32) 0%, rgba(${r}, ${g}, ${b}, 0.14) 45%, rgba(252, 251, 248, 0) 75%), linear-gradient(180deg, rgba(${r}, ${g}, ${b}, 0.24) 0%, rgba(${r}, ${g}, ${b}, 0.08) 35%, rgba(252, 251, 248, 0.95) 70%, #FCFBF8 100%)`;
+            if (document.body.getAttribute('data-page') === 'now-playing') {
+                tintEl.style.opacity = '1';
+            }
+        }
+
+        const topNav = document.getElementById('top-nav-bar');
+        if (topNav) {
+            topNav.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.18)`;
+            topNav.style.borderColor = `rgba(${r}, ${g}, ${b}, 0.35)`;
+            topNav.style.boxShadow = `0 8px 25px rgba(${r}, ${g}, ${b}, 0.12)`;
+        }
+    }
+
     // Now Playing UI update (Cover Art & Track Details)
     function updateNowPlayingUI(track) {
         const titleEl = document.getElementById('now-playing-title');
@@ -1184,6 +1189,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (artistEl) artistEl.textContent = trackArtist;
 
         const coverUrl = getProxyUrl(track.artwork_url || track.image);
+        if (coverUrl) {
+            extractDominantColor(coverUrl, (rgb) => {
+                if (rgb) {
+                    applyNowPlayingTint(rgb.r, rgb.g, rgb.b);
+                } else {
+                    applyNowPlayingTint(220, 220, 230);
+                }
+            });
+        }
         if (coverUrl && imgEl) {
             imgEl.onload = () => {
                 imgEl.classList.remove('hidden');
@@ -2113,7 +2127,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Initial render of library & popular tracks
+    // Initial render of library
     renderLibrary();
-    loadInitialTracks();
 });
