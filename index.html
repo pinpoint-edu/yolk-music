@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="output.css" rel="stylesheet">
+    <script src="https://www.youtube.com/iframe_api"></script>
     
 
     <style>
@@ -33,6 +34,18 @@
         .page.active {
             display: block;
             opacity: 1;
+        }
+
+        #page-search {
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            box-sizing: border-box;
+            position: absolute;
+            top: 0;
+            left: 0;
+            -webkit-overflow-scrolling: touch;
         }
 
         #page-now-playing {
@@ -105,8 +118,22 @@
         }
 
         /* 
-         * The absolute positioned search block. 
+         * The search block & results layout
          */
+        #large-logo-wrapper {
+            opacity: 1;
+            transition: opacity 0.35s ease-out, height 0.35s ease-out, margin 0.35s ease-out;
+            height: 90px;
+        }
+        
+        body.is-searching #large-logo-wrapper {
+            opacity: 0;
+            height: 0;
+            margin-bottom: 0 !important;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
         #search-block {
             position: absolute;
             left: 50%;
@@ -114,31 +141,31 @@
             transform: translate(-50%, -50%);
             opacity: 0;
             width: 100%;
-            max-width: 32rem;
-            transition: top 1.2s var(--parabola-ease), 
-                        transform 1s var(--parabola-ease), 
-                        opacity 1s var(--parabola-ease);
+            max-width: 34rem;
+            transition: top 0.6s var(--parabola-ease), 
+                        transform 0.6s var(--parabola-ease), 
+                        opacity 0.6s var(--parabola-ease);
             z-index: 20;
+            padding-left: 16px;
+            padding-right: 16px;
+            box-sizing: border-box;
         }
 
-        body.is-loaded #search-block {
+        body.is-loaded:not(.is-searching) #search-block {
             top: 50%;
             opacity: 1;
+            transform: translate(-50%, -50%);
+            position: absolute;
         }
 
         body.is-searching #search-block {
-            top: 25px; 
-            transform: translate(-50%, 0);
-        }
-
-        /* Large Logo */
-        #large-logo-wrapper {
+            position: relative;
+            top: 0;
+            left: 0;
+            transform: none;
+            margin: 92px auto 0 auto;
+            padding-bottom: 140px;
             opacity: 1;
-            transition: opacity 0.6s ease-out;
-        }
-        
-        body.is-searching #large-logo-wrapper {
-            opacity: 0;
         }
 
         .logo-inner {
@@ -162,28 +189,24 @@
 
         /* Search Results */
         #searchResults {
-            position: absolute;
-            top: 100%;
-            left: 0;
             width: 100%;
             margin-top: 1.5rem;
             opacity: 0;
-            transform: translateY(20px);
+            transform: translateY(15px);
             visibility: hidden;
             pointer-events: none;
-            transition: opacity 0.6s var(--parabola-ease), 
-                        transform 0.8s var(--parabola-ease),
-                        visibility 0s linear 0.8s;
+            transition: opacity 0.4s var(--parabola-ease), 
+                        transform 0.4s var(--parabola-ease);
         }
 
         body.is-searching #searchResults {
+            position: relative;
+            top: auto;
+            left: auto;
             opacity: 1;
             transform: translateY(0);
             visibility: visible;
             pointer-events: auto;
-            transition: opacity 0.6s var(--parabola-ease), 
-                        transform 0.8s var(--parabola-ease),
-                        visibility 0s linear 0s;
         }
 
         /* Bottom Player */
@@ -507,6 +530,17 @@
         .modal-card {
             transform: scale(0.95);
             transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        #youtubePlayer {
+            position: fixed !important;
+            bottom: -9999px !important;
+            right: -9999px !important;
+            width: 200px !important;
+            height: 200px !important;
+            opacity: 0.001 !important;
+            pointer-events: none !important;
+            z-index: -999 !important;
         }
     </style>
 </head>
@@ -962,7 +996,7 @@
             navigate(); // Trigger on initial load
         });
     </script>
-    <div id="youtubePlayer" style="display: none;"></div>
+    <div id="youtubePlayer"></div>
     <script src="yolk-app.js"></script>
 </body>
 </html>
