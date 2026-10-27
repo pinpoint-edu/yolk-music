@@ -530,6 +530,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         });
+
+        // Click outside search block when input is empty collapses search state back to center
+        document.addEventListener('click', (e) => {
+            if (searchInput && !searchInput.value.trim() && !e.target.closest('#search-block')) {
+                document.body.classList.remove('is-searching');
+            }
+        });
     }
 
     // Infinite Scroll on Search Page
