@@ -394,7 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
             nowPlayingContainer.classList.add('no-lyrics');
             nowPlayingContainer.classList.remove('lyrics-hidden');
             npLyricsToggleBtn.disabled = true;
-            npLyricsToggleBtn.className = 'flex items-center justify-center w-10 h-10 rounded-full bg-zinc-100/70 text-zinc-300 border border-zinc-200/50 shadow-none cursor-not-allowed opacity-40 pointer-events-none transition-all';
+            npLyricsToggleBtn.className = 'flex items-center justify-center w-10 h-10 rounded-full bg-white/40 text-black/20 border border-black/10 shadow-none cursor-not-allowed opacity-40 pointer-events-none transition-all';
             npLyricsToggleBtn.title = 'No lyrics available for this song';
         } else {
             nowPlayingContainer.classList.remove('no-lyrics');
@@ -403,10 +403,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isLyricsUserEnabled) {
                 nowPlayingContainer.classList.remove('lyrics-hidden');
-                npLyricsToggleBtn.className = 'flex items-center justify-center w-10 h-10 rounded-full bg-zinc-200/90 text-zinc-900 border border-zinc-300 shadow-sm transition-all hover:scale-105 active:scale-95 cursor-pointer';
+                npLyricsToggleBtn.className = 'flex items-center justify-center w-10 h-10 rounded-full bg-black text-white border border-black shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer';
             } else {
                 nowPlayingContainer.classList.add('lyrics-hidden');
-                npLyricsToggleBtn.className = 'flex items-center justify-center w-10 h-10 rounded-full bg-white/80 text-zinc-400 border border-zinc-200/80 shadow-sm transition-all hover:scale-105 active:scale-95 cursor-pointer';
+                npLyricsToggleBtn.className = 'flex items-center justify-center w-10 h-10 rounded-full bg-white text-black border border-black/20 shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer';
             }
         }
     }
@@ -1494,7 +1494,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         const img = new Image();
-        img.crossOrigin = 'Anonymous';
+        if (!imgUrl.startsWith('data:')) {
+            img.crossOrigin = 'Anonymous';
+        }
         img.src = imgUrl.startsWith('data:') ? imgUrl : getProxyUrl(imgUrl, '100x100');
         img.onload = () => {
             try {
@@ -1992,6 +1994,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ============================================
     const PALETTE_16_COLORS = [
         { name: 'Onyx', hex: '#18181B' },
+        { name: 'White', hex: '#FFFFFF' },
         { name: 'Red', hex: '#EF4444' },
         { name: 'Orange', hex: '#F97316' },
         { name: 'Amber', hex: '#F59E0B' },
@@ -2005,8 +2008,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { name: 'Pink', hex: '#EC4899' },
         { name: 'Rose', hex: '#F43F5E' },
         { name: 'Lime', hex: '#84CC16' },
-        { name: 'Slate', hex: '#475569' },
-        { name: 'Stone', hex: '#78716C' }
+        { name: 'Slate', hex: '#475569' }
     ];
 
     const PLAYLIST_40_ICONS = [
@@ -2056,30 +2058,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedCoverIcon = PLAYLIST_40_ICONS[0];
 
     function generateColorIconCover(bgColor, iconSvgInner) {
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" rx="40" fill="${bgColor}"/><g transform="translate(100, 100) scale(8.33)" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">${iconSvgInner}</g></svg>`;
+        const isWhite = bgColor.toLowerCase() === '#ffffff' || bgColor.toLowerCase() === '#fff';
+        const iconStroke = isWhite ? '#18181b' : '#ffffff';
+        const innerBorder = isWhite ? `<rect width="394" height="394" x="3" y="3" rx="38" fill="none" stroke="#d4d4d8" stroke-width="6"/>` : '';
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" rx="40" fill="${bgColor}"/>${innerBorder}<g transform="translate(100, 100) scale(8.33)" stroke="${iconStroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">${iconSvgInner}</g></svg>`;
         return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
     }
-
-    const tabCoverCustom = document.getElementById('tab-cover-custom');
-    const tabCoverUpload = document.getElementById('tab-cover-upload');
-    const panelCoverCustom = document.getElementById('panel-cover-custom');
-    const panelCoverUpload = document.getElementById('panel-cover-upload');
-
-    function setCoverTab(mode) {
-        if (mode === 'custom') {
-            if (tabCoverCustom) tabCoverCustom.className = 'px-3 py-1 text-xs font-semibold rounded-lg transition-all bg-white text-zinc-900 shadow-xs cursor-pointer';
-            if (tabCoverUpload) tabCoverUpload.className = 'px-3 py-1 text-xs font-medium rounded-lg transition-all text-zinc-600 hover:text-zinc-900 cursor-pointer';
-            if (panelCoverCustom) panelCoverCustom.classList.remove('hidden');
-            if (panelCoverUpload) panelCoverUpload.classList.add('hidden');
-        } else {
-            if (tabCoverCustom) tabCoverCustom.className = 'px-3 py-1 text-xs font-medium rounded-lg transition-all text-zinc-600 hover:text-zinc-900 cursor-pointer';
-            if (tabCoverUpload) tabCoverUpload.className = 'px-3 py-1 text-xs font-semibold rounded-lg transition-all bg-white text-zinc-900 shadow-xs cursor-pointer';
-            if (panelCoverCustom) panelCoverCustom.classList.add('hidden');
-            if (panelCoverUpload) panelCoverUpload.classList.remove('hidden');
-        }
-    }
-    if (tabCoverCustom) tabCoverCustom.onclick = () => setCoverTab('custom');
-    if (tabCoverUpload) tabCoverUpload.onclick = () => setCoverTab('upload');
 
     function renderColorPalette() {
         const paletteEl = document.getElementById('playlist-color-palette');
@@ -2089,11 +2073,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const btn = document.createElement('button');
             btn.type = 'button';
             const isSelected = selectedCoverColor.toLowerCase() === c.hex.toLowerCase();
-            btn.className = `w-7 h-7 rounded-full cursor-pointer transition-transform hover:scale-110 relative flex items-center justify-center shrink-0 ${isSelected ? 'ring-2 ring-zinc-900 ring-offset-2' : ''}`;
+            const isWhite = c.hex.toLowerCase() === '#ffffff';
+            const whiteBorder = isWhite ? 'border border-zinc-300 shadow-2xs' : '';
+            btn.className = `w-7 h-7 rounded-full cursor-pointer transition-transform hover:scale-110 relative flex items-center justify-center shrink-0 ${whiteBorder} ${isSelected ? 'ring-2 ring-zinc-900 ring-offset-2' : ''}`;
             btn.style.backgroundColor = c.hex;
             btn.title = c.name;
             if (isSelected) {
-                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+                const checkColor = isWhite ? '#18181b' : 'white';
+                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${checkColor}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
             }
             btn.onclick = () => {
                 selectedCoverColor = c.hex;
@@ -2128,10 +2115,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Modal: Create & Edit Playlist with Cover Upload & Custom Art
     let pendingModalCover = null;
+    let lastUploadedRawImage = null;
     const modalCoverPreview = document.getElementById('modal-cover-preview');
     const modalCoverImg = document.getElementById('modal-cover-img');
     const modalCoverPlaceholder = document.getElementById('modal-cover-placeholder');
     const modalCoverUploadBtn = document.getElementById('modal-cover-upload-btn');
+    const modalCoverRecropBtn = document.getElementById('modal-cover-recrop-btn');
     const modalCoverRemoveBtn = document.getElementById('modal-cover-remove-btn');
     const playlistModalCoverInput = document.getElementById('playlist-modal-cover-input');
 
@@ -2143,6 +2132,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (modalCoverPlaceholder) modalCoverPlaceholder.classList.add('hidden');
             if (modalCoverRemoveBtn) modalCoverRemoveBtn.classList.remove('hidden');
+            if (modalCoverRecropBtn) {
+                const isPhoto = lastUploadedRawImage || (pendingModalCover && !pendingModalCover.startsWith('data:image/svg+xml'));
+                modalCoverRecropBtn.classList.toggle('hidden', !isPhoto);
+            }
         } else {
             if (modalCoverImg) {
                 modalCoverImg.src = '';
@@ -2150,6 +2143,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (modalCoverPlaceholder) modalCoverPlaceholder.classList.remove('hidden');
             if (modalCoverRemoveBtn) modalCoverRemoveBtn.classList.add('hidden');
+            if (modalCoverRecropBtn) modalCoverRecropBtn.classList.add('hidden');
         }
     }
 
@@ -2159,9 +2153,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (modalCoverUploadBtn && playlistModalCoverInput) {
         modalCoverUploadBtn.addEventListener('click', () => playlistModalCoverInput.click());
     }
+    if (modalCoverRecropBtn) {
+        modalCoverRecropBtn.addEventListener('click', () => {
+            const raw = lastUploadedRawImage || (pendingModalCover && !pendingModalCover.startsWith('data:image/svg+xml') ? pendingModalCover : null);
+            if (raw) {
+                openCropper(raw, (croppedBase64) => {
+                    pendingModalCover = croppedBase64;
+                    updateModalCoverUI();
+                });
+            }
+        });
+    }
     if (modalCoverRemoveBtn) {
         modalCoverRemoveBtn.addEventListener('click', () => {
             pendingModalCover = null;
+            lastUploadedRawImage = null;
             updateModalCoverUI();
         });
     }
@@ -2171,7 +2177,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!file) return;
             const reader = new FileReader();
             reader.onload = (re) => {
-                openCropper(re.target.result, (croppedBase64) => {
+                lastUploadedRawImage = re.target.result;
+                openCropper(lastUploadedRawImage, (croppedBase64) => {
                     pendingModalCover = croppedBase64;
                     updateModalCoverUI();
                 });
@@ -2186,12 +2193,12 @@ document.addEventListener('DOMContentLoaded', () => {
         playlistModalTitle.textContent = 'New Playlist';
         playlistNameInput.value = '';
         playlistDescInput.value = '';
+        lastUploadedRawImage = null;
         selectedCoverColor = PALETTE_16_COLORS[Math.floor(Math.random() * PALETTE_16_COLORS.length)].hex;
         selectedCoverIcon = PLAYLIST_40_ICONS[Math.floor(Math.random() * PLAYLIST_40_ICONS.length)];
         pendingModalCover = generateColorIconCover(selectedCoverColor, selectedCoverIcon.svg);
         renderColorPalette();
         renderIconGrid();
-        setCoverTab('custom');
         updateModalCoverUI();
         playlistModal.classList.add('active');
         setTimeout(() => playlistNameInput.focus(), 50);
@@ -2203,13 +2210,9 @@ document.addEventListener('DOMContentLoaded', () => {
         playlistNameInput.value = pl.name || '';
         playlistDescInput.value = pl.description || '';
         pendingModalCover = pl.cover || null;
+        lastUploadedRawImage = (pendingModalCover && !pendingModalCover.startsWith('data:image/svg+xml')) ? pendingModalCover : null;
         renderColorPalette();
         renderIconGrid();
-        if (pendingModalCover && (pendingModalCover.startsWith('data:image/jpeg') || pendingModalCover.startsWith('data:image/png') || pendingModalCover.startsWith('http'))) {
-            setCoverTab('upload');
-        } else {
-            setCoverTab('custom');
-        }
         updateModalCoverUI();
         playlistModal.classList.add('active');
         setTimeout(() => playlistNameInput.focus(), 50);
@@ -2219,6 +2222,7 @@ document.addEventListener('DOMContentLoaded', () => {
         playlistModal.classList.remove('active');
         playlistToEditPending = null;
         pendingModalCover = null;
+        lastUploadedRawImage = null;
     }
 
     if (createPlaylistBtn) {
@@ -2239,14 +2243,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (playlistToEditPending) {
+                const targetId = playlistToEditPending.id;
                 playlistToEditPending.name = name;
                 playlistToEditPending.description = desc;
                 playlistToEditPending.cover = pendingModalCover;
                 savePlaylists();
                 showToast('Playlist updated');
-                closePlaylistModal();
-                openPlaylistDetail(playlistToEditPending.id);
                 renderLibrary();
+                openPlaylistDetail(targetId);
+                if (currentPlayingPlaylistContextId === targetId) {
+                    updateNowPlayingBgArt();
+                }
+                closePlaylistModal();
             } else {
                 const newPlaylist = {
                     id: 'pl_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
@@ -2259,9 +2267,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 playlists.push(newPlaylist);
                 savePlaylists();
                 showToast(`Created playlist "${name}"`);
-                closePlaylistModal();
                 renderLibrary();
                 openPlaylistDetail(newPlaylist.id);
+                closePlaylistModal();
             }
         };
     }
