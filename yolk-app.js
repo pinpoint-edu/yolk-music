@@ -14,6 +14,7 @@ let currentTrack = null;
 let currentQueue = [];
 let currentQueueIndex = -1;
 let currentPlaylistContextId = null; // null if from search, 'favorites', or playlist ID
+let currentPlayingPlaylistContextId = null;
 
 let searchOffset = 0;
 let isLoadingMore = false;
@@ -334,6 +335,9 @@ window.seekToLyrics = function(time) {
 // Storage Helpers
 function savePlaylists() {
     localStorage.setItem('yolk_playlists', JSON.stringify(playlists));
+    if (typeof updateLibraryButtons === 'function') {
+        updateLibraryButtons();
+    }
 }
 
 function saveFavorites() {
@@ -390,7 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
             nowPlayingContainer.classList.add('no-lyrics');
             nowPlayingContainer.classList.remove('lyrics-hidden');
             npLyricsToggleBtn.disabled = true;
-            npLyricsToggleBtn.className = 'flex items-center justify-center w-10 h-10 rounded-full bg-zinc-100/80 text-zinc-300 border border-zinc-200/50 shadow-none cursor-not-allowed opacity-40 pointer-events-none transition-all';
+            npLyricsToggleBtn.className = 'flex items-center justify-center w-10 h-10 rounded-full bg-zinc-100/70 text-zinc-300 border border-zinc-200/50 shadow-none cursor-not-allowed opacity-40 pointer-events-none transition-all';
             npLyricsToggleBtn.title = 'No lyrics available for this song';
         } else {
             nowPlayingContainer.classList.remove('no-lyrics');
@@ -399,10 +403,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isLyricsUserEnabled) {
                 nowPlayingContainer.classList.remove('lyrics-hidden');
-                npLyricsToggleBtn.className = 'flex items-center justify-center w-10 h-10 rounded-full bg-zinc-900 text-white border border-zinc-800 shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer';
+                npLyricsToggleBtn.className = 'flex items-center justify-center w-10 h-10 rounded-full bg-zinc-200/90 text-zinc-900 border border-zinc-300 shadow-sm transition-all hover:scale-105 active:scale-95 cursor-pointer';
             } else {
                 nowPlayingContainer.classList.add('lyrics-hidden');
-                npLyricsToggleBtn.className = 'flex items-center justify-center w-10 h-10 rounded-full bg-white/80 text-zinc-500 border border-zinc-200/80 shadow-sm transition-all hover:scale-105 active:scale-95 cursor-pointer';
+                npLyricsToggleBtn.className = 'flex items-center justify-center w-10 h-10 rounded-full bg-white/80 text-zinc-400 border border-zinc-200/80 shadow-sm transition-all hover:scale-105 active:scale-95 cursor-pointer';
             }
         }
     }
@@ -556,6 +560,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         currentQueue = searchList;
                         currentQueueIndex = idx;
                         currentPlaylistContextId = null;
+                        currentPlayingPlaylistContextId = null;
                         playTrack(track);
                     });
                     searchResults.appendChild(el);
@@ -1183,6 +1188,60 @@ document.addEventListener('DOMContentLoaded', () => {
         updateTopNavTint();
     }
 
+    function isTrackInLibrary(track) {
+        if (!track) return false;
+        const uid = getTrackUid(track);
+        return playlists.some(pl => Array.isArray(pl.tracks) && pl.tracks.some(t => getTrackUid(t) === uid));
+    }
+
+    function updateLibraryButtons() {
+        const inLib = isTrackInLibrary(currentTrack);
+        [npAddBtn, bpAddBtn].forEach(btn => {
+            if (!btn) return;
+            const svg = btn.querySelector('svg');
+            if (svg) {
+                svg.setAttribute('fill', inLib ? '#18181b' : 'none');
+                svg.setAttribute('stroke', '#18181b');
+            }
+            btn.classList.toggle('text-zinc-900', inLib);
+            btn.classList.toggle('text-zinc-400', !inLib);
+            btn.title = inLib ? 'In Library / Playlists (Click to manage)' : 'Add to Playlist';
+        });
+    }
+    window.updateLibraryButtons = updateLibraryButtons;
+
+    function updateNowPlayingBgArt() {
+        const bgArt = document.getElementById('now-playing-bg-art');
+        if (!bgArt) return;
+
+        let coverSrc = null;
+        if (currentPlayingPlaylistContextId && currentPlayingPlaylistContextId !== 'favorites') {
+            const pl = playlists.find(p => p.id === currentPlayingPlaylistContextId);
+            if (pl && pl.cover) {
+                coverSrc = pl.cover;
+            }
+        }
+        if (!coverSrc && currentTrack) {
+            coverSrc = getProxyUrl(currentTrack.artwork_url || currentTrack.image);
+        }
+
+        if (coverSrc) {
+            bgArt.onload = () => {
+                bgArt.classList.remove('opacity-0');
+                bgArt.classList.add('opacity-80');
+            };
+            bgArt.src = coverSrc;
+            if (bgArt.complete && bgArt.naturalWidth > 0) {
+                bgArt.classList.remove('opacity-0');
+                bgArt.classList.add('opacity-80');
+            }
+        } else {
+            bgArt.classList.add('opacity-0');
+            bgArt.classList.remove('opacity-80');
+        }
+    }
+    window.updateNowPlayingBgArt = updateNowPlayingBgArt;
+
     // Now Playing UI update (Cover Art & Track Details)
     function updateNowPlayingUI(track) {
         const titleEl = document.getElementById('now-playing-title');
@@ -1195,6 +1254,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (titleEl) titleEl.textContent = trackTitle;
         if (artistEl) artistEl.textContent = trackArtist;
+
+        updateNowPlayingBgArt();
+        updateLibraryButtons();
 
         const coverUrl = getProxyUrl(track.artwork_url || track.image);
         if (coverUrl) {
@@ -1242,6 +1304,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (titleEl) titleEl.textContent = trackTitle;
         if (artistEl) artistEl.textContent = trackArtist;
+
+        updateLibraryButtons();
 
         const coverUrl = getProxyUrl(track.artwork_url || track.image, '50x50');
         if (coverUrl && imgEl) {
@@ -1659,6 +1723,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (trackList.length > 0) {
                 currentQueue = [...trackList];
                 currentQueueIndex = 0;
+                currentPlayingPlaylistContextId = playlistId;
                 playTrack(currentQueue[0]);
             } else {
                 showToast('Playlist is empty. Add some tracks first!');
@@ -1680,6 +1745,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     () => {
                         currentQueue = [...trackList];
                         currentQueueIndex = idx;
+                        currentPlayingPlaylistContextId = playlistId;
                         playTrack(track);
                     },
                     () => {
@@ -1715,20 +1781,20 @@ document.addEventListener('DOMContentLoaded', () => {
         playlistDetailCoverInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
-            compressImage(file, 400, (base64) => {
-                if (!base64) {
-                    showToast('Failed to load image');
-                    return;
-                }
-                const pl = playlists.find(p => p.id === currentPlaylistContextId);
-                if (pl) {
-                    pl.cover = base64;
-                    savePlaylists();
-                    showToast('Playlist cover updated');
-                    openPlaylistDetail(pl.id);
-                    renderLibrary();
-                }
-            });
+            const reader = new FileReader();
+            reader.onload = (re) => {
+                openCropper(re.target.result, (croppedBase64) => {
+                    const pl = playlists.find(p => p.id === currentPlaylistContextId);
+                    if (pl) {
+                        pl.cover = croppedBase64;
+                        savePlaylists();
+                        showToast('Playlist cover updated');
+                        openPlaylistDetail(pl.id);
+                        renderLibrary();
+                    }
+                });
+            };
+            reader.readAsDataURL(file);
             playlistDetailCoverInput.value = '';
         });
     }
@@ -1756,7 +1822,311 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Modal: Create & Edit Playlist with Cover Upload
+    // ============================================
+    // 1:1 SQUARE IMAGE CROPPER MODAL
+    // ============================================
+    let cropImg = new Image();
+    let cropZoom = 1;
+    let cropMinZoom = 1;
+    let cropPanX = 0;
+    let cropPanY = 0;
+    let isCropperDragging = false;
+    let cropStartX = 0;
+    let cropStartY = 0;
+    let cropOnDoneCallback = null;
+
+    const cropModal = document.getElementById('crop-modal');
+    const cropCanvas = document.getElementById('crop-canvas');
+    const cropZoomSlider = document.getElementById('crop-zoom-slider');
+    const cropCancelBtn = document.getElementById('crop-cancel-btn');
+    const cropApplyBtn = document.getElementById('crop-apply-btn');
+
+    function drawCropCanvas() {
+        if (!cropCanvas || !cropImg.complete || cropImg.naturalWidth === 0) return;
+        const ctx = cropCanvas.getContext('2d');
+        const cW = cropCanvas.width;
+        const cH = cropCanvas.height;
+        ctx.clearRect(0, 0, cW, cH);
+
+        const currentW = cropImg.naturalWidth * cropZoom;
+        const currentH = cropImg.naturalHeight * cropZoom;
+
+        // Bounded pan coordinates
+        if (cropPanX > 0) cropPanX = 0;
+        if (cropPanY > 0) cropPanY = 0;
+        if (cropPanX < cW - currentW) cropPanX = cW - currentW;
+        if (cropPanY < cH - currentH) cropPanY = cH - currentH;
+
+        ctx.drawImage(cropImg, cropPanX, cropPanY, currentW, currentH);
+    }
+
+    function openCropper(imageSrc, onDone) {
+        cropOnDoneCallback = onDone;
+        cropImg = new Image();
+        cropImg.onload = () => {
+            const cW = cropCanvas ? cropCanvas.width : 240;
+            const cH = cropCanvas ? cropCanvas.height : 240;
+            const scaleX = cW / cropImg.naturalWidth;
+            const scaleY = cH / cropImg.naturalHeight;
+            cropMinZoom = Math.max(scaleX, scaleY);
+            cropZoom = cropMinZoom;
+
+            cropPanX = (cW - cropImg.naturalWidth * cropZoom) / 2;
+            cropPanY = (cH - cropImg.naturalHeight * cropZoom) / 2;
+
+            if (cropZoomSlider) {
+                cropZoomSlider.min = cropMinZoom;
+                cropZoomSlider.max = cropMinZoom * 3.5;
+                cropZoomSlider.step = (cropMinZoom * 2.5) / 100;
+                cropZoomSlider.value = cropZoom;
+            }
+
+            drawCropCanvas();
+            if (cropModal) cropModal.classList.remove('hidden');
+        };
+        cropImg.src = imageSrc;
+    }
+
+    if (cropCanvas) {
+        cropCanvas.addEventListener('mousedown', (e) => {
+            isCropperDragging = true;
+            cropStartX = e.clientX;
+            cropStartY = e.clientY;
+        });
+        window.addEventListener('mousemove', (e) => {
+            if (!isCropperDragging) return;
+            const dx = e.clientX - cropStartX;
+            const dy = e.clientY - cropStartY;
+            cropStartX = e.clientX;
+            cropStartY = e.clientY;
+            cropPanX += dx;
+            cropPanY += dy;
+            drawCropCanvas();
+        });
+        window.addEventListener('mouseup', () => {
+            isCropperDragging = false;
+        });
+
+        cropCanvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                isCropperDragging = true;
+                cropStartX = e.touches[0].clientX;
+                cropStartY = e.touches[0].clientY;
+            }
+        }, { passive: true });
+        window.addEventListener('touchmove', (e) => {
+            if (!isCropperDragging || e.touches.length !== 1) return;
+            const dx = e.touches[0].clientX - cropStartX;
+            const dy = e.touches[0].clientY - cropStartY;
+            cropStartX = e.touches[0].clientX;
+            cropStartY = e.touches[0].clientY;
+            cropPanX += dx;
+            cropPanY += dy;
+            drawCropCanvas();
+        }, { passive: true });
+        window.addEventListener('touchend', () => {
+            isCropperDragging = false;
+        });
+
+        cropCanvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const factor = e.deltaY < 0 ? 1.06 : 0.94;
+            const newZoom = Math.min(Math.max(cropZoom * factor, cropMinZoom), cropMinZoom * 3.5);
+            const prevZoom = cropZoom;
+            cropZoom = newZoom;
+            if (cropZoomSlider) cropZoomSlider.value = cropZoom;
+
+            const rect = cropCanvas.getBoundingClientRect();
+            const mouseX = (e.clientX - rect.left) * (cropCanvas.width / rect.width);
+            const mouseY = (e.clientY - rect.top) * (cropCanvas.height / rect.height);
+            cropPanX = mouseX - ((mouseX - cropPanX) * (cropZoom / prevZoom));
+            cropPanY = mouseY - ((mouseY - cropPanY) * (cropZoom / prevZoom));
+            drawCropCanvas();
+        }, { passive: false });
+    }
+
+    if (cropZoomSlider) {
+        cropZoomSlider.addEventListener('input', (e) => {
+            const prevZoom = cropZoom;
+            cropZoom = parseFloat(e.target.value);
+            const centerX = cropCanvas.width / 2;
+            const centerY = cropCanvas.height / 2;
+            cropPanX = centerX - ((centerX - cropPanX) * (cropZoom / prevZoom));
+            cropPanY = centerY - ((centerY - cropPanY) * (cropZoom / prevZoom));
+            drawCropCanvas();
+        });
+    }
+
+    if (cropCancelBtn && cropModal) {
+        cropCancelBtn.onclick = () => {
+            cropModal.classList.add('hidden');
+        };
+    }
+
+    if (cropApplyBtn && cropModal) {
+        cropApplyBtn.onclick = () => {
+            const outCanvas = document.createElement('canvas');
+            outCanvas.width = 400;
+            outCanvas.height = 400;
+            const outCtx = outCanvas.getContext('2d');
+            const ratio = 400 / (cropCanvas ? cropCanvas.width : 240);
+
+            outCtx.drawImage(
+                cropImg,
+                cropPanX * ratio,
+                cropPanY * ratio,
+                cropImg.naturalWidth * cropZoom * ratio,
+                cropImg.naturalHeight * cropZoom * ratio
+            );
+
+            const croppedBase64 = outCanvas.toDataURL('image/jpeg', 0.88);
+            cropModal.classList.add('hidden');
+            if (typeof cropOnDoneCallback === 'function') {
+                cropOnDoneCallback(croppedBase64);
+            }
+        };
+    }
+
+    // ============================================
+    // 16-COLOR PALETTE & 40 EVENT/OBJECT ICONS
+    // ============================================
+    const PALETTE_16_COLORS = [
+        { name: 'Onyx', hex: '#18181B' },
+        { name: 'Red', hex: '#EF4444' },
+        { name: 'Orange', hex: '#F97316' },
+        { name: 'Amber', hex: '#F59E0B' },
+        { name: 'Emerald', hex: '#10B981' },
+        { name: 'Teal', hex: '#14B8A6' },
+        { name: 'Cyan', hex: '#06B6D4' },
+        { name: 'Blue', hex: '#3B82F6' },
+        { name: 'Indigo', hex: '#6366F1' },
+        { name: 'Violet', hex: '#8B5CF6' },
+        { name: 'Purple', hex: '#A855F7' },
+        { name: 'Pink', hex: '#EC4899' },
+        { name: 'Rose', hex: '#F43F5E' },
+        { name: 'Lime', hex: '#84CC16' },
+        { name: 'Slate', hex: '#475569' },
+        { name: 'Stone', hex: '#78716C' }
+    ];
+
+    const PLAYLIST_40_ICONS = [
+        { id: 'car', name: 'Road Trip / Travel', svg: '<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>' },
+        { id: 'snowflake', name: 'Winter / Snow', svg: '<path d="M2 12h20M12 2v20M20 16l-4-4 4-4M4 8l4 4-4 4M16 4l-4 4-4-4M8 20l4-4 4 4"/>' },
+        { id: 'sun', name: 'Summer Vibes', svg: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>' },
+        { id: 'moon', name: 'Night Drive / Lofi', svg: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>' },
+        { id: 'cloud-rain', name: 'Rainy Day', svg: '<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242M16 14v6M8 14v6M12 16v6"/>' },
+        { id: 'dumbbell', name: 'Gym / Workout', svg: '<path d="m6.5 6.5 11 11M21 21l-1-1M3 3l1 1M18 22l4-4M2 6l4-4M3 10l7-7M14 21l7-7"/>' },
+        { id: 'flame', name: 'Hype / Lit', svg: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>' },
+        { id: 'coffee', name: 'Focus / Coffee', svg: '<path d="M17 8h1a4 4 0 1 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z M6 2v2M10 2v2M14 2v2"/>' },
+        { id: 'headphones', name: 'Beats / Audio', svg: '<path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/>' },
+        { id: 'zap', name: 'High Energy', svg: '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>' },
+        { id: 'plane', name: 'Vacation / Travel', svg: '<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>' },
+        { id: 'palmtree', name: 'Beach / Tropical', svg: '<path d="M13 8c0-2.76-2.46-5-5.5-5S2 5.24 2 8h11zm0 0c0-2.76 2.46-5 5.5-5S24 5.24 24 8H13zm-1 0v14"/>' },
+        { id: 'waves', name: 'Surf / Chill Waves', svg: '<path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>' },
+        { id: 'gamepad', name: 'Gaming / Stream', svg: '<line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/><line x1="15" y1="13" x2="15.01" y2="13"/><line x1="18" y1="11" x2="18.01" y2="11"/><rect width="20" height="12" x="2" y="6" rx="6"/>' },
+        { id: 'book', name: 'Reading / Study', svg: '<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 2v20"/>' },
+        { id: 'cocktail', name: 'Party / Drinks', svg: '<path d="M8 22h8M12 15v7M19 3H5l7 8 7-8Z"/>' },
+        { id: 'pizza', name: 'Hangout / Food', svg: '<path d="m19 17-5.5-5.5a2.12 2.12 0 0 0-3 3L16 20l5-3z"/><path d="m5 19 5.5-5.5a2.12 2.12 0 0 0-3-3L2 16l3 3z"/><path d="m15 4 4 4M9 10l-4 4"/>' },
+        { id: 'music', name: 'Rock / Indie', svg: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>' },
+        { id: 'mic', name: 'Singing / Karaoke', svg: '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>' },
+        { id: 'radio', name: 'Retro / Lo-Fi', svg: '<path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5M12 12h.01M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5M19.1 4.9C23 8.8 23 15.1 19.1 19"/>' },
+        { id: 'disc', name: 'Vinyl / Classics', svg: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/>' },
+        { id: 'heart', name: 'Romance / Love', svg: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>' },
+        { id: 'heart-crack', name: 'Heartbreak / Sad', svg: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7ZM12 5l-2 5 4 4-3 5"/>' },
+        { id: 'star', name: 'Top Hits', svg: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>' },
+        { id: 'flower', name: 'Spring / Fresh', svg: '<path d="M12 7.5a4.5 4.5 0 1 1 4.5 4.5M12 7.5A4.5 4.5 0 1 0 7.5 12M12 7.5V9m4.5 3a4.5 4.5 0 1 1-4.5 4.5M16.5 12H15m-4.5 4.5a4.5 4.5 0 1 1-4.5-4.5M12 16.5V15m-4.5-3H9"/>' },
+        { id: 'leaf', name: 'Autumn / Cozy', svg: '<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>' },
+        { id: 'tent', name: 'Camp / Outdoors', svg: '<path d="m19 20-7-14-7 14M12 6v14M2 20h20"/>' },
+        { id: 'bike', name: 'Cruising / Bike', svg: '<circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5L9 11l3-5 3.5 3h3.5"/>' },
+        { id: 'sneaker', name: 'Running / Pace', svg: '<path d="M4 16v-2.38C4 11.5 6.01 9.6 8.38 9.6H11l4-5h4v6l-2 3v4.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2.12Z"/>' },
+        { id: 'sparkles', name: 'Magic / Sparkles', svg: '<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/>' },
+        { id: 'rocket', name: 'Launch / Future', svg: '<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09zM12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>' },
+        { id: 'building', name: 'City / Metro', svg: '<rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/>' },
+        { id: 'ghost', name: 'Spooky / Halloween', svg: '<path d="M9 10h.01M15 10h.01M12 2a8 8 0 0 0-8 8v12l3-3 2.5 2.5L12 19l2.5 2.5L17 19l3 3V10a8 8 0 0 0-8-8z"/>' },
+        { id: 'gift', name: 'Holiday / Gift', svg: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/>' },
+        { id: 'trophy', name: 'Win / Champion', svg: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22M18 2H6v7a6 6 0 0 0 12 0V2Z"/>' },
+        { id: 'compass', name: 'Discovery / Zen', svg: '<circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>' },
+        { id: 'sunset', name: 'Sunset / Golden Hour', svg: '<path d="M12 10V2M4.93 10.93 3.52 9.51M19.07 10.93l1.41-1.42M22 18H2M16 18a4 4 0 0 0-8 0"/>' },
+        { id: 'sparkle', name: 'Acoustic / Glow', svg: '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>' },
+        { id: 'film', name: 'Movie / Cinema', svg: '<rect width="20" height="20" x="2" y="2" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>' },
+        { id: 'smile', name: 'Good Vibes / Happy', svg: '<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/>' }
+    ];
+
+    let selectedCoverColor = PALETTE_16_COLORS[0].hex;
+    let selectedCoverIcon = PLAYLIST_40_ICONS[0];
+
+    function generateColorIconCover(bgColor, iconSvgInner) {
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" rx="40" fill="${bgColor}"/><g transform="translate(100, 100) scale(8.33)" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">${iconSvgInner}</g></svg>`;
+        return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+    }
+
+    const tabCoverCustom = document.getElementById('tab-cover-custom');
+    const tabCoverUpload = document.getElementById('tab-cover-upload');
+    const panelCoverCustom = document.getElementById('panel-cover-custom');
+    const panelCoverUpload = document.getElementById('panel-cover-upload');
+
+    function setCoverTab(mode) {
+        if (mode === 'custom') {
+            if (tabCoverCustom) tabCoverCustom.className = 'px-3 py-1 text-xs font-semibold rounded-lg transition-all bg-white text-zinc-900 shadow-xs cursor-pointer';
+            if (tabCoverUpload) tabCoverUpload.className = 'px-3 py-1 text-xs font-medium rounded-lg transition-all text-zinc-600 hover:text-zinc-900 cursor-pointer';
+            if (panelCoverCustom) panelCoverCustom.classList.remove('hidden');
+            if (panelCoverUpload) panelCoverUpload.classList.add('hidden');
+        } else {
+            if (tabCoverCustom) tabCoverCustom.className = 'px-3 py-1 text-xs font-medium rounded-lg transition-all text-zinc-600 hover:text-zinc-900 cursor-pointer';
+            if (tabCoverUpload) tabCoverUpload.className = 'px-3 py-1 text-xs font-semibold rounded-lg transition-all bg-white text-zinc-900 shadow-xs cursor-pointer';
+            if (panelCoverCustom) panelCoverCustom.classList.add('hidden');
+            if (panelCoverUpload) panelCoverUpload.classList.remove('hidden');
+        }
+    }
+    if (tabCoverCustom) tabCoverCustom.onclick = () => setCoverTab('custom');
+    if (tabCoverUpload) tabCoverUpload.onclick = () => setCoverTab('upload');
+
+    function renderColorPalette() {
+        const paletteEl = document.getElementById('playlist-color-palette');
+        if (!paletteEl) return;
+        paletteEl.innerHTML = '';
+        PALETTE_16_COLORS.forEach(c => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            const isSelected = selectedCoverColor.toLowerCase() === c.hex.toLowerCase();
+            btn.className = `w-7 h-7 rounded-full cursor-pointer transition-transform hover:scale-110 relative flex items-center justify-center shrink-0 ${isSelected ? 'ring-2 ring-zinc-900 ring-offset-2' : ''}`;
+            btn.style.backgroundColor = c.hex;
+            btn.title = c.name;
+            if (isSelected) {
+                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+            }
+            btn.onclick = () => {
+                selectedCoverColor = c.hex;
+                renderColorPalette();
+                pendingModalCover = generateColorIconCover(selectedCoverColor, selectedCoverIcon.svg);
+                updateModalCoverUI();
+            };
+            paletteEl.appendChild(btn);
+        });
+    }
+
+    function renderIconGrid() {
+        const iconGridEl = document.getElementById('playlist-icon-grid');
+        if (!iconGridEl) return;
+        iconGridEl.innerHTML = '';
+        PLAYLIST_40_ICONS.forEach(iconObj => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            const isSelected = selectedCoverIcon.id === iconObj.id;
+            btn.className = `w-8 h-8 rounded-lg flex items-center justify-center transition-all cursor-pointer ${isSelected ? 'bg-zinc-900 text-white shadow-xs' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'}`;
+            btn.title = iconObj.name;
+            btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconObj.svg}</svg>`;
+            btn.onclick = () => {
+                selectedCoverIcon = iconObj;
+                renderIconGrid();
+                pendingModalCover = generateColorIconCover(selectedCoverColor, selectedCoverIcon.svg);
+                updateModalCoverUI();
+            };
+            iconGridEl.appendChild(btn);
+        });
+    }
+
+    // Modal: Create & Edit Playlist with Cover Upload & Custom Art
     let pendingModalCover = null;
     const modalCoverPreview = document.getElementById('modal-cover-preview');
     const modalCoverImg = document.getElementById('modal-cover-img');
@@ -1799,14 +2169,14 @@ document.addEventListener('DOMContentLoaded', () => {
         playlistModalCoverInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
-            compressImage(file, 400, (base64) => {
-                if (base64) {
-                    pendingModalCover = base64;
+            const reader = new FileReader();
+            reader.onload = (re) => {
+                openCropper(re.target.result, (croppedBase64) => {
+                    pendingModalCover = croppedBase64;
                     updateModalCoverUI();
-                } else {
-                    showToast('Failed to process image');
-                }
-            });
+                });
+            };
+            reader.readAsDataURL(file);
             playlistModalCoverInput.value = '';
         });
     }
@@ -1816,7 +2186,12 @@ document.addEventListener('DOMContentLoaded', () => {
         playlistModalTitle.textContent = 'New Playlist';
         playlistNameInput.value = '';
         playlistDescInput.value = '';
-        pendingModalCover = null;
+        selectedCoverColor = PALETTE_16_COLORS[Math.floor(Math.random() * PALETTE_16_COLORS.length)].hex;
+        selectedCoverIcon = PLAYLIST_40_ICONS[Math.floor(Math.random() * PLAYLIST_40_ICONS.length)];
+        pendingModalCover = generateColorIconCover(selectedCoverColor, selectedCoverIcon.svg);
+        renderColorPalette();
+        renderIconGrid();
+        setCoverTab('custom');
         updateModalCoverUI();
         playlistModal.classList.add('active');
         setTimeout(() => playlistNameInput.focus(), 50);
@@ -1828,6 +2203,13 @@ document.addEventListener('DOMContentLoaded', () => {
         playlistNameInput.value = pl.name || '';
         playlistDescInput.value = pl.description || '';
         pendingModalCover = pl.cover || null;
+        renderColorPalette();
+        renderIconGrid();
+        if (pendingModalCover && (pendingModalCover.startsWith('data:image/jpeg') || pendingModalCover.startsWith('data:image/png') || pendingModalCover.startsWith('http'))) {
+            setCoverTab('upload');
+        } else {
+            setCoverTab('custom');
+        }
         updateModalCoverUI();
         playlistModal.classList.add('active');
         setTimeout(() => playlistNameInput.focus(), 50);
@@ -2095,6 +2477,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const el = createTrackElement(track, () => {
                             currentQueue = [...tracks];
                             currentQueueIndex = idx;
+                            currentPlayingPlaylistContextId = null;
                             playTrack(track);
                         });
                         trackListEl.appendChild(el);
@@ -2122,6 +2505,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentArtistTracks.length > 0) {
                 currentQueue = [...currentArtistTracks];
                 currentQueueIndex = 0;
+                currentPlayingPlaylistContextId = null;
                 playTrack(currentQueue[0]);
             } else {
                 showToast('No tracks available to play');
@@ -2138,7 +2522,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+    if (cropModal) {
+        cropModal.addEventListener('click', (e) => {
+            if (e.target === cropModal) {
+                cropModal.classList.add('hidden');
+            }
+        });
+    }
 
-    // Initial render of library
+    // Initial render of library and controls
     renderLibrary();
+    updateLibraryButtons();
 });
