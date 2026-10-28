@@ -3219,29 +3219,42 @@ document.addEventListener('DOMContentLoaded', () => {
     const ytImportStatus = document.getElementById('yt-import-status');
     const ytImportStatusText = document.getElementById('yt-import-status-text');
 
+    function openYtImportModal() {
+        if (!ytImportModal) return;
+        ytImportModal.classList.add('active');
+        if (ytImportInput) {
+            ytImportInput.value = '';
+            setTimeout(() => ytImportInput.focus(), 60);
+        }
+    }
+
     function closeYtImportModal() {
         if (!ytImportModal) return;
-        ytImportModal.classList.add('hidden');
+        ytImportModal.classList.remove('active');
         if (ytImportInput) ytImportInput.value = '';
-        if (ytImportStatus) ytImportStatus.classList.add('hidden');
+        if (ytImportStatus) {
+            ytImportStatus.classList.add('hidden');
+            ytImportStatus.classList.remove('flex');
+        }
         if (ytImportSubmitBtn) ytImportSubmitBtn.disabled = false;
     }
 
-    if (importYtPlaylistBtn && ytImportModal) {
-        importYtPlaylistBtn.addEventListener('click', () => {
-            ytImportModal.classList.remove('hidden');
-            if (ytImportInput) {
-                ytImportInput.value = '';
-                setTimeout(() => ytImportInput.focus(), 60);
-            }
+    if (importYtPlaylistBtn) {
+        importYtPlaylistBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openYtImportModal();
         });
     }
 
     if (ytImportCloseBtn) ytImportCloseBtn.onclick = closeYtImportModal;
     if (ytImportCancelBtn) ytImportCancelBtn.onclick = closeYtImportModal;
-    if (ytImportModal) {
-        ytImportModal.addEventListener('click', (e) => {
-            if (e.target === ytImportModal) closeYtImportModal();
+
+    if (ytImportInput && ytImportSubmitBtn) {
+        ytImportInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                ytImportSubmitBtn.click();
+            }
         });
     }
 
@@ -3322,7 +3335,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Close modals on clicking backdrop
-    [playlistModal, addToPlaylistModal].forEach(modal => {
+    [playlistModal, addToPlaylistModal, ytImportModal].forEach(modal => {
         if (!modal) return;
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
