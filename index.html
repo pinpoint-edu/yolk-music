@@ -435,12 +435,12 @@
             overflow-x: hidden;
             scroll-behavior: smooth;
             box-sizing: border-box;
-            padding-top: 36vh;
-            padding-bottom: 40vh;
+            padding-top: 20px;
+            padding-bottom: 45vh;
             padding-left: 8px;
             padding-right: 8px;
-            mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
-            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+            mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 88%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 88%, transparent 100%);
             scrollbar-width: none;
             -ms-overflow-style: none;
             user-select: none;
@@ -592,6 +592,25 @@
             opacity: 0.001 !important;
             pointer-events: none !important;
             z-index: -999 !important;
+        }
+
+        @keyframes appleMeshDrift {
+            0% {
+                transform: scale(1) translate(0%, 0%);
+            }
+            33% {
+                transform: scale(1.08) translate(-3%, 2%);
+            }
+            66% {
+                transform: scale(0.96) translate(3%, -2%);
+            }
+            100% {
+                transform: scale(1) translate(0%, 0%);
+            }
+        }
+        .apple-mesh-drift {
+            animation: appleMeshDrift 20s ease-in-out infinite;
+            will-change: transform;
         }
     </style>
 </head>
@@ -752,10 +771,11 @@
 
     <!-- ==== PAGE: NOW PLAYING ==== -->
     <div id="page-now-playing" class="page relative overflow-hidden bg-white">
-        <!-- Blurred Cover Art Background with reduced contrast & increased brightness for optimal dark element legibility -->
+        <!-- Blurred Cover Art & Apple Music Mesh Background -->
         <div id="now-playing-bg-wrapper" class="absolute inset-0 overflow-hidden pointer-events-none z-0 bg-white">
-            <img id="now-playing-bg-art" src="" alt="" class="absolute inset-[-60px] w-[calc(100%+120px)] h-[calc(100%+120px)] object-cover pointer-events-none transition-all duration-700 opacity-0" style="filter: blur(75px) brightness(1.26) contrast(0.74) saturate(135%); transform: scale(1.15);">
-            <div class="absolute inset-0 bg-white/40 pointer-events-none"></div>
+            <img id="now-playing-bg-art" src="" alt="" class="absolute inset-[-60px] w-[calc(100%+120px)] h-[calc(100%+120px)] object-cover pointer-events-none transition-all duration-700 opacity-0" style="filter: blur(80px) brightness(1.2) contrast(0.8) saturate(140%); transform: scale(1.15);">
+            <div id="now-playing-mesh" class="absolute inset-[-20%] w-[140%] h-[140%] pointer-events-none transition-opacity duration-1000 opacity-0 apple-mesh-drift" style="filter: blur(65px);"></div>
+            <div class="absolute inset-0 bg-white/35 pointer-events-none"></div>
         </div>
         <div id="now-playing-bg-tint" class="pointer-events-none transition-all duration-700 opacity-0 absolute inset-0 z-0 hidden"></div>
 
@@ -785,7 +805,7 @@
                 </div>
 
                 <!-- Controls Cluster (Buttons on Left) -->
-                <div class="flex items-center justify-center gap-5 sm:gap-6 mt-2 shrink-0">
+                <div class="flex items-center justify-center gap-4 sm:gap-5 mt-2 shrink-0">
                     <button id="now-playing-fav-btn" class="sleek-hover text-black transition-transform hover:scale-110 p-2 cursor-pointer" title="Favorite">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                     </button>
@@ -801,6 +821,16 @@
                     <button id="now-playing-add-btn" class="sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer" title="Add to Playlist">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
                     </button>
+
+                    <!-- Volume Bar (Small Button until Hovered -> Expands to the right) -->
+                    <div id="np-volume-container" class="relative flex items-center group/npvol">
+                        <button id="np-volume-btn" class="sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="Volume">
+                            <svg id="np-volume-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+                        </button>
+                        <div class="w-0 opacity-0 group-hover/npvol:w-20 sm:group-hover/npvol:w-24 group-hover/npvol:opacity-100 group-hover/npvol:ml-1.5 transition-all duration-300 ease-out flex items-center overflow-hidden">
+                            <input id="np-volume-slider" type="range" min="0" max="100" value="100" class="w-20 sm:w-24 h-1.5 bg-black/25 accent-black rounded-full cursor-pointer appearance-none">
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -856,7 +886,7 @@
                         </div>
                         <h1 id="artist-hero-name" class="text-3xl sm:text-4xl md:text-5xl font-extrabold text-zinc-900 tracking-tight leading-tight truncate">Artist Name</h1>
                         <p id="artist-hero-desc" class="text-sm text-zinc-500 mt-2 line-clamp-2 max-w-xl font-medium"></p>
-                        <p id="artist-hero-track-count" class="text-xs font-semibold text-zinc-400 mt-2">Loading tracks...</p>
+                        <p id="artist-hero-track-count" class="hidden"></p>
 
                         <div class="flex items-center justify-center md:justify-start gap-3 mt-5 flex-wrap">
                             <button id="artist-play-all-btn" class="bubbly-hover flex items-center gap-2 px-6 py-2.5 rounded-full bg-zinc-900 text-white text-xs font-semibold shadow-lg hover:bg-zinc-800 transition-all cursor-pointer">
@@ -871,7 +901,7 @@
                 <div class="bg-white/80 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-7 shadow-sm">
                     <div class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-4 px-3 flex justify-between items-center border-b border-zinc-100 pb-2">
                         <span>Popular Tracks</span>
-                        <span id="artist-tracks-header-count" class="text-[10px] font-medium text-zinc-400"></span>
+                        <span id="artist-tracks-header-count" class="hidden"></span>
                     </div>
                     <div id="artist-track-list" class="flex flex-col gap-1.5">
                         <!-- Populated by JS -->
@@ -981,12 +1011,22 @@
             </div>
 
             <!-- Right: Progress & Time -->
-            <div class="w-1/3 min-w-[150px] flex justify-end items-center gap-2.5">
+            <div class="w-1/3 min-w-[150px] flex justify-end items-center gap-2">
                 <span id="bottom-player-current-time" class="text-[10px] text-zinc-400 font-medium select-none">0:00</span>
-                <div id="bottom-player-progress-bar" class="w-full max-w-[110px] sm:max-w-[140px] h-1.5 bg-zinc-200/80 rounded-full overflow-hidden relative cursor-pointer hover:h-2 transition-all">
+                <div id="bottom-player-progress-bar" class="w-full max-w-[90px] sm:max-w-[120px] h-1.5 bg-zinc-200/80 rounded-full overflow-hidden relative cursor-pointer hover:h-2 transition-all">
                     <div id="bottom-player-progress-fill" class="absolute left-0 top-0 w-0 h-full bg-zinc-800 pointer-events-none"></div>
                 </div>
                 <span id="bottom-player-duration" class="text-[10px] text-zinc-400 font-medium select-none">0:00</span>
+
+                <!-- Volume Bar (Small Button until Hovered -> Expands to the right) -->
+                <div id="bp-volume-container" class="relative flex items-center group/bpvol pl-1">
+                    <button id="bp-volume-btn" class="sleek-hover text-zinc-500 hover:text-zinc-900 transition-colors p-1 rounded-full hover:bg-black/5 flex items-center justify-center cursor-pointer shrink-0" title="Volume">
+                        <svg id="bp-volume-icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+                    </button>
+                    <div class="w-0 opacity-0 group-hover/bpvol:w-16 sm:group-hover/bpvol:w-20 group-hover/bpvol:opacity-100 group-hover/bpvol:ml-1.5 transition-all duration-300 ease-out flex items-center overflow-hidden">
+                        <input id="bp-volume-slider" type="range" min="0" max="100" value="100" class="w-16 sm:w-20 h-1 bg-zinc-300 accent-zinc-900 rounded-full cursor-pointer appearance-none">
+                    </div>
+                </div>
             </div>
         </div>
 

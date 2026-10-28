@@ -499,6 +499,99 @@ document.addEventListener('DOMContentLoaded', () => {
     const bpCurrentTime = document.getElementById('bottom-player-current-time');
     const bpDuration = document.getElementById('bottom-player-duration');
 
+    // Master Volume Control (Bottom Bar & Fullscreen Now Playing)
+    let currentVolume = parseFloat(localStorage.getItem('yolk_volume') ?? '1.0');
+    if (isNaN(currentVolume) || currentVolume < 0 || currentVolume > 1) currentVolume = 1.0;
+    let savedMuteVolume = currentVolume > 0 ? currentVolume : 1.0;
+
+    const bpVolumeBtn = document.getElementById('bp-volume-btn');
+    const bpVolumeSlider = document.getElementById('bp-volume-slider');
+    const bpVolumeIcon = document.getElementById('bp-volume-icon');
+
+    const npVolumeBtn = document.getElementById('np-volume-btn');
+    const npVolumeSlider = document.getElementById('np-volume-slider');
+    const npVolumeIcon = document.getElementById('np-volume-icon');
+
+    function getVolumeIconSvg(vol, stroke = 'currentColor', strokeWidth = '2') {
+        if (vol <= 0) {
+            return `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line>`;
+        }
+        if (vol <= 0.5) {
+            return `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>`;
+        }
+        return `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>`;
+    }
+
+    function setMasterVolume(vol, persist = true) {
+        currentVolume = Math.max(0, Math.min(1, vol));
+        if (persist) {
+            localStorage.setItem('yolk_volume', currentVolume.toString());
+        }
+
+        currentAudio.volume = currentVolume;
+
+        if (ytPlayer && typeof ytPlayer.setVolume === 'function') {
+            try {
+                ytPlayer.setVolume(Math.round(currentVolume * 100));
+                if (currentVolume <= 0 && typeof ytPlayer.mute === 'function') {
+                    ytPlayer.mute();
+                } else if (currentVolume > 0 && typeof ytPlayer.unMute === 'function') {
+                    ytPlayer.unMute();
+                }
+            } catch (_) {}
+        }
+
+        const percentVal = Math.round(currentVolume * 100);
+        if (bpVolumeSlider) bpVolumeSlider.value = percentVal;
+        if (npVolumeSlider) npVolumeSlider.value = percentVal;
+
+        if (bpVolumeIcon) {
+            bpVolumeIcon.innerHTML = getVolumeIconSvg(currentVolume, 'currentColor', '2');
+        }
+        if (npVolumeIcon) {
+            npVolumeIcon.innerHTML = getVolumeIconSvg(currentVolume, '#000000', '2.2');
+        }
+    }
+
+    function toggleMute() {
+        if (currentVolume > 0) {
+            savedMuteVolume = currentVolume;
+            setMasterVolume(0);
+        } else {
+            setMasterVolume(savedMuteVolume > 0 ? savedMuteVolume : 1.0);
+        }
+    }
+
+    if (bpVolumeSlider) {
+        bpVolumeSlider.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value) / 100;
+            setMasterVolume(val);
+        });
+    }
+
+    if (npVolumeSlider) {
+        npVolumeSlider.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value) / 100;
+            setMasterVolume(val);
+        });
+    }
+
+    if (bpVolumeBtn) {
+        bpVolumeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleMute();
+        });
+    }
+
+    if (npVolumeBtn) {
+        npVolumeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleMute();
+        });
+    }
+
+    setMasterVolume(currentVolume, false);
+
     // Modals
     const playlistModal = document.getElementById('playlist-modal');
     const playlistModalTitle = document.getElementById('playlist-modal-title');
@@ -1206,7 +1299,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 events: {
                     onReady: (e) => {
                         try {
-                            e.target.setVolume(100);
+                            e.target.setVolume(Math.round(currentVolume * 100));
                             e.target.playVideo();
                         } catch (_) {}
                         showSpinner(false);
@@ -1718,6 +1811,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateNowPlayingBgArt() {
         const bgArt = document.getElementById('now-playing-bg-art');
+        const meshEl = document.getElementById('now-playing-mesh');
         if (!bgArt) return;
 
         let coverSrc = null;
@@ -1729,21 +1823,25 @@ document.addEventListener('DOMContentLoaded', () => {
             bgArt.onerror = () => {
                 bgArt.removeAttribute('src');
                 bgArt.classList.add('opacity-0');
-                bgArt.classList.remove('opacity-80');
+                bgArt.classList.remove('opacity-40');
             };
             bgArt.onload = () => {
                 bgArt.classList.remove('opacity-0');
-                bgArt.classList.add('opacity-80');
+                bgArt.classList.add('opacity-40');
             };
             bgArt.src = coverSrc;
             if (bgArt.complete && bgArt.naturalWidth > 0) {
                 bgArt.classList.remove('opacity-0');
-                bgArt.classList.add('opacity-80');
+                bgArt.classList.add('opacity-40');
             }
+            extractArtworkPalette(coverSrc, (colors) => {
+                applyAppleMusicNowPlayingBg(colors);
+            });
         } else {
             bgArt.removeAttribute('src');
             bgArt.classList.add('opacity-0');
-            bgArt.classList.remove('opacity-80');
+            bgArt.classList.remove('opacity-40');
+            applyAppleMusicNowPlayingBg(null);
         }
     }
     window.updateNowPlayingBgArt = updateNowPlayingBgArt;
@@ -2054,6 +2152,148 @@ document.addEventListener('DOMContentLoaded', () => {
         tintEl.style.opacity = '1';
     }
 
+    function ensureLegibleColor(c, minBrightness = 168) {
+        if (!c) return { r: 240, g: 240, b: 240 };
+        const brightness = 0.299 * c.r + 0.587 * c.g + 0.114 * c.b;
+        if (brightness >= minBrightness) {
+            return { r: c.r, g: c.g, b: c.b };
+        }
+        const deficit = minBrightness - brightness;
+        const factor = deficit / (255 - brightness + 0.001);
+        return {
+            r: Math.min(255, Math.round(c.r + (255 - c.r) * factor * 0.9)),
+            g: Math.min(255, Math.round(c.g + (255 - c.g) * factor * 0.9)),
+            b: Math.min(255, Math.round(c.b + (255 - c.b) * factor * 0.9))
+        };
+    }
+
+    function extractArtworkPalette(imgUrl, callback) {
+        if (!imgUrl) {
+            callback(null);
+            return;
+        }
+        const img = new Image();
+        if (!imgUrl.startsWith('data:')) {
+            img.crossOrigin = 'Anonymous';
+        }
+        img.src = imgUrl.startsWith('data:') ? imgUrl : getProxyUrl(imgUrl, '120x120');
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                canvas.width = 48;
+                canvas.height = 48;
+                ctx.drawImage(img, 0, 0, 48, 48);
+                const data = ctx.getImageData(0, 0, 48, 48).data;
+
+                const samples = [];
+                for (let i = 0; i < data.length; i += 8) {
+                    const pr = data[i], pg = data[i+1], pb = data[i+2], pa = data[i+3];
+                    if (pa < 140) continue;
+
+                    const max = Math.max(pr, pg, pb);
+                    const min = Math.min(pr, pg, pb);
+                    const delta = max - min;
+                    const lum = (0.299 * pr + 0.587 * pg + 0.114 * pb) / 255;
+                    const sat = max === 0 ? 0 : delta / max;
+
+                    const score = (sat * 1.6) + (1 - Math.abs(lum - 0.55));
+                    samples.push({ r: pr, g: pg, b: pb, sat, lum, score });
+                }
+
+                if (samples.length === 0) {
+                    callback(null);
+                    return;
+                }
+
+                samples.sort((a, b) => b.score - a.score);
+
+                const picked = [];
+                const isDistinct = (c1, c2, threshold = 60) => {
+                    const dr = c1.r - c2.r;
+                    const dg = c1.g - c2.g;
+                    const db = c1.b - c2.b;
+                    return Math.sqrt(dr * dr + dg * dg + db * db) >= threshold;
+                };
+
+                for (const s of samples) {
+                    if (picked.length >= 4) break;
+                    if (picked.every(p => isDistinct(p, s, 60))) {
+                        picked.push({ r: s.r, g: s.g, b: s.b });
+                    }
+                }
+
+                if (picked.length < 4) {
+                    for (const s of samples) {
+                        if (picked.length >= 4) break;
+                        if (picked.every(p => isDistinct(p, s, 35))) {
+                            picked.push({ r: s.r, g: s.g, b: s.b });
+                        }
+                    }
+                }
+
+                while (picked.length < 4) {
+                    const base = picked[picked.length - 1] || { r: 250, g: 204, b: 21 };
+                    picked.push({
+                        r: Math.min(255, Math.max(0, Math.round(base.r * 0.88 + 30))),
+                        g: Math.min(255, Math.max(0, Math.round(base.g * 1.08))),
+                        b: Math.min(255, Math.max(0, Math.round(base.b * 0.82 + 35)))
+                    });
+                }
+
+                const adjusted = picked.map(c => ensureLegibleColor(c, 168));
+                callback(adjusted);
+            } catch (_) {
+                callback(null);
+            }
+        };
+        img.onerror = () => callback(null);
+    }
+
+    function applyAppleMusicNowPlayingBg(colors) {
+        const meshEl = document.getElementById('now-playing-mesh');
+        if (!meshEl) return;
+
+        if (!colors || colors.length === 0) {
+            meshEl.style.opacity = '0';
+            meshEl.style.background = '';
+            return;
+        }
+
+        const [c1, c2, c3, c4] = colors;
+        meshEl.style.background = `
+            radial-gradient(circle at 18% 22%, rgba(${c1.r}, ${c1.g}, ${c1.b}, 0.82) 0%, transparent 55%),
+            radial-gradient(circle at 82% 18%, rgba(${c2.r}, ${c2.g}, ${c2.b}, 0.78) 0%, transparent 52%),
+            radial-gradient(circle at 75% 78%, rgba(${c3.r}, ${c3.g}, ${c3.b}, 0.72) 0%, transparent 55%),
+            radial-gradient(circle at 22% 80%, rgba(${c4.r}, ${c4.g}, ${c4.b}, 0.68) 0%, transparent 52%),
+            radial-gradient(circle at 50% 50%, rgba(${c1.r}, ${c1.g}, ${c1.b}, 0.45) 0%, transparent 60%)
+        `;
+        meshEl.style.opacity = '1';
+
+        if (typeof updateTopNavTint === 'function') {
+            currentCoverColor = c1;
+            updateTopNavTint();
+        }
+    }
+
+    function applyPlaylistMultiTint(colors) {
+        const tintEl = document.getElementById('playlist-bg-tint');
+        if (!tintEl) return;
+        if (!colors || colors.length === 0) {
+            tintEl.style.opacity = '0';
+            return;
+        }
+        const [c1, c2, c3, c4] = colors;
+        tintEl.style.background = `
+            radial-gradient(ellipse at 18% 12%, rgba(${c1.r}, ${c1.g}, ${c1.b}, 0.55) 0%, transparent 60%),
+            radial-gradient(ellipse at 82% 16%, rgba(${c2.r}, ${c2.g}, ${c2.b}, 0.48) 0%, transparent 55%),
+            radial-gradient(ellipse at 50% 36%, rgba(${c3.r}, ${c3.g}, ${c3.b}, 0.40) 0%, transparent 60%),
+            radial-gradient(ellipse at 75% 58%, rgba(${c4.r}, ${c4.g}, ${c4.b}, 0.32) 0%, transparent 55%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(252, 251, 248, 0.8) 60%, #FCFBF8 100%)
+        `;
+        tintEl.style.opacity = '1';
+    }
+
     // Client-side image compression for playlist covers (persisted in localStorage as base64)
     function compressImage(file, maxSize, callback) {
         if (!file) return callback(null);
@@ -2192,8 +2432,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 detailArtImg.src = coverSrc;
                 detailArtImg.classList.remove('hidden');
                 detailArtIcon.classList.add('hidden');
-                extractDominantColor(coverSrc, (rgb) => {
-                    if (rgb) applyPlaylistTint(rgb.r, rgb.g, rgb.b);
+                extractArtworkPalette(coverSrc, (colors) => {
+                    if (colors) applyPlaylistMultiTint(colors);
                     else applyPlaylistTint(253, 224, 71);
                 });
             } else {
@@ -2897,7 +3137,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (heroName) heroName.textContent = artistName;
         if (heroDesc) heroDesc.textContent = '';
-        if (trackCountEl) trackCountEl.textContent = 'Loading tracks across services...';
+        if (trackCountEl) trackCountEl.textContent = '';
         if (headerCountEl) headerCountEl.textContent = '';
         if (heroImg) { heroImg.src = ''; heroImg.classList.add('hidden'); }
         if (heroPlaceholder) heroPlaceholder.classList.remove('hidden');
@@ -2959,9 +3199,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (loaderEl) loaderEl.classList.add('hidden');
             if (heroDesc) heroDesc.textContent = description;
-            const countStr = `${tracks.length} ${tracks.length === 1 ? 'track' : 'tracks'} found`;
-            if (trackCountEl) trackCountEl.textContent = countStr;
-            if (headerCountEl) headerCountEl.textContent = countStr;
+            if (trackCountEl) trackCountEl.textContent = '';
+            if (headerCountEl) headerCountEl.textContent = '';
 
             // Artwork & Background Tint
             if (artwork) {
