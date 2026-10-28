@@ -4,7 +4,12 @@ const API_BASE = '/api/music-api';
 
 // State Management
 let favorites = JSON.parse(localStorage.getItem('yolk_favorites') || '[]');
-let playlists = JSON.parse(localStorage.getItem('yolk_playlists') || '[]');
+let playlists = JSON.parse(localStorage.getItem('yolk_playlists') || '[]').map(pl => {
+    if (pl && (pl.description === '[object Object]' || pl.description === 'undefined')) {
+        pl.description = '';
+    }
+    return pl;
+});
 let currentAudio = new Audio();
 let activeSource = 'audio'; // 'audio' or 'youtube'
 let ytPlayer = null;
@@ -1716,17 +1721,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!bgArt) return;
 
         let coverSrc = null;
-        if (currentPlayingPlaylistContextId && currentPlayingPlaylistContextId !== 'favorites') {
-            const pl = playlists.find(p => p.id === currentPlayingPlaylistContextId);
-            if (pl && pl.cover) {
-                coverSrc = pl.cover;
-            }
-        }
-        if (!coverSrc && currentTrack) {
+        if (currentTrack) {
             coverSrc = getProxyUrl(currentTrack.artwork_url || currentTrack.image);
         }
 
         if (coverSrc) {
+            bgArt.onerror = () => {
+                bgArt.removeAttribute('src');
+                bgArt.classList.add('opacity-0');
+                bgArt.classList.remove('opacity-80');
+            };
             bgArt.onload = () => {
                 bgArt.classList.remove('opacity-0');
                 bgArt.classList.add('opacity-80');
@@ -1737,6 +1741,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 bgArt.classList.add('opacity-80');
             }
         } else {
+            bgArt.removeAttribute('src');
             bgArt.classList.add('opacity-0');
             bgArt.classList.remove('opacity-80');
         }
@@ -2172,7 +2177,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const pl = playlists.find(p => p.id === playlistId);
             if (!pl) return;
             playlistName = pl.name;
-            playlistDesc = pl.description || 'Custom Playlist';
+            playlistDesc = (pl.description && pl.description !== '[object Object]' && pl.description !== 'undefined') ? pl.description : '';
             trackList = pl.tracks || [];
 
             if (detailArt) {
@@ -2217,6 +2222,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         detailName.textContent = playlistName;
         detailDesc.textContent = playlistDesc;
+        if (detailDesc) {
+            detailDesc.classList.toggle('hidden', !playlistDesc);
+        }
         detailMeta.textContent = `${trackList.length} ${trackList.length === 1 ? 'song' : 'songs'}`;
 
         const tracksCountEl = document.getElementById('playlist-tracks-count');
@@ -2709,7 +2717,7 @@ document.addEventListener('DOMContentLoaded', () => {
         playlistToEditPending = pl;
         playlistModalTitle.textContent = 'Edit Playlist';
         playlistNameInput.value = pl.name || '';
-        playlistDescInput.value = pl.description || '';
+        playlistDescInput.value = (pl.description && pl.description !== '[object Object]' && pl.description !== 'undefined') ? pl.description : '';
         pendingModalCover = pl.cover || null;
         lastUploadedRawImage = (pendingModalCover && !pendingModalCover.startsWith('data:image/svg+xml')) ? pendingModalCover : null;
         renderColorPalette();
@@ -3313,10 +3321,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
+                let cleanDesc = '';
+                if (typeof data.description === 'string') {
+                    const d = data.description.trim();
+                    if (d && d !== '[object Object]' && d !== 'undefined' && d !== 'null') {
+                        cleanDesc = d;
+                    }
+                }
+
                 const newPl = {
                     id: 'pl_' + Date.now(),
                     name: data.name || 'Imported YT Playlist',
-                    description: data.description || `Imported YouTube playlist (${songsOnly.length} songs)`,
+                    description: cleanDesc,
                     cover: data.artwork_url || (songsOnly[0]?.artwork_url || ''),
                     color: '#18181b',
                     icon: 'music',

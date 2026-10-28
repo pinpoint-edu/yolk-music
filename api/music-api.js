@@ -201,6 +201,42 @@ async function fetchWithTimeout(url, options = {}, timeout = 5000) {
   }
 }
 
+function extractCleanText(node) {
+  if (!node) return '';
+  if (typeof node === 'string') {
+    const trimmed = node.trim();
+    return (trimmed === '[object Object]' || trimmed === 'undefined' || trimmed === 'null') ? '' : trimmed;
+  }
+  // If it's a shelf with an inner description (like MusicDescriptionShelf)
+  if (node.description) {
+    const nested = extractCleanText(node.description);
+    if (nested) return nested;
+  }
+  // If it's a Text object with a .text property
+  if (typeof node.text === 'string') {
+    const t = node.text.trim();
+    if (t && t !== '[object Object]') return t;
+  }
+  // If it has runs array
+  if (Array.isArray(node.runs)) {
+    const joined = node.runs.map(r => (typeof r === 'string' ? r : r?.text || '')).join('').trim();
+    if (joined && joined !== '[object Object]') return joined;
+  }
+  // Try calling toString if it's a function
+  if (typeof node.toString === 'function') {
+    try {
+      const str = node.toString();
+      if (str && typeof str === 'string') {
+        const trimmed = str.trim();
+        if (trimmed && trimmed !== '[object Object]' && trimmed !== 'undefined' && trimmed !== 'null') {
+          return trimmed;
+        }
+      }
+    } catch (e) {}
+  }
+  return '';
+}
+
 function hasValidCover(track) {
   if (!track) return false;
   const url = track.artwork_url || track.image || track.thumbnail || track.cover;
@@ -589,7 +625,7 @@ export default async function handler(req, res) {
                 artist_name: albumArtist,
                 release_date: albumYear,
                 meta: albumMeta,
-                description: album.header?.description?.toString() || '',
+                description: extractCleanText(album.header?.description),
                 artwork_url: albumArtwork || (tracks.length > 0 ? tracks[0].artwork_url : ''),
                 song_count: tracks.length,
                 tracks: tracks
@@ -649,7 +685,7 @@ export default async function handler(req, res) {
                     const artistData = await yt.music.getArtist(cleanArtistId);
                     if (artistData) {
                         artistName = artistData.name?.toString() || artistName;
-                        artistDescription = artistData.description?.toString() || '';
+                        artistDescription = extractCleanText(artistData.description);
                         artistArtwork = optimizeThumbnailUrl(artistData.thumbnails?.[0]?.url || '');
                         
                         const ytTracks = (artistData.songs?.contents || []).map(item => {
@@ -796,8 +832,8 @@ export default async function handler(req, res) {
             }
 
             if (playlist && playlist.contents && playlist.contents.length > 0) {
-                name = playlist.header?.title?.toString() || 'Unknown Playlist';
-                description = playlist.header?.description?.toString() || '';
+                name = extractCleanText(playlist.header?.title) || 'Unknown Playlist';
+                description = extractCleanText(playlist.header?.description);
                 artworkUrl = optimizeThumbnailUrl(playlist.header?.thumbnails?.[0]?.url || playlist.header?.thumbnail?.contents?.[0]?.url || '');
                 tracks = (playlist.contents || []).map(item => {
                     const title = item.title?.toString() || 'Unknown Title';
@@ -831,8 +867,9 @@ export default async function handler(req, res) {
                 try {
                     const ytPlaylist = await yt.getPlaylist(rawPlaylistId);
                     if (ytPlaylist) {
-                        name = ytPlaylist.info?.title?.toString() || name;
-                        description = ytPlaylist.info?.description?.toString() || description;
+                        name = extractCleanText(ytPlaylist.info?.title) || name;
+                        const fallbackDesc = extractCleanText(ytPlaylist.info?.description);
+                        if (fallbackDesc) description = fallbackDesc;
                         artworkUrl = artworkUrl || optimizeThumbnailUrl(ytPlaylist.info?.thumbnails?.[0]?.url || '');
                         tracks = (ytPlaylist.videos || []).map(item => {
                             const rawId = item.id;

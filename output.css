@@ -945,9 +945,6 @@
   .bg-\[\#FACC15\] {
     background-color: #FACC15;
   }
-  .bg-\[\#FCFBF8\]\/40 {
-    background-color: color-mix(in oklab, #FCFBF8 40%, transparent);
-  }
   .bg-\[var\(--tb-bg\)\] {
     background-color: var(--tb-bg);
   }
