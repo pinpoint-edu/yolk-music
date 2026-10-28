@@ -1823,16 +1823,16 @@ document.addEventListener('DOMContentLoaded', () => {
             bgArt.onerror = () => {
                 bgArt.removeAttribute('src');
                 bgArt.classList.add('opacity-0');
-                bgArt.classList.remove('opacity-40');
+                bgArt.classList.remove('opacity-75');
             };
             bgArt.onload = () => {
                 bgArt.classList.remove('opacity-0');
-                bgArt.classList.add('opacity-40');
+                bgArt.classList.add('opacity-75');
             };
             bgArt.src = coverSrc;
             if (bgArt.complete && bgArt.naturalWidth > 0) {
                 bgArt.classList.remove('opacity-0');
-                bgArt.classList.add('opacity-40');
+                bgArt.classList.add('opacity-75');
             }
             extractArtworkPalette(coverSrc, (colors) => {
                 applyAppleMusicNowPlayingBg(colors);
@@ -1840,7 +1840,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             bgArt.removeAttribute('src');
             bgArt.classList.add('opacity-0');
-            bgArt.classList.remove('opacity-40');
+            bgArt.classList.remove('opacity-75');
             applyAppleMusicNowPlayingBg(null);
         }
     }
@@ -2152,19 +2152,69 @@ document.addEventListener('DOMContentLoaded', () => {
         tintEl.style.opacity = '1';
     }
 
-    function ensureLegibleColor(c, minBrightness = 168) {
-        if (!c) return { r: 240, g: 240, b: 240 };
-        const brightness = 0.299 * c.r + 0.587 * c.g + 0.114 * c.b;
-        if (brightness >= minBrightness) {
-            return { r: c.r, g: c.g, b: c.b };
+    function rgbToHsl(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h = 0, s = 0, l = (max + min) / 2;
+
+        if (max !== min) {
+            const d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            switch (max) {
+                case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+                case g: h = ((b - r) / d + 2) / 6; break;
+                case b: h = ((r - g) / d + 4) / 6; break;
+            }
         }
-        const deficit = minBrightness - brightness;
-        const factor = deficit / (255 - brightness + 0.001);
+        return { h: h * 360, s, l };
+    }
+
+    function hslToRgb(h, s, l) {
+        h = ((h % 360) + 360) % 360;
+        const c = (1 - Math.abs(2 * l - 1)) * s;
+        const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+        const m = l - c / 2;
+        let r = 0, g = 0, b = 0;
+        if (h < 60) { r = c; g = x; b = 0; }
+        else if (h < 120) { r = x; g = c; b = 0; }
+        else if (h < 180) { r = 0; g = c; b = x; }
+        else if (h < 240) { r = 0; g = x; b = c; }
+        else if (h < 300) { r = x; g = 0; b = c; }
+        else { r = c; g = 0; b = x; }
         return {
-            r: Math.min(255, Math.round(c.r + (255 - c.r) * factor * 0.9)),
-            g: Math.min(255, Math.round(c.g + (255 - c.g) * factor * 0.9)),
-            b: Math.min(255, Math.round(c.b + (255 - c.b) * factor * 0.9))
+            r: Math.round((r + m) * 255),
+            g: Math.round((g + m) * 255),
+            b: Math.round((b + m) * 255)
         };
+    }
+
+    function colorDistance(c1, c2) {
+        const rmean = (c1.r + c2.r) / 2;
+        const dr = c1.r - c2.r;
+        const dg = c1.g - c2.g;
+        const db = c1.b - c2.b;
+        return Math.sqrt((((512 + rmean) * dr * dr) >> 8) + 4 * dg * dg + (((767 - rmean) * db * db) >> 8));
+    }
+
+    function ensureVibrantColor(c) {
+        if (!c) return { r: 245, g: 245, b: 245 };
+        let { h, s, l } = rgbToHsl(c.r, c.g, c.b);
+
+        // Boost saturation so colors are punchy, rich, and vibrant (never dull or washed out!)
+        if (s > 0.10) {
+            s = Math.min(1, s * 1.35 + 0.08);
+        }
+
+        // Keep deep colors deep & vibrant without bleaching them to salmon pink!
+        // Only if a color is pitch black (l < 0.20), give it a slight lift so black elements stay visible
+        if (l < 0.20) {
+            l = 0.26;
+        } else if (l > 0.78 && s > 0.25) {
+            // Keep bright colors richly saturated instead of blown out
+            l = 0.68;
+        }
+
+        return hslToRgb(h, s, l);
     }
 
     function extractArtworkPalette(imgUrl, callback) {
@@ -2186,63 +2236,89 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.drawImage(img, 0, 0, 48, 48);
                 const data = ctx.getImageData(0, 0, 48, 48).data;
 
-                const samples = [];
-                for (let i = 0; i < data.length; i += 8) {
+                // Bin colors by quantizing (round to 16) to merge nearby pixels & compute accurate representation
+                const colorMap = new Map();
+                for (let i = 0; i < data.length; i += 4) {
                     const pr = data[i], pg = data[i+1], pb = data[i+2], pa = data[i+3];
-                    if (pa < 140) continue;
+                    if (pa < 120) continue;
 
-                    const max = Math.max(pr, pg, pb);
-                    const min = Math.min(pr, pg, pb);
-                    const delta = max - min;
-                    const lum = (0.299 * pr + 0.587 * pg + 0.114 * pb) / 255;
-                    const sat = max === 0 ? 0 : delta / max;
+                    const qr = Math.round(pr / 16) * 16;
+                    const qg = Math.round(pg / 16) * 16;
+                    const qb = Math.round(pb / 16) * 16;
+                    const key = `${qr},${qg},${qb}`;
 
-                    const score = (sat * 1.6) + (1 - Math.abs(lum - 0.55));
-                    samples.push({ r: pr, g: pg, b: pb, sat, lum, score });
+                    if (!colorMap.has(key)) {
+                        const { h, s, l } = rgbToHsl(pr, pg, pb);
+                        colorMap.set(key, { r: pr, g: pg, b: pb, h, s, l, count: 1 });
+                    } else {
+                        colorMap.get(key).count++;
+                    }
                 }
 
-                if (samples.length === 0) {
+                const candidates = Array.from(colorMap.values());
+                if (candidates.length === 0) {
                     callback(null);
                     return;
                 }
 
-                samples.sort((a, b) => b.score - a.score);
+                // Score candidate colors: strongly favor saturated & vivid tones
+                candidates.forEach(c => {
+                    c.score = (c.s * 3.2) + (1 - Math.abs(c.l - 0.5)) * 1.5 + Math.log(c.count + 1) * 0.4;
+                });
 
-                const picked = [];
-                const isDistinct = (c1, c2, threshold = 60) => {
-                    const dr = c1.r - c2.r;
-                    const dg = c1.g - c2.g;
-                    const db = c1.b - c2.b;
-                    return Math.sqrt(dr * dr + dg * dg + db * db) >= threshold;
-                };
+                // Sort by vibrance score
+                candidates.sort((a, b) => b.score - a.score);
 
-                for (const s of samples) {
-                    if (picked.length >= 4) break;
-                    if (picked.every(p => isDistinct(p, s, 60))) {
-                        picked.push({ r: s.r, g: s.g, b: s.b });
-                    }
-                }
+                // 1st color: The most vibrant dominant color in the artwork (e.g. vibrant pinkish red!)
+                const picked = [candidates[0]];
 
-                if (picked.length < 4) {
-                    for (const s of samples) {
-                        if (picked.length >= 4) break;
-                        if (picked.every(p => isDistinct(p, s, 35))) {
-                            picked.push({ r: s.r, g: s.g, b: s.b });
+                // Use Farthest Point Sampling (Max-Min Distance) to pick the 4 MOST DIFFERENT colors in the artwork!
+                while (picked.length < 4 && picked.length < candidates.length) {
+                    let bestCandidate = null;
+                    let bestDiversityScore = -1;
+
+                    for (const cand of candidates) {
+                        if (picked.includes(cand)) continue;
+
+                        let minDist = Infinity;
+                        for (const p of picked) {
+                            const d = colorDistance(cand, p);
+                            if (d < minDist) minDist = d;
+                        }
+
+                        const diversityScore = minDist * (1 + cand.s * 1.2) * (1 - Math.abs(cand.l - 0.5) * 0.5);
+                        if (diversityScore > bestDiversityScore) {
+                            bestDiversityScore = diversityScore;
+                            bestCandidate = cand;
                         }
                     }
+
+                    if (bestCandidate && bestDiversityScore > 35) {
+                        picked.push(bestCandidate);
+                    } else {
+                        break;
+                    }
                 }
 
+                // If monochromatic or duotone, rotate hues in HSL space for rich complementary accents
                 while (picked.length < 4) {
-                    const base = picked[picked.length - 1] || { r: 250, g: 204, b: 21 };
+                    const base = picked[picked.length - 1];
+                    const rot = (picked.length % 2 === 1) ? 55 : -45;
+                    const newH = (base.h + rot + 360) % 360;
+                    const genRgb = hslToRgb(newH, Math.max(0.7, base.s), Math.max(0.38, Math.min(0.62, base.l)));
                     picked.push({
-                        r: Math.min(255, Math.max(0, Math.round(base.r * 0.88 + 30))),
-                        g: Math.min(255, Math.max(0, Math.round(base.g * 1.08))),
-                        b: Math.min(255, Math.max(0, Math.round(base.b * 0.82 + 35)))
+                        r: genRgb.r,
+                        g: genRgb.g,
+                        b: genRgb.b,
+                        h: newH,
+                        s: Math.max(0.7, base.s),
+                        l: Math.max(0.38, Math.min(0.62, base.l))
                     });
                 }
 
-                const adjusted = picked.map(c => ensureLegibleColor(c, 168));
-                callback(adjusted);
+                // Apply ensureVibrantColor: keeps saturation high, prevents washed-out salmon
+                const vibrantColors = picked.map(c => ensureVibrantColor(c));
+                callback(vibrantColors);
             } catch (_) {
                 callback(null);
             }
@@ -2262,11 +2338,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const [c1, c2, c3, c4] = colors;
         meshEl.style.background = `
-            radial-gradient(circle at 18% 22%, rgba(${c1.r}, ${c1.g}, ${c1.b}, 0.82) 0%, transparent 55%),
-            radial-gradient(circle at 82% 18%, rgba(${c2.r}, ${c2.g}, ${c2.b}, 0.78) 0%, transparent 52%),
-            radial-gradient(circle at 75% 78%, rgba(${c3.r}, ${c3.g}, ${c3.b}, 0.72) 0%, transparent 55%),
-            radial-gradient(circle at 22% 80%, rgba(${c4.r}, ${c4.g}, ${c4.b}, 0.68) 0%, transparent 52%),
-            radial-gradient(circle at 50% 50%, rgba(${c1.r}, ${c1.g}, ${c1.b}, 0.45) 0%, transparent 60%)
+            radial-gradient(circle at 18% 20%, rgba(${c1.r}, ${c1.g}, ${c1.b}, 0.92) 0%, transparent 58%),
+            radial-gradient(circle at 82% 16%, rgba(${c2.r}, ${c2.g}, ${c2.b}, 0.88) 0%, transparent 54%),
+            radial-gradient(circle at 78% 82%, rgba(${c3.r}, ${c3.g}, ${c3.b}, 0.85) 0%, transparent 56%),
+            radial-gradient(circle at 20% 82%, rgba(${c4.r}, ${c4.g}, ${c4.b}, 0.82) 0%, transparent 54%),
+            radial-gradient(circle at 50% 50%, rgba(${c1.r}, ${c1.g}, ${c1.b}, 0.55) 0%, transparent 62%)
         `;
         meshEl.style.opacity = '1';
 
