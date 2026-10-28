@@ -574,10 +574,18 @@ document.addEventListener('DOMContentLoaded', () => {
         searchTabsContainer.querySelectorAll('.search-tab-pill').forEach(btn => {
             btn.addEventListener('click', () => {
                 const tab = btn.getAttribute('data-tab');
-                if (tab === currentSearchTab) return;
+                if (tab === currentSearchTab) {
+                    const searchPage = document.getElementById('page-search');
+                    if (searchPage) searchPage.scrollTo({ top: 0, behavior: 'smooth' });
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    return;
+                }
                 currentSearchTab = tab;
                 updateSearchTabsUI();
                 renderSearchResults();
+                const searchPage = document.getElementById('page-search');
+                if (searchPage) searchPage.scrollTo({ top: 0, behavior: 'smooth' });
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             });
         });
     }

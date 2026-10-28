@@ -786,9 +786,6 @@
   .rounded-\[2\.5rem\] {
     border-radius: 2.5rem;
   }
-  .rounded-\[2rem\] {
-    border-radius: 2rem;
-  }
   .rounded-\[11px\] {
     border-radius: 11px;
   }
@@ -808,6 +805,10 @@
   .border-2 {
     border-style: var(--tw-border-style);
     border-width: 2px;
+  }
+  .border-\[2\.5px\] {
+    border-style: var(--tw-border-style);
+    border-width: 2.5px;
   }
   .border-t {
     border-top-style: var(--tw-border-style);
@@ -940,6 +941,9 @@
   }
   .bg-\[\#F4F4F5\] {
     background-color: #F4F4F5;
+  }
+  .bg-\[\#FACC15\] {
+    background-color: #FACC15;
   }
   .bg-\[\#FCFBF8\]\/40 {
     background-color: color-mix(in oklab, #FCFBF8 40%, transparent);

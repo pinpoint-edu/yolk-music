@@ -598,7 +598,7 @@
 
     <!-- Small Top-Left Logo -->
     <div id="smallLogo" class="fixed top-6 left-8 z-40 flex items-center gap-2 pointer-events-none">
-        <div class="w-6 h-6 bg-black rounded-full shadow-sm"></div>
+        <div class="w-6 h-6 rounded-full bg-[#FACC15] border-2 border-black shadow-sm shrink-0"></div>
         <span class="text-xl font-bold text-black tracking-tight">Yolk!</span>
     </div>
 
@@ -625,7 +625,7 @@
             <div id="large-logo-wrapper">
                 <div class="logo-inner flex flex-col items-center justify-center mb-8">
                     <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-black rounded-full shadow-md"></div>
+                        <div class="w-12 h-12 rounded-full bg-[#FACC15] border-[2.5px] border-black shadow-md shrink-0"></div>
                         <h1 class="text-6xl font-bold text-black tracking-tighter">Yolk!</h1>
                     </div>
                 </div>
@@ -761,7 +761,7 @@
         <div id="now-playing-container" class="now-playing-container relative z-10">
             <!-- Left Side: Cover Art, Metadata, Progress & Buttons -->
             <div class="np-left-col">
-                <div id="now-playing-art" class="w-64 h-64 sm:w-72 sm:h-72 bg-white rounded-[2rem] shadow-[0_24px_50px_-12px_rgba(0,0,0,0.22)] border border-black/10 flex items-center justify-center relative overflow-hidden shrink-0 transition-transform duration-500 hover:scale-[1.02]">
+                <div id="now-playing-art" class="w-64 h-64 sm:w-72 sm:h-72 bg-white rounded-2xl shadow-[0_24px_50px_-12px_rgba(0,0,0,0.22)] border border-black/10 flex items-center justify-center relative overflow-hidden shrink-0 transition-transform duration-500 hover:scale-[1.02]">
                     <img id="now-playing-img" src="" alt="Album Art" class="absolute inset-0 w-full h-full object-cover hidden z-10 transition-opacity duration-300" referrerpolicy="no-referrer">
                     <div id="now-playing-vinyl" class="w-24 h-24 rounded-full bg-black flex items-center justify-center shadow-inner spin-slow z-0">
                         <div class="w-8 h-8 rounded-full bg-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)]"></div>
@@ -1237,6 +1237,38 @@
                     }
                 });
             }
+
+            function scrollToTopOf(hash) {
+                if (hash === 'search') {
+                    const el = document.getElementById('page-search');
+                    if (el) el.scrollTo({ top: 0, behavior: 'smooth' });
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else if (hash === 'library') {
+                    const scrollEl = document.getElementById('page-library-scroll');
+                    if (scrollEl) scrollEl.scrollTo({ top: 0, behavior: 'smooth' });
+                    const pageEl = document.getElementById('page-library');
+                    if (pageEl) pageEl.scrollTo({ top: 0, behavior: 'smooth' });
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else if (hash === 'now-playing') {
+                    const pageEl = document.getElementById('page-now-playing');
+                    if (pageEl) pageEl.scrollTo({ top: 0, behavior: 'smooth' });
+                    const lyricsEl = document.getElementById('lyrics-container');
+                    if (lyricsEl) lyricsEl.scrollTo({ top: 0, behavior: 'smooth' });
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            }
+
+            Object.keys(navLinks).forEach(key => {
+                const link = navLinks[key];
+                if (!link) return;
+                link.addEventListener('click', (e) => {
+                    const currentHash = window.location.hash.replace('#', '') || 'search';
+                    if (currentHash === key) {
+                        e.preventDefault();
+                        scrollToTopOf(key);
+                    }
+                });
+            });
 
             window.addEventListener('hashchange', navigate);
             navigate(); // Trigger on initial load
