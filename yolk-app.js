@@ -1533,6 +1533,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (ytPlayer && typeof ytPlayer.stopVideo === 'function') {
             try { ytPlayer.stopVideo(); } catch (_) {}
         }
+        currentAudio.removeAttribute('src');
         currentAudio.src = streamUrl;
         currentAudio.load();
         const playPromise = currentAudio.play();
@@ -1544,8 +1545,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (document.body.getAttribute('data-page') !== 'now-playing') {
                     bottomPlayer.classList.remove('hidden-force');
                 }
-            }).catch(() => {
+            }).catch(e => {
                 showSpinner(false);
+                if (e.name !== 'AbortError') {
+                    console.warn('Audio playback notice:', e.message);
+                }
             });
         }
     }
@@ -1616,8 +1620,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const videoId = await getYoutubeId(track);
         if (videoId) {
-            // Direct native HTML5 audio stream via Cloudflare Edge Worker (Zero iframes, filter-proof, fast)
-            const streamUrl = `https://yolk-yt-proxy.yolkmusic.workers.dev?id=${encodeURIComponent(videoId)}&mode=stream`;
+            // Direct native HTML5 audio stream via first-party API (auto-recovering, zero iframes, filter-proof)
+            const streamUrl = `/api/music-api?endpoint=stream&id=${encodeURIComponent(videoId)}`;
             currentAudio._activeVideoId = videoId;
             currentAudio._recovering = false;
             loadDirectAudioPlayer(streamUrl);
@@ -1674,10 +1678,10 @@ document.addEventListener('DOMContentLoaded', () => {
             currentAudio._recovering = true;
             const videoId = await getYoutubeId(currentTrack);
             if (videoId) {
-                // Secondary fallback via first-party stream route
-                const fallbackUrl = `/api/music-api?endpoint=stream&id=${encodeURIComponent(videoId)}`;
-                if (!currentAudio.src.includes('endpoint=stream')) {
-                    currentAudio.src = fallbackUrl;
+                // Secondary fallback via direct worker stream route
+                const workerUrl = `https://yolk-yt-proxy.yolkmusic.workers.dev?id=${encodeURIComponent(videoId)}&mode=stream`;
+                if (!currentAudio.src.includes('yolk-yt-proxy')) {
+                    currentAudio.src = workerUrl;
                     currentAudio.load();
                     currentAudio.play().catch(() => {
                         showToast('Playback error: Stream unavailable.');
@@ -1759,7 +1763,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (!currentAudio.src) {
+        if (!currentAudio.src || currentAudio.error) {
             playTrack(currentTrack);
             return;
         }
