@@ -142,12 +142,40 @@ function getDownloadUrl(item) {
 const pendingSearches = new Map();
 async function getYoutubeId(track) {
     if (!track) return null;
-    if (track.youtube_id || track.videoId) return track.youtube_id || track.videoId;
-    if (track.id && typeof track.id === 'string' && track.id.startsWith('ytm-') && !track.id.startsWith('ytm-gen-')) {
-        const rawId = track.id.replace('ytm-', '');
-        track.youtube_id = rawId;
-        track.videoId = rawId;
-        return rawId;
+    if (track.youtube_id || track.videoId || track.video_id) {
+        return track.youtube_id || track.videoId || track.video_id;
+    }
+    if (track.id && typeof track.id === 'string') {
+        if (track.id.startsWith('ytm-') && !track.id.startsWith('ytm-gen-')) {
+            const rawId = track.id.replace('ytm-', '');
+            track.youtube_id = rawId;
+            track.videoId = rawId;
+            return rawId;
+        }
+        if (/^[a-zA-Z0-9_-]{11}$/.test(track.id)) {
+            track.youtube_id = track.id;
+            track.videoId = track.id;
+            return track.id;
+        }
+    }
+    if (track.downloadUrl && Array.isArray(track.downloadUrl)) {
+        for (const d of track.downloadUrl) {
+            const link = d?.link || d?.url || '';
+            const match = link.match(/[?&]id=([a-zA-Z0-9_-]{11})/);
+            if (match) {
+                track.youtube_id = match[1];
+                track.videoId = match[1];
+                return match[1];
+            }
+        }
+    }
+    if (track.url && typeof track.url === 'string') {
+        const match = track.url.match(/(?:v=|\/embed\/|\/v\/|youtu\.be\/|\/shorts\/|^)([a-zA-Z0-9_-]{11})/);
+        if (match) {
+            track.youtube_id = match[1];
+            track.videoId = match[1];
+            return match[1];
+        }
     }
 
     const uid = getTrackUid(track);
@@ -815,8 +843,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    let clearCollapseTimeout = null;
+
     if (searchInput) {
         searchInput.addEventListener('focus', () => {
+            clearTimeout(clearCollapseTimeout);
             if (searchInput.value.trim().length > 0) {
                 document.body.classList.add('is-searching');
                 if (searchTabsContainer) {
@@ -827,6 +858,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         searchInput.addEventListener('input', (e) => {
+            clearTimeout(clearCollapseTimeout);
             const val = e.target.value.trim();
             if (val.length > 0) {
                 document.body.classList.add('is-searching');
@@ -835,25 +867,33 @@ document.addEventListener('DOMContentLoaded', () => {
                     searchTabsContainer.classList.add('flex');
                 }
                 clearTimeout(searchTimeout);
+                // 450ms typing delay before firing search requests
                 searchTimeout = setTimeout(() => {
                     currentSearchQuery = val;
                     searchOffset = 0;
                     performSearch(val, true);
-                }, 250);
+                }, 450);
             } else {
+                clearTimeout(searchTimeout);
                 currentSearchQuery = '';
-                document.body.classList.remove('is-searching');
-                if (searchTabsContainer) {
-                    searchTabsContainer.classList.add('hidden');
-                    searchTabsContainer.classList.remove('flex');
-                }
-                if (searchResults) searchResults.innerHTML = '';
+                // 1.2s delay before collapsing back to center hero mode, allowing user to type something else
+                clearCollapseTimeout = setTimeout(() => {
+                    if (searchInput && !searchInput.value.trim()) {
+                        document.body.classList.remove('is-searching');
+                        if (searchTabsContainer) {
+                            searchTabsContainer.classList.add('hidden');
+                            searchTabsContainer.classList.remove('flex');
+                        }
+                        if (searchResults) searchResults.innerHTML = '';
+                    }
+                }, 1200);
             }
         });
 
-        // Click outside search block when input is empty collapses search state back to center
+        // Click outside search block when input is empty collapses search state back to center immediately
         document.addEventListener('click', (e) => {
             if (searchInput && !searchInput.value.trim() && !e.target.closest('#search-block')) {
+                clearTimeout(clearCollapseTimeout);
                 document.body.classList.remove('is-searching');
                 if (searchTabsContainer) {
                     searchTabsContainer.classList.add('hidden');
@@ -1380,10 +1420,10 @@ document.addEventListener('DOMContentLoaded', () => {
         return card;
     }
 
-    // Creates track list item with Play, Add to Playlist, and Favorite buttons
+    // Creates track list item with Play, Add to Playlist, and Favorite buttons (compact desktop 16:9 ratio fit)
     function createTrackElement(track, onPlayClick, onRemoveClick = null) {
         const div = document.createElement('div');
-        div.className = 'group flex items-center justify-between p-2.5 sm:p-3 rounded-2xl song-row-card mb-2 w-full max-w-full box-border cursor-pointer select-none';
+        div.className = 'group flex items-center justify-between p-2 sm:p-2.5 rounded-xl song-row-card mb-1.5 w-full max-w-full box-border cursor-pointer select-none';
         
         const artwork = getProxyUrl(track.artwork_url || track.image, '50x50');
         const title = track.title || track.name || 'Unknown Title';
@@ -1391,35 +1431,35 @@ document.addEventListener('DOMContentLoaded', () => {
         const durStr = track.duration ? formatTime(track.duration > 1000 ? track.duration / 1000 : track.duration) : '';
 
         div.innerHTML = `
-            <div class="flex items-center gap-3 min-w-0 flex-1 mr-2 overflow-hidden">
-                <div class="w-11 h-11 bg-zinc-100 rounded-xl overflow-hidden shrink-0 relative border border-zinc-200/60 shadow-xs flex items-center justify-center">
+            <div class="flex items-center gap-2.5 min-w-0 flex-1 mr-2 overflow-hidden">
+                <div class="w-9 h-9 sm:w-10 sm:h-10 bg-zinc-100 rounded-lg overflow-hidden shrink-0 relative border border-zinc-200/60 shadow-2xs flex items-center justify-center">
                     ${artwork ? `<img src="${artwork}" alt="${escapeHtml(title)}" class="w-full h-full object-cover" referrerpolicy="no-referrer" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.classList.remove('hidden');">` : ''}
                     <div class="artwork-fallback ${artwork ? 'hidden' : ''} text-zinc-400 flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
                     </div>
                     <div class="absolute inset-0 bg-black/25 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-[1px]">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                     </div>
                 </div>
                 <div class="flex flex-col text-left min-w-0 flex-1 overflow-hidden">
-                    <span class="font-bold text-zinc-900 text-xs sm:text-sm truncate block max-w-full" title="${escapeHtml(title)}">${escapeHtml(title)}</span>
-                    <span class="artist-name-link text-[11px] text-zinc-500 hover:text-zinc-950 font-medium hover:underline cursor-pointer truncate block max-w-full transition-colors inline-block w-fit mt-0.5" title="View artist">${escapeHtml(artist)}</span>
+                    <span class="font-bold text-zinc-900 text-xs sm:text-[13px] truncate block max-w-full" title="${escapeHtml(title)}">${escapeHtml(title)}</span>
+                    <span class="artist-name-link text-[11px] text-zinc-500 hover:text-zinc-950 font-medium hover:underline cursor-pointer truncate block max-w-full transition-colors inline-block w-fit" title="View artist">${escapeHtml(artist)}</span>
                 </div>
             </div>
             <div class="flex items-center gap-1 shrink-0">
                 ${durStr ? `<span class="text-[11px] text-zinc-400 font-semibold mr-1.5 hidden sm:inline">${durStr}</span>` : ''}
-                <button class="add-to-queue-btn text-zinc-400 hover:text-zinc-900 transition-colors p-2 rounded-full hover:bg-zinc-100 cursor-pointer" title="Add to Queue">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                <button class="add-to-queue-btn text-zinc-400 hover:text-zinc-900 transition-colors p-1.5 rounded-full hover:bg-zinc-100 cursor-pointer" title="Add to Queue">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
                 </button>
-                <button class="add-to-pl-btn text-zinc-400 hover:text-zinc-900 transition-colors p-2 rounded-full hover:bg-zinc-100 cursor-pointer" title="Add to Playlist">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+                <button class="add-to-pl-btn text-zinc-400 hover:text-zinc-900 transition-colors p-1.5 rounded-full hover:bg-zinc-100 cursor-pointer" title="Add to Playlist">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
                 </button>
-                <button class="favorite-btn text-zinc-900 hover:scale-110 transition-transform p-2 rounded-full hover:bg-zinc-100 cursor-pointer" title="Favorite">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="${isFavorite(track.id) ? '#18181b' : 'none'}" stroke="#18181b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                <button class="favorite-btn text-zinc-900 hover:scale-110 transition-transform p-1.5 rounded-full hover:bg-zinc-100 cursor-pointer" title="Favorite">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="${isFavorite(track.id) ? '#18181b' : 'none'}" stroke="#18181b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                 </button>
                 ${onRemoveClick ? `
-                <button class="remove-btn text-zinc-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50 cursor-pointer" title="Remove from playlist">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                <button class="remove-btn text-zinc-400 hover:text-red-500 transition-colors p-1.5 rounded-full hover:bg-red-50 cursor-pointer" title="Remove from playlist">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                 </button>
                 ` : ''}
             </div>
@@ -1983,18 +2023,96 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // Keyboard Shortcuts (Spacebar to toggle Play/Pause)
+    // Playback Timing Helpers for Keyboard Navigation & Seeking
+    function getPlaybackDuration() {
+        if (activeSource === 'youtube' && ytPlayer && typeof ytPlayer.getDuration === 'function') {
+            return ytPlayer.getDuration() || (currentTrack?.duration ? currentTrack.duration / 1000 : 0);
+        }
+        return currentAudio.duration || (currentTrack?.duration ? currentTrack.duration / 1000 : 0);
+    }
+
+    function getPlaybackCurrentTime() {
+        if (activeSource === 'youtube' && ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
+            return ytPlayer.getCurrentTime() || 0;
+        }
+        return currentAudio.currentTime || 0;
+    }
+
+    function seekToSeconds(targetSec) {
+        const dur = getPlaybackDuration();
+        const clamped = Math.max(0, Math.min(dur || Infinity, targetSec));
+        if (activeSource === 'youtube' && ytPlayer && typeof ytPlayer.seekTo === 'function') {
+            ytPlayer.seekTo(clamped, true);
+        } else if (currentAudio) {
+            currentAudio.currentTime = clamped;
+        }
+        updateProgressUI(clamped, dur);
+        updateLyricsSync(clamped);
+    }
+
+    // Keyboard Shortcuts: Spacebar (Play/Pause), M (Mute), Arrows (Skip ±5s / Next / Prev), 1-9 (Seek % of song)
     document.addEventListener('keydown', (e) => {
+        const active = document.activeElement;
+        const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
+        if (isInput) return;
+
+        // Spacebar: Toggle Play/Pause
         if (e.code === 'Space' || e.key === ' ' || e.keyCode === 32) {
-            const active = document.activeElement;
-            const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
-            if (!isInput) {
-                e.preventDefault();
-                if (e.repeat) return;
-                if (active && typeof active.blur === 'function') {
-                    active.blur();
+            e.preventDefault();
+            if (e.repeat) return;
+            if (active && typeof active.blur === 'function') active.blur();
+            togglePlayPause();
+            return;
+        }
+
+        // M: Toggle Mute / Unmute
+        if (e.key === 'm' || e.key === 'M' || e.code === 'KeyM') {
+            e.preventDefault();
+            toggleMute();
+            return;
+        }
+
+        // Arrow Keys: Skip forward / backward
+        if (e.key === 'ArrowRight' || e.code === 'ArrowRight') {
+            e.preventDefault();
+            if (e.shiftKey) {
+                playNext();
+            } else {
+                seekToSeconds(getPlaybackCurrentTime() + 5);
+            }
+            return;
+        }
+
+        if (e.key === 'ArrowLeft' || e.code === 'ArrowLeft') {
+            e.preventDefault();
+            if (e.shiftKey) {
+                playPrev();
+            } else {
+                seekToSeconds(getPlaybackCurrentTime() - 5);
+            }
+            return;
+        }
+
+        // Numbers 1-9 (and 0): Seek through track
+        // 1 = very start (0%), 2 = 10%, 3 = 20% ... 9 = 80%, 0 = 90%
+        if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+            const digitMatch = e.code.match(/^(?:Digit|Numpad)([0-9])$/);
+            const numStr = digitMatch ? digitMatch[1] : (e.key >= '0' && e.key <= '9' ? e.key : null);
+            if (numStr !== null) {
+                const num = parseInt(numStr, 10);
+                const dur = getPlaybackDuration();
+                if (dur > 0) {
+                    e.preventDefault();
+                    let fraction = 0;
+                    if (num === 1) {
+                        fraction = 0; // Very start
+                    } else if (num >= 2 && num <= 9) {
+                        fraction = (num - 1) * 0.1; // 2 -> 10%, 3 -> 20% ... 9 -> 80%
+                    } else if (num === 0) {
+                        fraction = 0.9; // 90%
+                    }
+                    seekToSeconds(fraction * dur);
                 }
-                togglePlayPause();
             }
         }
     });

@@ -650,9 +650,6 @@
   .w-10 {
     width: calc(var(--spacing) * 10);
   }
-  .w-11 {
-    width: calc(var(--spacing) * 11);
-  }
   .w-12 {
     width: calc(var(--spacing) * 12);
   }
@@ -730,6 +727,9 @@
   }
   .max-w-\[420px\] {
     max-width: 420px;
+  }
+  .max-w-\[1240px\] {
+    max-width: 1240px;
   }
   .max-w-\[1680px\] {
     max-width: 1680px;
@@ -2130,6 +2130,9 @@
     .sm\:inline {
       display: inline;
     }
+    .sm\:h-10 {
+      height: calc(var(--spacing) * 10);
+    }
     .sm\:h-16 {
       height: calc(var(--spacing) * 16);
     }
@@ -2144,6 +2147,9 @@
     }
     .sm\:h-72 {
       height: calc(var(--spacing) * 72);
+    }
+    .sm\:w-10 {
+      width: calc(var(--spacing) * 10);
     }
     .sm\:w-16 {
       width: calc(var(--spacing) * 16);
@@ -2191,6 +2197,9 @@
     .sm\:gap-5 {
       gap: calc(var(--spacing) * 5);
     }
+    .sm\:p-2\.5 {
+      padding: calc(var(--spacing) * 2.5);
+    }
     .sm\:p-3 {
       padding: calc(var(--spacing) * 3);
     }
@@ -2237,6 +2246,9 @@
     }
     .sm\:text-\[11px\] {
       font-size: 11px;
+    }
+    .sm\:text-\[13px\] {
+      font-size: 13px;
     }
     @media (hover: hover) {
       .sm\:group-hover\/bpvol\:w-20:is(:where(.group\/bpvol):hover *) {
