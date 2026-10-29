@@ -63,115 +63,96 @@ export default {
 };
 
 async function getAudioUrl(videoId) {
-  const clients = [
-    {
-      name: 'ANDROID',
-      ua: 'com.google.android.youtube/19.29.37 (Linux; U; Android 14; en_US)',
-      context: { client: { clientName: 'ANDROID', clientVersion: '19.29.37', androidSdkVersion: 34 } }
-    },
-    {
-      name: 'IOS',
-      ua: 'com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X; en_US)',
-      context: { client: { clientName: 'IOS', clientVersion: '19.29.1', deviceMake: 'Apple', deviceModel: 'iPhone16,2', osName: 'iOS', osVersion: '17.5.1.21F90' } }
-    },
-    {
-      name: 'WEB_REMIX',
-      ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-      context: { client: { clientName: 'WEB_REMIX', clientVersion: '1.20241001.01.00' } }
-    },
-    {
-      name: 'TVHTML5',
-      ua: 'Mozilla/5.0 (SmartTV; Linux) AppleWebKit/537.36',
-      context: { client: { clientName: 'TVHTML5', clientVersion: '7.20250101.00.00' } }
-    }
+  const fetchTasks = [];
+
+  // 1. InnerTube TVHTML5 (Very fast, unencrypted direct stream)
+  fetchTasks.push((async () => {
+    const res = await fetch('https://www.youtube.com/youtubei/v1/player', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (SmartTV; Linux) AppleWebKit/537.36'
+      },
+      body: JSON.stringify({
+        videoId: videoId,
+        context: { client: { clientName: 'TVHTML5', clientVersion: '7.20250101.00.00' } },
+        playbackContext: { contentPlaybackContext: { html5Preference: 'HTML5_PREFER_FORMAT_22' } }
+      })
+    });
+    if (!res.ok) throw new Error('TVHTML5 failed');
+    const data = await res.json();
+    const formats = data.streamingData?.adaptiveFormats || data.streamingData?.formats || [];
+    const audioFormats = formats.filter(f => f.url && (f.mimeType?.includes('audio') || f.audioQuality));
+    if (!audioFormats.length) throw new Error('No TVHTML5 audio');
+    audioFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+    return {
+      url: audioFormats[0].url,
+      mimeType: audioFormats[0].mimeType || 'audio/mp4',
+      userAgent: 'Mozilla/5.0 (SmartTV; Linux) AppleWebKit/537.36',
+      client: 'TVHTML5',
+      title: data.videoDetails?.title || '',
+      artist: data.videoDetails?.author || '',
+      artwork: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+    };
+  })());
+
+  // 2. Invidious Instances in parallel
+  const invidiousInstances = [
+    'https://inv.nadeko.net',
+    'https://invidious.schenkel.eti.br',
+    'https://echostreamz.com',
+    'https://inv.tux.pizza'
   ];
-
-  for (const c of clients) {
-    try {
-      const res = await fetch('https://www.youtube.com/youtubei/v1/player', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': c.ua,
-        },
-        body: JSON.stringify({
-          videoId: videoId,
-          context: c.context,
-          playbackContext: { contentPlaybackContext: { html5Preference: 'HTML5_PREFER_FORMAT_22' } }
-        })
-      });
-      if (!res.ok) continue;
-      const data = await res.json();
-      const formats = data.streamingData?.adaptiveFormats || data.streamingData?.formats || [];
-      const audioFormats = formats.filter(f => f.url && (f.mimeType?.includes('audio') || f.audioQuality));
-      if (!audioFormats.length) continue;
-      audioFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-      const best = audioFormats[0];
-      if (best.url) {
-        return {
-          url: best.url,
-          mimeType: best.mimeType || 'audio/mp4',
-          userAgent: c.ua,
-          client: c.name,
-          title: data.videoDetails?.title || '',
-          artist: data.videoDetails?.author || '',
-          artwork: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
-        };
-      }
-    } catch (_) {}
-  }
-
-  // Fallback to Invidious adaptiveFormats if YouTube InnerTube direct URL is decipher-encrypted
-  const invidiousInstances = ['https://echostreamz.com', 'https://inv.tux.pizza', 'https://invidious.schenkel.eti.br', 'https://inv.nadeko.net'];
   for (const inst of invidiousInstances) {
-    try {
-      const res = await fetch(`${inst}/api/v1/videos/${videoId}?fields=adaptiveFormats`, {
+    fetchTasks.push((async () => {
+      const res = await fetch(`${inst}/api/v1/videos/${videoId}?fields=adaptiveFormats,title,author`, {
         headers: { 'Accept': 'application/json' }
       });
-      if (!res.ok) continue;
+      if (!res.ok) throw new Error('Invidious failed');
       const data = await res.json();
       const audioFormats = (data.adaptiveFormats || []).filter(f => f.type?.includes('audio') && f.url);
-      if (!audioFormats.length) continue;
+      if (!audioFormats.length) throw new Error('No audio');
       audioFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-      const best = audioFormats[0];
-      if (best.url) {
-        return {
-          url: best.url,
-          mimeType: best.type || 'audio/mp4',
-          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-          client: 'Invidious',
-          title: '',
-          artist: '',
-          artwork: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
-        };
-      }
-    } catch (_) {}
+      return {
+        url: audioFormats[0].url,
+        mimeType: audioFormats[0].type || 'audio/mp4',
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        client: 'Invidious',
+        title: data.title || '',
+        artist: data.author || '',
+        artwork: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+      };
+    })());
   }
 
-  // Fallback to Piped API
-  const pipedInstances = ['https://pipedapi.kavin.rocks', 'https://api.piped.privacydev.net'];
+  // 3. Piped API Instances in parallel
+  const pipedInstances = [
+    'https://pipedapi.kavin.rocks',
+    'https://api.piped.privacydev.net'
+  ];
   for (const p of pipedInstances) {
-    try {
+    fetchTasks.push((async () => {
       const res = await fetch(`${p}/streams/${videoId}`, { headers: { 'Accept': 'application/json' } });
-      if (!res.ok) continue;
+      if (!res.ok) throw new Error('Piped failed');
       const data = await res.json();
       const audioStreams = (data.audioStreams || []).filter(s => s.url);
-      if (!audioStreams.length) continue;
+      if (!audioStreams.length) throw new Error('No audio');
       audioStreams.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-      const best = audioStreams[0];
-      if (best.url) {
-        return {
-          url: best.url,
-          mimeType: best.mimeType || 'audio/mp4',
-          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-          client: 'Piped',
-          title: data.title || '',
-          artist: data.uploader || '',
-          artwork: data.thumbnailUrl || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
-        };
-      }
-    } catch (_) {}
+      return {
+        url: audioStreams[0].url,
+        mimeType: audioStreams[0].mimeType || 'audio/mp4',
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        client: 'Piped',
+        title: data.title || '',
+        artist: data.uploader || '',
+        artwork: data.thumbnailUrl || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+      };
+    })());
   }
 
-  return null;
+  try {
+    return await Promise.any(fetchTasks);
+  } catch (_) {
+    return null;
+  }
 }
