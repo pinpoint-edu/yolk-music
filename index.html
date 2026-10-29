@@ -476,8 +476,8 @@
         .sleek-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .sleek-hover:hover { opacity: 0.7; }
         .yolk-active {
-            background-color: #18181b;
-            color: white;
+            background-color: #18181b !important;
+            color: #ffffff !important;
             box-shadow: 0px 4px 10px rgba(24, 24, 27, 0.15);
         }
 
@@ -1594,9 +1594,11 @@
                 // Update nav links
                 Object.keys(navLinks).forEach(key => {
                     if (key === hash) {
-                        navLinks[key].className = 'yolk-active min-w-[105px] whitespace-nowrap shrink-0 text-center select-none text-sm font-medium px-5 h-8 flex items-center justify-center rounded-full sleek-transition';
+                        navLinks[key].className = 'yolk-active min-w-[105px] whitespace-nowrap shrink-0 text-center select-none text-sm font-medium px-5 h-8 flex items-center justify-center rounded-full text-white sleek-transition';
+                        navLinks[key].style.color = '';
                     } else {
                         navLinks[key].className = 'sleek-hover min-w-[105px] whitespace-nowrap shrink-0 text-center select-none text-sm font-medium px-5 h-8 flex items-center justify-center rounded-full text-zinc-600 sleek-transition';
+                        navLinks[key].style.color = '';
                     }
                 });
 

@@ -1774,10 +1774,10 @@ document.addEventListener('DOMContentLoaded', () => {
             currentAudio._recovering = true;
             const videoId = await getYoutubeId(currentTrack);
             if (videoId) {
-                // Secondary fallback via direct worker stream route
-                const workerUrl = `https://yolk-yt-proxy.yolkmusic.workers.dev?id=${encodeURIComponent(videoId)}&mode=stream`;
-                if (!currentAudio.src.includes('yolk-yt-proxy')) {
-                    currentAudio.src = workerUrl;
+                // Retry direct stream with fresh timestamp
+                const retryUrl = `/api/music-api?endpoint=stream&id=${encodeURIComponent(videoId)}&_t=${Date.now()}`;
+                if (!currentAudio.src.includes('_t=')) {
+                    currentAudio.src = retryUrl;
                     currentAudio.load();
                     currentAudio.play().catch(() => {
                         showToast('Playback error: Stream unavailable.');
@@ -2082,9 +2082,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const topB = Math.round(b * alpha + 248 * (1 - alpha));
         const hex = `#${topR.toString(16).padStart(2, '0')}${topG.toString(16).padStart(2, '0')}${topB.toString(16).padStart(2, '0')}`;
 
+        const page = document.body.getAttribute('data-page');
         if (metaTheme) metaTheme.setAttribute('content', hex);
-        document.documentElement.style.backgroundColor = hex;
-        document.body.style.backgroundColor = hex;
+
+        if (page === 'now-playing') {
+            document.documentElement.style.backgroundColor = hex;
+            document.body.style.backgroundColor = hex;
+        } else {
+            // Keep body background #FCFBF8 so top header gradients fade smoothly into the page
+            document.documentElement.style.backgroundColor = '#FCFBF8';
+            document.body.style.backgroundColor = '#FCFBF8';
+        }
     }
     window.updateSafariThemeTint = updateSafariThemeTint;
 
@@ -2093,6 +2101,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const page = document.body.getAttribute('data-page');
         const navSearch = document.getElementById('nav-search');
         const navLibrary = document.getElementById('nav-library');
+        const navNowPlaying = document.getElementById('nav-now-playing');
 
         if (page === 'now-playing' && currentCoverColor) {
             const { r, g, b } = currentCoverColor;
@@ -2106,15 +2115,21 @@ document.addEventListener('DOMContentLoaded', () => {
             // Adaptive contrast for Search & Library buttons on dynamic background
             const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
             const textColor = lum < 0.45 ? '#FFFFFF' : '#18181b';
-            if (navSearch && !navSearch.classList.contains('yolk-active')) {
-                navSearch.style.color = textColor;
+            if (navSearch) {
+                if (navSearch.classList.contains('yolk-active')) navSearch.style.color = '';
+                else navSearch.style.color = textColor;
             }
-            if (navLibrary && !navLibrary.classList.contains('yolk-active')) {
-                navLibrary.style.color = textColor;
+            if (navLibrary) {
+                if (navLibrary.classList.contains('yolk-active')) navLibrary.style.color = '';
+                else navLibrary.style.color = textColor;
+            }
+            if (navNowPlaying && navNowPlaying.classList.contains('yolk-active')) {
+                navNowPlaying.style.color = '';
             }
         } else {
-            if (navSearch && !navSearch.classList.contains('yolk-active')) navSearch.style.color = '';
-            if (navLibrary && !navLibrary.classList.contains('yolk-active')) navLibrary.style.color = '';
+            if (navSearch) navSearch.style.color = '';
+            if (navLibrary) navLibrary.style.color = '';
+            if (navNowPlaying) navNowPlaying.style.color = '';
             if (topNav) {
                 topNav.style.backgroundColor = '';
                 topNav.style.borderColor = '';
@@ -2523,7 +2538,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentPlaylistTintRgb = { r, g, b };
         const tintEl = document.getElementById('playlist-bg-tint');
         if (!tintEl) return;
-        tintEl.style.background = `linear-gradient(180deg, rgba(${r}, ${g}, ${b}, 0.38) 0%, rgba(${r}, ${g}, ${b}, 0.22) 22%, rgba(${r}, ${g}, ${b}, 0.08) 45%, rgba(252, 251, 248, 0.95) 65%, #FCFBF8 85%)`;
+        tintEl.style.background = `linear-gradient(180deg, rgba(${r}, ${g}, ${b}, 0.38) 0%, rgba(${r}, ${g}, ${b}, 0.22) 25%, rgba(${r}, ${g}, ${b}, 0.08) 50%, rgba(252, 251, 248, 0.8) 75%, #FCFBF8 100%)`;
         tintEl.style.opacity = '1';
         updateSafariThemeTint(r, g, b, 0.38);
     }
@@ -3960,7 +3975,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (heroPlaceholder) heroPlaceholder.classList.add('hidden');
             extractDominantColor(proxiedArt, (rgb) => {
                 if (rgb && tintEl) {
-                    tintEl.style.background = `linear-gradient(180deg, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.38) 0%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.22) 22%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.08) 45%, rgba(252, 251, 248, 0.95) 65%, #FCFBF8 85%)`;
+                    tintEl.style.background = `linear-gradient(180deg, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.38) 0%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.22) 25%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.08) 50%, rgba(252, 251, 248, 0.8) 75%, #FCFBF8 100%)`;
                     tintEl.style.opacity = '1';
                     updateSafariThemeTint(rgb.r, rgb.g, rgb.b, 0.38);
                 }
@@ -4037,14 +4052,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (heroPlaceholder) heroPlaceholder.classList.add('hidden');
                 extractDominantColor(proxiedArt, (rgb) => {
                     if (rgb && tintEl) {
-                        tintEl.style.background = `linear-gradient(180deg, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.38) 0%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.22) 22%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.08) 45%, rgba(252, 251, 248, 0.95) 65%, #FCFBF8 85%)`;
+                        tintEl.style.background = `linear-gradient(180deg, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.38) 0%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.22) 25%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.08) 50%, rgba(252, 251, 248, 0.8) 75%, #FCFBF8 100%)`;
                         tintEl.style.opacity = '1';
                         updateSafariThemeTint(rgb.r, rgb.g, rgb.b, 0.38);
                     }
                 });
             } else {
                 if (tintEl) {
-                    tintEl.style.background = `linear-gradient(180deg, rgba(200, 200, 210, 0.3) 0%, rgba(252, 251, 248, 0.95) 65%, #FCFBF8 85%)`;
+                    tintEl.style.background = `linear-gradient(180deg, rgba(200, 200, 210, 0.3) 0%, rgba(252, 251, 248, 0.8) 75%, #FCFBF8 100%)`;
                     tintEl.style.opacity = '1';
                 }
             }
@@ -4244,14 +4259,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (heroPlaceholder) heroPlaceholder.classList.add('hidden');
                 extractDominantColor(proxiedArt, (rgb) => {
                     if (rgb && tintEl) {
-                        tintEl.style.background = `linear-gradient(180deg, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.38) 0%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.22) 22%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.08) 45%, rgba(252, 251, 248, 0.95) 65%, #FCFBF8 85%)`;
+                        tintEl.style.background = `linear-gradient(180deg, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.38) 0%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.22) 25%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.08) 50%, rgba(252, 251, 248, 0.8) 75%, #FCFBF8 100%)`;
                         tintEl.style.opacity = '1';
                         updateSafariThemeTint(rgb.r, rgb.g, rgb.b, 0.38);
                     }
                 });
             } else {
                 if (tintEl) {
-                    tintEl.style.background = `linear-gradient(180deg, rgba(200, 200, 210, 0.3) 0%, rgba(252, 251, 248, 0.95) 65%, #FCFBF8 85%)`;
+                    tintEl.style.background = `linear-gradient(180deg, rgba(200, 200, 210, 0.3) 0%, rgba(252, 251, 248, 0.8) 75%, #FCFBF8 100%)`;
                     tintEl.style.opacity = '1';
                 }
             }

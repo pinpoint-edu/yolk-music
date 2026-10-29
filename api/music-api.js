@@ -1330,25 +1330,25 @@ export default async function handler(req, res) {
         const videoId = /^[a-zA-Z0-9_-]{11}$/.test(targetId) ? targetId : (videoIdMatch?.[1] ?? null);
         if (!videoId) return res.status(400).json({ error: 'Could not parse video ID' });
 
-        const workerBase = process.env.CF_WORKER_URL || 'https://yolk-yt-proxy.yolkmusic.workers.dev';
+        // 1. Try Cloudflare Worker stream check ONLY if CF_WORKER_URL environment variable is set
+        if (process.env.CF_WORKER_URL) {
+            try {
+                const checkRes = await fetch(`${process.env.CF_WORKER_URL}?id=${videoId}&mode=stream`, {
+                    method: 'HEAD',
+                    signal: AbortSignal.timeout(1500)
+                });
+                if (checkRes.status === 200 || checkRes.status === 206) {
+                    res.setHeader('Cache-Control', 'public, max-age=3600');
+                    return res.redirect(302, `${process.env.CF_WORKER_URL}?id=${videoId}&mode=stream`);
+                }
+            } catch (_) {}
+        }
 
-        // 1. Try Cloudflare Worker stream head check (if deployed & working)
-        try {
-            const checkRes = await fetch(`${workerBase}?id=${videoId}&mode=stream`, {
-                method: 'HEAD',
-                signal: AbortSignal.timeout(1500)
-            });
-            if (checkRes.status === 200 || checkRes.status === 206) {
-                res.setHeader('Cache-Control', 'public, max-age=3600');
-                return res.redirect(302, `${workerBase}?id=${videoId}&mode=stream`);
-            }
-        } catch (_) {}
-
-        // 2. Fast parallel stream resolution across high-health instances
+        // 2. Fast parallel stream resolution across high-health instances prioritizing iOS Safari-compatible MP4 (AAC)
         const streamInstances = [
-            'https://invidious.schenkel.eti.br',
+            'https://yt.chocolatemoo53.com',
             'https://echostreamz.com',
-            'https://inv.nadeko.net',
+            'https://invidious.schenkel.eti.br',
             'https://inv.tux.pizza'
         ];
 
@@ -1362,9 +1362,19 @@ export default async function handler(req, res) {
                 const data = await vidRes.json();
                 const audioFormats = (data.adaptiveFormats || []).filter(f => f.type?.includes('audio') && f.url);
                 if (!audioFormats.length) throw new Error('No audio ' + inst);
-                audioFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
 
-                const rawUrl = audioFormats[0].url;
+                // Prioritize audio/mp4 (AAC/m4a, itag 140) for native HTML5 audio compatibility on iOS Safari and WebKit
+                const mp4Formats = audioFormats.filter(f => f.type?.includes('audio/mp4') || f.container === 'm4a');
+                let chosenFormat;
+                if (mp4Formats.length > 0) {
+                    mp4Formats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+                    chosenFormat = mp4Formats[0];
+                } else {
+                    audioFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+                    chosenFormat = audioFormats[0];
+                }
+
+                const rawUrl = chosenFormat.url;
                 let streamUrl = rawUrl;
                 try {
                     const u = new URL(rawUrl);
