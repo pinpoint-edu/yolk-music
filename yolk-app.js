@@ -1616,12 +1616,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const videoId = await getYoutubeId(track);
         if (videoId) {
-            loadYouTubePlayer(videoId);
+            // Prioritize native HTML5 audio stream via first-party API endpoint (filter-proof, zero iframe)
+            const streamUrl = `/api/music-api?endpoint=stream&id=${encodeURIComponent(videoId)}`;
+            currentAudio._activeVideoId = videoId;
+            loadDirectAudioPlayer(streamUrl);
             return;
         }
 
         let streamUrl = getDownloadUrl(track);
-        if (streamUrl && !streamUrl.includes('endpoint=stream')) {
+        if (streamUrl) {
             loadDirectAudioPlayer(streamUrl);
             return;
         }
@@ -1670,6 +1673,17 @@ document.addEventListener('DOMContentLoaded', () => {
             currentAudio._recovering = true;
             const videoId = await getYoutubeId(currentTrack);
             if (videoId) {
+                // If Vercel direct stream failed, try Cloudflare Worker stream directly
+                const cfWorkerStream = `https://yolk-yt-proxy.yolkmusic.workers.dev?id=${encodeURIComponent(videoId)}&mode=stream`;
+                if (!currentAudio.src.includes('yolk-yt-proxy')) {
+                    currentAudio.src = cfWorkerStream;
+                    currentAudio.load();
+                    currentAudio.play().catch(() => {
+                        // Emergency fallback to YouTube player only if all native audio streams fail
+                        loadYouTubePlayer(videoId);
+                    });
+                    return;
+                }
                 loadYouTubePlayer(videoId);
                 return;
             }

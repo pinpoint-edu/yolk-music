@@ -1322,6 +1322,79 @@ export default async function handler(req, res) {
         return res.status(404).json({ error: 'Media URL or ID could not be resolved via Cobalt' });
     }
 
+async function getDirectAudioFormat(videoId) {
+  try {
+    const yt = await getYoutube();
+    if (yt) {
+      const info = await yt.getBasicInfo(videoId);
+      const format = info.chooseFormat({ type: 'audio', quality: 'best' });
+      if (format) {
+        const url = format.decipher(yt.session.player);
+        if (url) {
+          return {
+            url,
+            mimeType: format.mime_type || 'audio/mp4',
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          };
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Innertube stream resolution error:', e.message);
+  }
+
+  const clients = [
+    {
+      name: 'ANDROID',
+      ua: 'com.google.android.youtube/19.29.37 (Linux; U; Android 14; en_US)',
+      context: { client: { clientName: 'ANDROID', clientVersion: '19.29.37', androidSdkVersion: 34 } }
+    },
+    {
+      name: 'IOS',
+      ua: 'com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X; en_US)',
+      context: { client: { clientName: 'IOS', clientVersion: '19.29.1', deviceMake: 'Apple', deviceModel: 'iPhone16,2', osName: 'iOS', osVersion: '17.5.1.21F90' } }
+    },
+    {
+      name: 'TVHTML5',
+      ua: 'Mozilla/5.0 (SmartTV; Linux) AppleWebKit/537.36',
+      context: { client: { clientName: 'TVHTML5', clientVersion: '7.20250101.00.00' } }
+    }
+  ];
+
+  for (const c of clients) {
+    try {
+      const res = await fetch('https://www.youtube.com/youtubei/v1/player', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': c.ua,
+        },
+        body: JSON.stringify({
+          videoId: videoId,
+          context: c.context,
+          playbackContext: { contentPlaybackContext: { html5Preference: 'HTML5_PREFER_FORMAT_22' } }
+        })
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const formats = data.streamingData?.adaptiveFormats || data.streamingData?.formats || [];
+      const audioFormats = formats.filter(f => f.url && (f.mimeType?.includes('audio') || f.audioQuality));
+      if (!audioFormats.length) continue;
+      audioFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+      const best = audioFormats[0];
+      if (best.url) {
+        return {
+          url: best.url,
+          mimeType: best.mimeType || 'audio/mp4',
+          userAgent: c.ua
+        };
+      }
+    } catch (_) {}
+  }
+
+  return null;
+}
+
     if (endpoint === 'stream') {
         const targetId = id || req.query.id || req.query.url;
         if (!targetId) return res.status(400).json({ error: 'Missing stream id or url' });
@@ -1330,8 +1403,44 @@ export default async function handler(req, res) {
         const videoId = /^[a-zA-Z0-9_-]{11}$/.test(targetId) ? targetId : (videoIdMatch?.[1] ?? null);
         if (!videoId) return res.status(400).json({ error: 'Could not parse video ID' });
 
+        const directAudio = await getDirectAudioFormat(videoId);
+        if (directAudio && directAudio.url) {
+            const range = req.headers.range;
+            const upstreamHeaders = {
+                'User-Agent': directAudio.userAgent,
+                'Accept': '*/*',
+                'Accept-Encoding': 'identity'
+            };
+            if (range) upstreamHeaders['Range'] = range;
+
+            try {
+                const upstream = await fetch(directAudio.url, { headers: upstreamHeaders });
+                res.status(upstream.status);
+                res.setHeader('Content-Type', upstream.headers.get('content-type') || directAudio.mimeType || 'audio/mp4');
+                res.setHeader('Accept-Ranges', 'bytes');
+                res.setHeader('Cache-Control', 'public, max-age=3600');
+                if (upstream.headers.get('content-range')) {
+                    res.setHeader('Content-Range', upstream.headers.get('content-range'));
+                }
+                if (upstream.headers.get('content-length')) {
+                    res.setHeader('Content-Length', upstream.headers.get('content-length'));
+                }
+
+                if (upstream.body) {
+                    const { Readable } = await import('stream');
+                    const { pipeline } = await import('stream/promises');
+                    const nodeStream = Readable.fromWeb(upstream.body);
+                    await pipeline(nodeStream, res);
+                    return;
+                }
+            } catch (err) {
+                console.warn('Stream piping error, falling back to worker:', err.message);
+            }
+        }
+
+        const workerBase = process.env.CF_WORKER_URL || 'https://yolk-yt-proxy.yolkmusic.workers.dev';
         res.setHeader('Cache-Control', 'no-store');
-        return res.redirect(302, `https://pinpoint-yt-proxy.wyattbelknap67.workers.dev?id=${videoId}&mode=stream`);
+        return res.redirect(302, `${workerBase}?id=${videoId}&mode=stream`);
     }
 
     return res.status(404).json({ error: 'Endpoint not found' });

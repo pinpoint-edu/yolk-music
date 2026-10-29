@@ -122,7 +122,7 @@ async function getAudioUrl(videoId) {
   }
 
   // Fallback to Invidious adaptiveFormats if YouTube InnerTube direct URL is decipher-encrypted
-  const invidiousInstances = ['https://echostreamz.com', 'https://inv.tux.pizza', 'https://invidious.schenkel.eti.br'];
+  const invidiousInstances = ['https://echostreamz.com', 'https://inv.tux.pizza', 'https://invidious.schenkel.eti.br', 'https://inv.nadeko.net'];
   for (const inst of invidiousInstances) {
     try {
       const res = await fetch(`${inst}/api/v1/videos/${videoId}?fields=adaptiveFormats`, {
@@ -143,6 +143,31 @@ async function getAudioUrl(videoId) {
           title: '',
           artist: '',
           artwork: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+        };
+      }
+    } catch (_) {}
+  }
+
+  // Fallback to Piped API
+  const pipedInstances = ['https://pipedapi.kavin.rocks', 'https://api.piped.privacydev.net'];
+  for (const p of pipedInstances) {
+    try {
+      const res = await fetch(`${p}/streams/${videoId}`, { headers: { 'Accept': 'application/json' } });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const audioStreams = (data.audioStreams || []).filter(s => s.url);
+      if (!audioStreams.length) continue;
+      audioStreams.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+      const best = audioStreams[0];
+      if (best.url) {
+        return {
+          url: best.url,
+          mimeType: best.mimeType || 'audio/mp4',
+          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+          client: 'Piped',
+          title: data.title || '',
+          artist: data.uploader || '',
+          artwork: data.thumbnailUrl || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
         };
       }
     } catch (_) {}

@@ -1,4 +1,4 @@
-const WORKER_BASE = 'https://pinpoint-yt-gateway.wyattbelknap67.workers.dev';
+const WORKER_BASE = process.env.CF_WORKER_URL || 'https://yolk-yt-proxy.yolkmusic.workers.dev';
 
 async function extractCobaltMedia(urlOrId) {
   let str = String(urlOrId || '').trim();
