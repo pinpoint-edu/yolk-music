@@ -990,14 +990,16 @@ document.addEventListener('DOMContentLoaded', () => {
             searchResults.appendChild(bestAlbumCard);
         }
 
-        // Panoramic 4-Column Layout: Songs (Left), Albums (Left Middle), Playlists (Right Middle), Artists (Right)
-        // Each column is a dedicated, full-viewport scroll menu without excessive bottom negative space
-        const columnsGrid = document.createElement('div');
-        columnsGrid.className = 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 w-full mt-2 items-start';
+        // Asymmetric Bento Grid:
+        // Left Column (58% width, lg:col-span-7): Full-height immersive Songs pane with independent scroll
+        // Right Column (42% width, lg:col-span-5): 2-Column Bento subgrid stacking Albums (top, sm:col-span-2) and Playlists & Artists (bottom, sm:col-span-1 each)
+        // Because secondary categories have natural max-heights, dead space disappears completely while keeping the full-width dashboard feel!
+        const bentoGrid = document.createElement('div');
+        bentoGrid.className = 'grid grid-cols-1 lg:grid-cols-12 gap-5 w-full mt-2 items-start';
 
-        // 1. Songs Column (Left)
+        // 1. Songs Column (Left: 58% width, lg:col-span-7)
         const songsCol = document.createElement('div');
-        songsCol.className = 'bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-3.5 sm:p-4 shadow-sm flex flex-col min-w-0 h-[calc(100vh-210px)] max-h-[760px] min-h-[460px] overflow-hidden';
+        songsCol.className = 'lg:col-span-7 bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-3.5 sm:p-4 shadow-sm flex flex-col min-w-0 h-[calc(100vh-210px)] max-h-[780px] min-h-[480px] overflow-hidden';
         songsCol.innerHTML = `
             <div class="flex items-center justify-between text-[11px] font-bold text-zinc-500 uppercase tracking-wider pb-2.5 mb-2.5 border-b border-zinc-100 shrink-0">
                 <span class="flex items-center gap-1.5 text-zinc-900 font-extrabold">
@@ -1028,11 +1030,19 @@ document.addEventListener('DOMContentLoaded', () => {
             updateSearchTabsUI();
             renderSearchResults();
         };
-        columnsGrid.appendChild(songsCol);
+        bentoGrid.appendChild(songsCol);
 
-        // 2. Albums Column (Left Middle)
+        // 2. Right Sub-Grid (42% width, lg:col-span-5): 2-Column Bento Subgrid for Albums, Playlists & Artists
+        const rightBento = document.createElement('div');
+        rightBento.className = 'lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full items-start';
+
+        const hasAlbums = albums && albums.length > 0;
+        const hasPlaylists = playlists && playlists.length > 0;
+        const hasArtists = artists && artists.length > 0;
+
+        // A. Albums Bento Card (Top of right side, spans full width of right stack for wide breathing room)
         const albumsCol = document.createElement('div');
-        albumsCol.className = 'bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-3.5 sm:p-4 shadow-sm flex flex-col min-w-0 h-[calc(100vh-210px)] max-h-[760px] min-h-[460px] overflow-hidden';
+        albumsCol.className = 'sm:col-span-2 bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-3.5 sm:p-4 shadow-sm flex flex-col min-w-0 max-h-[270px] overflow-hidden';
         albumsCol.innerHTML = `
             <div class="flex items-center justify-between text-[11px] font-bold text-zinc-500 uppercase tracking-wider pb-2.5 mb-2.5 border-b border-zinc-100 shrink-0">
                 <span class="flex items-center gap-1.5 text-zinc-900 font-extrabold">
@@ -1041,80 +1051,83 @@ document.addEventListener('DOMContentLoaded', () => {
                 </span>
                 <button class="albums-all-btn text-zinc-500 hover:text-zinc-950 normal-case font-semibold text-xs transition-colors hover:underline cursor-pointer">Show all</button>
             </div>
-            <div class="albums-scroll flex-1 overflow-y-auto overflow-x-hidden pr-2 sleek-scrollbar flex flex-col gap-1.5 px-1 py-1"></div>
+            <div class="albums-scroll overflow-y-auto overflow-x-hidden pr-2 sleek-scrollbar flex flex-col gap-1.5 px-1 py-1"></div>
         `;
         const albumsScroll = albumsCol.querySelector('.albums-scroll');
-        if (albums && albums.length > 0) {
+        if (hasAlbums) {
             albums.forEach(album => {
                 albumsScroll.appendChild(createSearchAlbumRow(album));
             });
         } else {
-            albumsScroll.innerHTML = '<div class="py-8 text-center text-xs text-zinc-400 font-medium">No albums found</div>';
+            albumsScroll.innerHTML = '<div class="py-5 text-center text-xs text-zinc-400 font-medium">No albums found</div>';
         }
         albumsCol.querySelector('.albums-all-btn').onclick = () => {
             currentSearchTab = 'albums';
             updateSearchTabsUI();
             renderSearchResults();
         };
-        columnsGrid.appendChild(albumsCol);
+        rightBento.appendChild(albumsCol);
 
-        // 3. Playlists Column (Right Middle)
+        // B. Playlists Bento Card
         const playlistsCol = document.createElement('div');
-        playlistsCol.className = 'bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-3.5 sm:p-4 shadow-sm flex flex-col min-w-0 h-[calc(100vh-210px)] max-h-[760px] min-h-[460px] overflow-hidden';
+        const playlistsSpanClass = (!hasArtists && hasPlaylists) ? 'sm:col-span-2' : 'sm:col-span-1';
+        playlistsCol.className = `${playlistsSpanClass} bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-3.5 sm:p-4 shadow-sm flex flex-col min-w-0 max-h-[270px] overflow-hidden`;
         playlistsCol.innerHTML = `
             <div class="flex items-center justify-between text-[11px] font-bold text-zinc-500 uppercase tracking-wider pb-2.5 mb-2.5 border-b border-zinc-100 shrink-0">
-                <span class="flex items-center gap-1.5 text-zinc-900 font-extrabold">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15V6M18.5 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM12 12H3M16 6H3M12 18H3"></path></svg>
+                <span class="flex items-center gap-1.5 text-zinc-900 font-extrabold truncate">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="shrink-0"><path d="M21 15V6M18.5 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM12 12H3M16 6H3M12 18H3"></path></svg>
                     Playlists (${playlists ? playlists.length : 0})
                 </span>
-                <button class="playlists-all-btn text-zinc-500 hover:text-zinc-950 normal-case font-semibold text-xs transition-colors hover:underline cursor-pointer">Show all</button>
+                <button class="playlists-all-btn text-zinc-500 hover:text-zinc-950 normal-case font-semibold text-xs transition-colors hover:underline cursor-pointer shrink-0">All</button>
             </div>
-            <div class="playlists-scroll flex-1 overflow-y-auto overflow-x-hidden pr-2 sleek-scrollbar flex flex-col gap-1.5 px-1 py-1"></div>
+            <div class="playlists-scroll overflow-y-auto overflow-x-hidden pr-2 sleek-scrollbar flex flex-col gap-1.5 px-1 py-1"></div>
         `;
         const playlistsScroll = playlistsCol.querySelector('.playlists-scroll');
-        if (playlists && playlists.length > 0) {
+        if (hasPlaylists) {
             playlists.forEach(pl => {
                 playlistsScroll.appendChild(createSearchPlaylistRow(pl));
             });
         } else {
-            playlistsScroll.innerHTML = '<div class="py-8 text-center text-xs text-zinc-400 font-medium">No playlists found</div>';
+            playlistsScroll.innerHTML = '<div class="py-5 text-center text-xs text-zinc-400 font-medium">No playlists found</div>';
         }
         playlistsCol.querySelector('.playlists-all-btn').onclick = () => {
             currentSearchTab = 'playlists';
             updateSearchTabsUI();
             renderSearchResults();
         };
-        columnsGrid.appendChild(playlistsCol);
+        rightBento.appendChild(playlistsCol);
 
-        // 4. Artists Column (Right)
+        // C. Artists Bento Card
         const artistsCol = document.createElement('div');
-        artistsCol.className = 'bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-3.5 sm:p-4 shadow-sm flex flex-col min-w-0 h-[calc(100vh-210px)] max-h-[760px] min-h-[460px] overflow-hidden';
+        const artistsSpanClass = (!hasPlaylists && hasArtists) ? 'sm:col-span-2' : 'sm:col-span-1';
+        artistsCol.className = `${artistsSpanClass} bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-3.5 sm:p-4 shadow-sm flex flex-col min-w-0 max-h-[270px] overflow-hidden`;
         artistsCol.innerHTML = `
             <div class="flex items-center justify-between text-[11px] font-bold text-zinc-500 uppercase tracking-wider pb-2.5 mb-2.5 border-b border-zinc-100 shrink-0">
-                <span class="flex items-center gap-1.5 text-zinc-900 font-extrabold">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <span class="flex items-center gap-1.5 text-zinc-900 font-extrabold truncate">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="shrink-0"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                     Artists (${artists ? artists.length : 0})
                 </span>
-                <button class="artists-all-btn text-zinc-500 hover:text-zinc-950 normal-case font-semibold text-xs transition-colors hover:underline cursor-pointer">Show all</button>
+                <button class="artists-all-btn text-zinc-500 hover:text-zinc-950 normal-case font-semibold text-xs transition-colors hover:underline cursor-pointer shrink-0">All</button>
             </div>
-            <div class="artists-scroll flex-1 overflow-y-auto overflow-x-hidden pr-2 sleek-scrollbar flex flex-col gap-1.5 px-1 py-1"></div>
+            <div class="artists-scroll overflow-y-auto overflow-x-hidden pr-2 sleek-scrollbar flex flex-col gap-1.5 px-1 py-1"></div>
         `;
         const artistsScroll = artistsCol.querySelector('.artists-scroll');
-        if (artists && artists.length > 0) {
+        if (hasArtists) {
             artists.forEach(artist => {
                 artistsScroll.appendChild(createSearchArtistRow(artist));
             });
         } else {
-            artistsScroll.innerHTML = '<div class="py-8 text-center text-xs text-zinc-400 font-medium">No artists found</div>';
+            artistsScroll.innerHTML = '<div class="py-5 text-center text-xs text-zinc-400 font-medium">No artists found</div>';
         }
         artistsCol.querySelector('.artists-all-btn').onclick = () => {
             currentSearchTab = 'artists';
             updateSearchTabsUI();
             renderSearchResults();
         };
-        columnsGrid.appendChild(artistsCol);
+        rightBento.appendChild(artistsCol);
 
-        searchResults.appendChild(columnsGrid);
+        bentoGrid.appendChild(rightBento);
+        searchResults.appendChild(bentoGrid);
     }
 
     function renderSearchSongsTab(tracks) {
@@ -2508,11 +2521,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         refreshWheelColor();
-        if (tintWheelModal) tintWheelModal.classList.remove('hidden');
+        if (tintWheelModal) {
+            tintWheelModal.classList.remove('hidden');
+            tintWheelModal.classList.add('active');
+        }
     }
 
     function closeTintWheelModal(applied = false) {
-        if (tintWheelModal) tintWheelModal.classList.add('hidden');
+        if (tintWheelModal) {
+            tintWheelModal.classList.remove('active');
+            tintWheelModal.classList.add('hidden');
+        }
         isWheelDragging = false;
         if (!applied) {
             const tintEl = document.getElementById('playlist-bg-tint');
@@ -2524,6 +2543,14 @@ document.addEventListener('DOMContentLoaded', () => {
         previousBgStyle = null;
         previousBgOpacity = null;
         wheelApplyCallback = null;
+    }
+
+    if (tintWheelModal) {
+        tintWheelModal.addEventListener('click', (e) => {
+            if (e.target === tintWheelModal) {
+                closeTintWheelModal(false);
+            }
+        });
     }
 
     const tintWheelBox = document.getElementById('tint-wheel-box');
@@ -2915,19 +2942,7 @@ document.addEventListener('DOMContentLoaded', () => {
             playlistDesc = 'Your liked songs collection';
             trackList = favorites;
 
-            let favTint = null;
-            try {
-                const raw = localStorage.getItem('yolk_favorites_tint');
-                if (raw) favTint = JSON.parse(raw);
-            } catch (e) {}
-
-            if (favTint && favTint.r !== undefined) {
-                applyPlaylistTint(favTint.r, favTint.g, favTint.b);
-                if (tintDot) tintDot.style.backgroundColor = favTint.hex || `rgb(${favTint.r}, ${favTint.g}, ${favTint.b})`;
-            } else {
-                applyPlaylistTint(225, 225, 230);
-                if (tintDot) tintDot.style.backgroundColor = '#E1E1E6';
-            }
+            applyPlaylistTint(225, 225, 230);
 
             if (detailArt) {
                 detailArt.className = 'w-44 h-44 sm:w-52 sm:h-52 md:w-60 md:h-60 rounded-2xl bg-[#F4F4F5] flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.08)] border border-zinc-200/80 relative';
@@ -2939,6 +2954,7 @@ document.addEventListener('DOMContentLoaded', () => {
             detailArtImg.classList.add('hidden');
             detailArtIcon.classList.remove('hidden');
             detailArtIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="#18181b" stroke="#18181b" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
+            if (tintBtn) tintBtn.classList.add('hidden');
             editBtn.classList.add('hidden');
             deleteBtn.classList.add('hidden');
         } else {
@@ -2986,6 +3002,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (tintDot) tintDot.style.backgroundColor = '#DCDCE4';
             }
 
+            if (tintBtn) tintBtn.classList.remove('hidden');
             editBtn.classList.remove('hidden');
             deleteBtn.classList.remove('hidden');
 
@@ -3005,51 +3022,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (tintBtn) {
             tintBtn.onclick = () => {
-                if (isFav) {
-                    let favTint = null;
-                    try {
-                        const raw = localStorage.getItem('yolk_favorites_tint');
-                        if (raw) favTint = JSON.parse(raw);
-                    } catch (e) {}
-                    openTintWheelModal({ custom_tint: favTint }, (newTint) => {
-                        if (newTint) {
-                            localStorage.setItem('yolk_favorites_tint', JSON.stringify(newTint));
-                            applyPlaylistTint(newTint.r, newTint.g, newTint.b);
-                            if (tintDot) tintDot.style.backgroundColor = newTint.hex;
+                if (isFav || !currentPlaylistContextId || currentPlaylistContextId === 'favorites') return;
+                const pl = playlists.find(p => p.id === currentPlaylistContextId);
+                if (!pl) return;
+                openTintWheelModal(pl, (newTint) => {
+                    pl.custom_tint = newTint;
+                    savePlaylists();
+                    if (newTint) {
+                        applyPlaylistTint(newTint.r, newTint.g, newTint.b);
+                        if (tintDot) tintDot.style.backgroundColor = newTint.hex;
+                    } else {
+                        const coverSrc = pl.cover || (trackList[0] ? getProxyUrl(trackList[0].artwork_url || trackList[0].image, '300x300') : '');
+                        if (coverSrc) {
+                            extractArtworkPalette(coverSrc, (colors) => {
+                                if (colors) {
+                                    applyPlaylistMultiTint(colors);
+                                    if (tintDot) tintDot.style.backgroundColor = colors[0] ? `rgb(${colors[0].r}, ${colors[0].g}, ${colors[0].b})` : '#FDE047';
+                                } else {
+                                    applyPlaylistTint(253, 224, 71);
+                                    if (tintDot) tintDot.style.backgroundColor = '#FDE047';
+                                }
+                            });
                         } else {
-                            localStorage.removeItem('yolk_favorites_tint');
-                            applyPlaylistTint(225, 225, 230);
-                            if (tintDot) tintDot.style.backgroundColor = '#E1E1E6';
+                            applyPlaylistTint(220, 220, 228);
+                            if (tintDot) tintDot.style.backgroundColor = '#DCDCE4';
                         }
-                    });
-                } else {
-                    const pl = playlists.find(p => p.id === playlistId);
-                    if (!pl) return;
-                    openTintWheelModal(pl, (newTint) => {
-                        pl.custom_tint = newTint;
-                        savePlaylists();
-                        if (newTint) {
-                            applyPlaylistTint(newTint.r, newTint.g, newTint.b);
-                            if (tintDot) tintDot.style.backgroundColor = newTint.hex;
-                        } else {
-                            const coverSrc = pl.cover || (trackList[0] ? getProxyUrl(trackList[0].artwork_url || trackList[0].image, '300x300') : '');
-                            if (coverSrc) {
-                                extractArtworkPalette(coverSrc, (colors) => {
-                                    if (colors) {
-                                        applyPlaylistMultiTint(colors);
-                                        if (tintDot) tintDot.style.backgroundColor = colors[0] ? `rgb(${colors[0].r}, ${colors[0].g}, ${colors[0].b})` : '#FDE047';
-                                    } else {
-                                        applyPlaylistTint(253, 224, 71);
-                                        if (tintDot) tintDot.style.backgroundColor = '#FDE047';
-                                    }
-                                });
-                            } else {
-                                applyPlaylistTint(220, 220, 228);
-                                if (tintDot) tintDot.style.backgroundColor = '#DCDCE4';
-                            }
-                        }
-                    });
-                }
+                    }
+                });
             };
         }
 
