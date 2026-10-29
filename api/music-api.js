@@ -1330,35 +1330,21 @@ export default async function handler(req, res) {
         const videoId = /^[a-zA-Z0-9_-]{11}$/.test(targetId) ? targetId : (videoIdMatch?.[1] ?? null);
         if (!videoId) return res.status(400).json({ error: 'Could not parse video ID' });
 
-        const range = req.headers.range;
         const workerBase = process.env.CF_WORKER_URL || 'https://yolk-yt-proxy.yolkmusic.workers.dev';
 
-        // 1. Try Cloudflare Worker stream
+        // 1. Try Cloudflare Worker stream head check (if deployed & working)
         try {
-            const workerHeaders = { 'Accept': '*/*' };
-            if (range) workerHeaders['Range'] = range;
-            const workerRes = await fetch(`${workerBase}?id=${videoId}&mode=stream`, {
-                headers: workerHeaders,
-                signal: AbortSignal.timeout(3500)
+            const checkRes = await fetch(`${workerBase}?id=${videoId}&mode=stream`, {
+                method: 'HEAD',
+                signal: AbortSignal.timeout(1500)
             });
-            if (workerRes.status === 200 || workerRes.status === 206) {
-                const head = {
-                    'Content-Type': workerRes.headers.get('content-type') || 'audio/mp4',
-                    'Accept-Ranges': 'bytes',
-                    'Cache-Control': 'public, max-age=3600',
-                    'Access-Control-Allow-Origin': '*'
-                };
-                const cl = workerRes.headers.get('content-length');
-                if (cl) head['Content-Length'] = cl;
-                const cr = workerRes.headers.get('content-range');
-                if (cr) head['Content-Range'] = cr;
-
-                res.writeHead(workerRes.status, head);
-                return Readable.fromWeb(workerRes.body).pipe(res);
+            if (checkRes.status === 200 || checkRes.status === 206) {
+                res.setHeader('Cache-Control', 'public, max-age=3600');
+                return res.redirect(302, `${workerBase}?id=${videoId}&mode=stream`);
             }
         } catch (_) {}
 
-        // 2. Direct high-performance audio stream tunnel fallback
+        // 2. Fast parallel stream resolution across high-health instances
         const streamInstances = [
             'https://invidious.schenkel.eti.br',
             'https://echostreamz.com',
@@ -1366,16 +1352,16 @@ export default async function handler(req, res) {
             'https://inv.tux.pizza'
         ];
 
-        for (const inst of streamInstances) {
-            try {
+        try {
+            const resolvePromises = streamInstances.map(async (inst) => {
                 const vidRes = await fetch(`${inst}/api/v1/videos/${videoId}?fields=adaptiveFormats`, {
                     headers: { 'Accept': 'application/json' },
-                    signal: AbortSignal.timeout(3500)
+                    signal: AbortSignal.timeout(4000)
                 });
-                if (!vidRes.ok) continue;
+                if (!vidRes.ok) throw new Error('Failed ' + inst);
                 const data = await vidRes.json();
                 const audioFormats = (data.adaptiveFormats || []).filter(f => f.type?.includes('audio') && f.url);
-                if (!audioFormats.length) continue;
+                if (!audioFormats.length) throw new Error('No audio ' + inst);
                 audioFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
 
                 const rawUrl = audioFormats[0].url;
@@ -1386,39 +1372,16 @@ export default async function handler(req, res) {
                         streamUrl = `${inst}${u.pathname}${u.search}`;
                     }
                 } catch (_) {}
+                return streamUrl;
+            });
 
-                const streamHeaders = {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    'Accept': '*/*'
-                };
-                if (range) streamHeaders['Range'] = range;
-
-                const streamRes = await fetch(streamUrl, {
-                    headers: streamHeaders,
-                    signal: AbortSignal.timeout(5000)
-                });
-
-                if (streamRes.status === 200 || streamRes.status === 206) {
-                    const head = {
-                        'Content-Type': streamRes.headers.get('content-type') || audioFormats[0].type || 'audio/mp4',
-                        'Accept-Ranges': 'bytes',
-                        'Cache-Control': 'public, max-age=3600',
-                        'Access-Control-Allow-Origin': '*'
-                    };
-                    const cl = streamRes.headers.get('content-length');
-                    if (cl) head['Content-Length'] = cl;
-                    const cr = streamRes.headers.get('content-range');
-                    if (cr) head['Content-Range'] = cr;
-
-                    res.writeHead(streamRes.status, head);
-                    return Readable.fromWeb(streamRes.body).pipe(res);
-                }
-            } catch (_) {
-                continue;
-            }
+            const resolvedUrl = await Promise.any(resolvePromises);
+            res.setHeader('Cache-Control', 'public, max-age=3600');
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            return res.redirect(302, resolvedUrl);
+        } catch (err) {
+            return res.status(502).json({ error: 'Audio stream temporarily unavailable' });
         }
-
-        return res.status(502).json({ error: 'Audio stream temporarily unavailable' });
     }
 
     return res.status(404).json({ error: 'Endpoint not found' });
