@@ -714,6 +714,33 @@ export default async function handler(req, res) {
                 artistName = decodeURIComponent(cleanArtistId);
             }
 
+            // Look up artist profile picture (PFP) specifically from YouTube Music artist search if not yet found
+            if (!artistArtwork && artistName) {
+                try {
+                    const artistSearch = await yt.music.search(artistName, 'artist').catch(() => null);
+                    const artistsFound = artistSearch?.contents || [];
+                    const matchedArtist = artistsFound.find(a => (a.name?.toString() || a.title?.toString() || '').toLowerCase().trim() === artistName.toLowerCase().trim()) || artistsFound[0];
+                    if (matchedArtist) {
+                        const thumb = matchedArtist.thumbnails?.[0]?.url || matchedArtist.thumbnail?.url;
+                        if (thumb) {
+                            artistArtwork = optimizeThumbnailUrl(thumb);
+                        }
+                        const browseId = matchedArtist.id || matchedArtist.endpoint?.payload?.browseId;
+                        if (browseId && (browseId.startsWith('UC') || browseId.startsWith('FEmusic'))) {
+                            try {
+                                const fullArtistData = await yt.music.getArtist(browseId);
+                                if (fullArtistData?.thumbnails?.[0]?.url) {
+                                    artistArtwork = optimizeThumbnailUrl(fullArtistData.thumbnails[0].url);
+                                }
+                                if (fullArtistData?.description && !artistDescription) {
+                                    artistDescription = extractCleanText(fullArtistData.description);
+                                }
+                            } catch (_) {}
+                        }
+                    }
+                } catch (_) {}
+            }
+
             const [ytSearchRes, argonRes, audiusRes] = await Promise.all([
                 yt.music.search(artistName).catch(() => null),
                 fetchWithTimeout(`https://argon.global.ssl.fastly.net/api/search?query=${encodeURIComponent(artistName)}&offset=0&limit=30`)

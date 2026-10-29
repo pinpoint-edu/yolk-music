@@ -28,20 +28,33 @@ let parsedLyrics = [];
 let currentLyricsTrackId = null;
 let trackToAddPending = null;
 let playlistToEditPending = null;
+const artistPfpMap = new Map();
 
 // Inject custom styles
 const dynamicStyle = document.createElement('style');
 dynamicStyle.innerHTML = `
     .bubbly-hover {
-        transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+        transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
     }
     .bubbly-hover:hover {
-        transform: scale(1.03) !important;
+        transform: scale(1.02) !important;
     }
     .bubbly-hover:active {
         transform: scale(0.97) !important;
     }
     
+    .scroll-row-hover {
+        transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s ease !important;
+    }
+    .scroll-row-hover:hover {
+        transform: translateY(-1.5px) !important;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06) !important;
+        border-color: rgba(0, 0, 0, 0.18) !important;
+    }
+    .scroll-row-hover:active {
+        transform: scale(0.99) !important;
+    }
+
     .hidden-force {
         opacity: 0 !important;
         pointer-events: none !important;
@@ -767,6 +780,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     artists: Array.isArray(data.artists) ? data.artists : [],
                     playlists: Array.isArray(data.playlists) ? data.playlists : []
                 };
+                if (Array.isArray(data.artists)) {
+                    data.artists.forEach(a => {
+                        if (a && a.name && a.artwork_url) {
+                            artistPfpMap.set(a.name.toLowerCase().trim(), a.artwork_url);
+                        }
+                    });
+                }
             } else if (data && Array.isArray(data.tracks) && data.tracks.length > 0) {
                 // Append more tracks if in infinite scroll
                 const existingVids = new Set(currentSearchData.tracks.map(t => t.youtube_id || t.id));
@@ -810,16 +830,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function createSearchAlbumRow(album) {
         const div = document.createElement('div');
-        div.className = 'group flex items-center justify-between p-2 rounded-xl bg-white/90 backdrop-blur-sm border border-zinc-200/70 hover:border-zinc-300 hover:shadow-xs transition-all cursor-pointer bubbly-hover mb-1';
+        div.className = 'group flex items-center justify-between p-2 rounded-xl bg-white/90 backdrop-blur-sm border border-zinc-200/70 hover:border-zinc-300 hover:shadow-xs transition-all cursor-pointer scroll-row-hover mb-1 w-full max-w-full box-border overflow-hidden';
         const artwork = getProxyUrl(album.artwork_url, '80x80');
         div.innerHTML = `
-            <div class="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
+            <div class="flex items-center gap-2.5 min-w-0 flex-1 mr-2 overflow-hidden">
                 <div class="w-10 h-10 bg-zinc-100 rounded-xl overflow-hidden shrink-0 relative border border-zinc-200/50 flex items-center justify-center">
                     ${artwork ? `<img src="${artwork}" alt="${escapeHtml(album.name)}" class="w-full h-full object-cover">` : `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="text-zinc-400"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>`}
                 </div>
-                <div class="flex flex-col text-left min-w-0">
-                    <span class="font-bold text-zinc-900 text-xs truncate">${escapeHtml(album.name)}</span>
-                    <span class="text-[11px] text-zinc-500 truncate mt-0.5">${escapeHtml(album.artist_name || 'Album')}</span>
+                <div class="flex flex-col text-left min-w-0 flex-1 overflow-hidden">
+                    <span class="font-bold text-zinc-900 text-xs truncate block max-w-full" title="${escapeHtml(album.name)}">${escapeHtml(album.name)}</span>
+                    <span class="text-[11px] text-zinc-500 truncate block max-w-full mt-0.5" title="${escapeHtml(album.artist_name || 'Album')}">${escapeHtml(album.artist_name || 'Album')}</span>
                 </div>
             </div>
             <span class="text-[9px] uppercase font-bold text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-full shrink-0">Album</span>
@@ -834,16 +854,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function createSearchPlaylistRow(playlist) {
         const div = document.createElement('div');
-        div.className = 'group flex items-center justify-between p-2 rounded-xl bg-white/90 backdrop-blur-sm border border-zinc-200/70 hover:border-zinc-300 hover:shadow-xs transition-all cursor-pointer bubbly-hover mb-1';
+        div.className = 'group flex items-center justify-between p-2 rounded-xl bg-white/90 backdrop-blur-sm border border-zinc-200/70 hover:border-zinc-300 hover:shadow-xs transition-all cursor-pointer scroll-row-hover mb-1 w-full max-w-full box-border overflow-hidden';
         const artwork = getProxyUrl(playlist.artwork_url, '80x80');
         div.innerHTML = `
-            <div class="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
+            <div class="flex items-center gap-2.5 min-w-0 flex-1 mr-2 overflow-hidden">
                 <div class="w-10 h-10 bg-zinc-100 rounded-xl overflow-hidden shrink-0 relative border border-zinc-200/50 flex items-center justify-center">
                     ${artwork ? `<img src="${artwork}" alt="${escapeHtml(playlist.name)}" class="w-full h-full object-cover">` : `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="text-zinc-400"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>`}
                 </div>
-                <div class="flex flex-col text-left min-w-0">
-                    <span class="font-bold text-zinc-900 text-xs truncate">${escapeHtml(playlist.name)}</span>
-                    <span class="text-[11px] text-zinc-500 truncate mt-0.5">${playlist.song_count ? `${playlist.song_count} songs` : 'Playlist'}</span>
+                <div class="flex flex-col text-left min-w-0 flex-1 overflow-hidden">
+                    <span class="font-bold text-zinc-900 text-xs truncate block max-w-full" title="${escapeHtml(playlist.name)}">${escapeHtml(playlist.name)}</span>
+                    <span class="text-[11px] text-zinc-500 truncate block max-w-full mt-0.5">${playlist.song_count ? `${playlist.song_count} songs` : 'Playlist'}</span>
                 </div>
             </div>
             <button class="pl-play-btn w-7 h-7 rounded-full bg-zinc-900 text-white flex items-center justify-center shrink-0 hover:scale-105 active:scale-95 transition-all shadow-xs" title="Play Playlist">
@@ -874,15 +894,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function createSearchArtistRow(artist) {
         const div = document.createElement('div');
-        div.className = 'group flex items-center justify-between p-2 rounded-xl bg-white/90 backdrop-blur-sm border border-zinc-200/70 hover:border-zinc-300 hover:shadow-xs transition-all cursor-pointer bubbly-hover mb-1';
+        div.className = 'group flex items-center justify-between p-2 rounded-xl bg-white/90 backdrop-blur-sm border border-zinc-200/70 hover:border-zinc-300 hover:shadow-xs transition-all cursor-pointer scroll-row-hover mb-1 w-full max-w-full box-border overflow-hidden';
         const artwork = getProxyUrl(artist.artwork_url, '80x80');
         div.innerHTML = `
-            <div class="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
+            <div class="flex items-center gap-2.5 min-w-0 flex-1 mr-2 overflow-hidden">
                 <div class="w-10 h-10 bg-zinc-100 rounded-full overflow-hidden shrink-0 relative border border-zinc-200/50 flex items-center justify-center shadow-xs">
                     ${artwork ? `<img src="${artwork}" alt="${escapeHtml(artist.name)}" class="w-full h-full object-cover">` : `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="text-zinc-400"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`}
                 </div>
-                <div class="flex flex-col text-left min-w-0">
-                    <span class="font-bold text-zinc-900 text-xs truncate">${escapeHtml(artist.name)}</span>
+                <div class="flex flex-col text-left min-w-0 flex-1 overflow-hidden">
+                    <span class="font-bold text-zinc-900 text-xs truncate block max-w-full" title="${escapeHtml(artist.name)}">${escapeHtml(artist.name)}</span>
                     <span class="text-[9px] uppercase font-bold text-blue-600 mt-0.5">Artist</span>
                 </div>
             </div>
@@ -890,7 +910,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         div.addEventListener('click', () => {
             if (typeof window.loadArtistView === 'function') {
-                window.loadArtistView(artist.name);
+                window.loadArtistView(artist.name, artist.artwork_url);
             }
         });
         return div;
@@ -906,7 +926,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (topArtistMatch) {
             const bestCard = document.createElement('div');
-            bestCard.className = 'group p-4 rounded-2xl bg-white/95 backdrop-blur-md border border-zinc-200/80 hover:border-zinc-300 hover:shadow-md transition-all cursor-pointer bubbly-hover flex items-center justify-between mb-4';
+            bestCard.className = 'group p-4 rounded-2xl bg-white/95 backdrop-blur-md border border-zinc-200/80 hover:border-zinc-300 hover:shadow-md transition-all cursor-pointer scroll-row-hover flex items-center justify-between mb-4';
             const art = getProxyUrl(topArtistMatch.artwork_url, '200x200');
             bestCard.innerHTML = `
                 <div class="flex items-center gap-4 min-w-0">
@@ -923,13 +943,13 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             bestCard.addEventListener('click', () => {
                 if (typeof window.loadArtistView === 'function') {
-                    window.loadArtistView(topArtistMatch.name);
+                    window.loadArtistView(topArtistMatch.name, topArtistMatch.artwork_url);
                 }
             });
             searchResults.appendChild(bestCard);
         } else if (topAlbumMatch) {
             const bestAlbumCard = document.createElement('div');
-            bestAlbumCard.className = 'group p-4 rounded-2xl bg-white/95 backdrop-blur-md border border-zinc-200/80 hover:border-zinc-300 hover:shadow-md transition-all cursor-pointer bubbly-hover flex items-center justify-between mb-4';
+            bestAlbumCard.className = 'group p-4 rounded-2xl bg-white/95 backdrop-blur-md border border-zinc-200/80 hover:border-zinc-300 hover:shadow-md transition-all cursor-pointer scroll-row-hover flex items-center justify-between mb-4';
             const art = getProxyUrl(topAlbumMatch.artwork_url, '200x200');
             bestAlbumCard.innerHTML = `
                 <div class="flex items-center gap-4 min-w-0">
@@ -953,13 +973,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Panoramic 4-Column Layout: Songs (Left), Albums (Left Middle), Playlists (Right Middle), Artists (Right)
-        // Each column features an independent scroll menu
+        // Each column is a dedicated, full-viewport scroll menu without excessive bottom negative space
         const columnsGrid = document.createElement('div');
         columnsGrid.className = 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 w-full mt-2 items-start';
 
         // 1. Songs Column (Left)
         const songsCol = document.createElement('div');
-        songsCol.className = 'bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-3.5 sm:p-4 shadow-sm flex flex-col min-w-0';
+        songsCol.className = 'bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-3.5 sm:p-4 shadow-sm flex flex-col min-w-0 h-[calc(100vh-210px)] max-h-[760px] min-h-[460px] overflow-hidden';
         songsCol.innerHTML = `
             <div class="flex items-center justify-between text-[11px] font-bold text-zinc-500 uppercase tracking-wider pb-2.5 mb-2.5 border-b border-zinc-100 shrink-0">
                 <span class="flex items-center gap-1.5 text-zinc-900 font-extrabold">
@@ -968,7 +988,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </span>
                 <button class="songs-all-btn text-zinc-500 hover:text-zinc-950 normal-case font-semibold text-xs transition-colors hover:underline cursor-pointer">Show all</button>
             </div>
-            <div class="songs-scroll max-h-[64vh] overflow-y-auto pr-1 sleek-scrollbar flex flex-col gap-1"></div>
+            <div class="songs-scroll flex-1 overflow-y-auto overflow-x-hidden pr-2 sleek-scrollbar flex flex-col gap-1.5 px-1 py-1"></div>
         `;
         const songsScroll = songsCol.querySelector('.songs-scroll');
         if (tracks && tracks.length > 0) {
@@ -994,7 +1014,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 2. Albums Column (Left Middle)
         const albumsCol = document.createElement('div');
-        albumsCol.className = 'bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-3.5 sm:p-4 shadow-sm flex flex-col min-w-0';
+        albumsCol.className = 'bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-3.5 sm:p-4 shadow-sm flex flex-col min-w-0 h-[calc(100vh-210px)] max-h-[760px] min-h-[460px] overflow-hidden';
         albumsCol.innerHTML = `
             <div class="flex items-center justify-between text-[11px] font-bold text-zinc-500 uppercase tracking-wider pb-2.5 mb-2.5 border-b border-zinc-100 shrink-0">
                 <span class="flex items-center gap-1.5 text-zinc-900 font-extrabold">
@@ -1003,7 +1023,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </span>
                 <button class="albums-all-btn text-zinc-500 hover:text-zinc-950 normal-case font-semibold text-xs transition-colors hover:underline cursor-pointer">Show all</button>
             </div>
-            <div class="albums-scroll max-h-[64vh] overflow-y-auto pr-1 sleek-scrollbar flex flex-col gap-1"></div>
+            <div class="albums-scroll flex-1 overflow-y-auto overflow-x-hidden pr-2 sleek-scrollbar flex flex-col gap-1.5 px-1 py-1"></div>
         `;
         const albumsScroll = albumsCol.querySelector('.albums-scroll');
         if (albums && albums.length > 0) {
@@ -1022,7 +1042,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 3. Playlists Column (Right Middle)
         const playlistsCol = document.createElement('div');
-        playlistsCol.className = 'bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-3.5 sm:p-4 shadow-sm flex flex-col min-w-0';
+        playlistsCol.className = 'bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-3.5 sm:p-4 shadow-sm flex flex-col min-w-0 h-[calc(100vh-210px)] max-h-[760px] min-h-[460px] overflow-hidden';
         playlistsCol.innerHTML = `
             <div class="flex items-center justify-between text-[11px] font-bold text-zinc-500 uppercase tracking-wider pb-2.5 mb-2.5 border-b border-zinc-100 shrink-0">
                 <span class="flex items-center gap-1.5 text-zinc-900 font-extrabold">
@@ -1031,7 +1051,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </span>
                 <button class="playlists-all-btn text-zinc-500 hover:text-zinc-950 normal-case font-semibold text-xs transition-colors hover:underline cursor-pointer">Show all</button>
             </div>
-            <div class="playlists-scroll max-h-[64vh] overflow-y-auto pr-1 sleek-scrollbar flex flex-col gap-1"></div>
+            <div class="playlists-scroll flex-1 overflow-y-auto overflow-x-hidden pr-2 sleek-scrollbar flex flex-col gap-1.5 px-1 py-1"></div>
         `;
         const playlistsScroll = playlistsCol.querySelector('.playlists-scroll');
         if (playlists && playlists.length > 0) {
@@ -1050,7 +1070,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 4. Artists Column (Right)
         const artistsCol = document.createElement('div');
-        artistsCol.className = 'bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-3.5 sm:p-4 shadow-sm flex flex-col min-w-0';
+        artistsCol.className = 'bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-3.5 sm:p-4 shadow-sm flex flex-col min-w-0 h-[calc(100vh-210px)] max-h-[760px] min-h-[460px] overflow-hidden';
         artistsCol.innerHTML = `
             <div class="flex items-center justify-between text-[11px] font-bold text-zinc-500 uppercase tracking-wider pb-2.5 mb-2.5 border-b border-zinc-100 shrink-0">
                 <span class="flex items-center gap-1.5 text-zinc-900 font-extrabold">
@@ -1059,7 +1079,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </span>
                 <button class="artists-all-btn text-zinc-500 hover:text-zinc-950 normal-case font-semibold text-xs transition-colors hover:underline cursor-pointer">Show all</button>
             </div>
-            <div class="artists-scroll max-h-[64vh] overflow-y-auto pr-1 sleek-scrollbar flex flex-col gap-1"></div>
+            <div class="artists-scroll flex-1 overflow-y-auto overflow-x-hidden pr-2 sleek-scrollbar flex flex-col gap-1.5 px-1 py-1"></div>
         `;
         const artistsScroll = artistsCol.querySelector('.artists-scroll');
         if (artists && artists.length > 0) {
@@ -1184,9 +1204,12 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="font-bold text-zinc-900 text-xs sm:text-sm truncate w-full">${escapeHtml(artist.name)}</span>
             <span class="text-[10px] uppercase font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full mt-1 border border-blue-200/50">Artist</span>
         `;
+        if (artist.artwork_url) {
+            artistPfpMap.set(artist.name.toLowerCase().trim(), artist.artwork_url);
+        }
         card.addEventListener('click', () => {
             if (typeof window.loadArtistView === 'function') {
-                window.loadArtistView(artist.name);
+                window.loadArtistView(artist.name, artist.artwork_url);
             }
         });
         return card;
@@ -1233,7 +1256,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Creates track list item with Play, Add to Playlist, and Favorite buttons
     function createTrackElement(track, onPlayClick, onRemoveClick = null) {
         const div = document.createElement('div');
-        div.className = 'group flex items-center justify-between p-2 sm:p-2.5 rounded-xl bg-white/90 backdrop-blur-sm border border-zinc-200/70 hover:border-zinc-300 hover:shadow-sm transition-all cursor-pointer bubbly-hover mb-1.5';
+        div.className = 'group flex items-center justify-between p-2 sm:p-2.5 rounded-xl bg-white/90 backdrop-blur-sm border border-zinc-200/70 hover:border-zinc-300 hover:shadow-xs transition-all cursor-pointer scroll-row-hover mb-1.5 w-full max-w-full box-border overflow-hidden';
         
         const artwork = getProxyUrl(track.artwork_url || track.image, '50x50');
         const title = track.title || track.name || 'Unknown Title';
@@ -1241,16 +1264,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const durStr = track.duration ? formatTime(track.duration > 1000 ? track.duration / 1000 : track.duration) : '';
 
         div.innerHTML = `
-            <div class="flex items-center gap-3 min-w-0 flex-1 mr-2">
+            <div class="flex items-center gap-3 min-w-0 flex-1 mr-2 overflow-hidden">
                 <div class="w-10 h-10 bg-zinc-100 rounded-lg overflow-hidden flex-shrink-0 relative border border-zinc-200/50 flex items-center justify-center">
                     ${artwork ? `<img src="${artwork}" alt="${escapeHtml(title)}" class="w-full h-full object-cover" referrerpolicy="no-referrer" onerror="this.style.display='none'">` : ''}
                     <div class="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-[1px]">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                     </div>
                 </div>
-                <div class="flex flex-col text-left min-w-0">
-                    <span class="font-semibold text-zinc-900 text-xs sm:text-sm truncate">${escapeHtml(title)}</span>
-                    <span class="artist-name-link text-[11px] text-zinc-500 hover:text-zinc-950 hover:underline cursor-pointer truncate transition-colors inline-block w-fit" title="View artist">${escapeHtml(artist)}</span>
+                <div class="flex flex-col text-left min-w-0 flex-1 overflow-hidden">
+                    <span class="font-semibold text-zinc-900 text-xs sm:text-sm truncate block max-w-full" title="${escapeHtml(title)}">${escapeHtml(title)}</span>
+                    <span class="artist-name-link text-[11px] text-zinc-500 hover:text-zinc-950 hover:underline cursor-pointer truncate block max-w-full transition-colors inline-block w-fit" title="View artist">${escapeHtml(artist)}</span>
                 </div>
             </div>
             <div class="flex items-center gap-1 shrink-0">
@@ -3322,7 +3345,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return splitArtists.includes(target);
     }
 
-    async function loadArtistView(artistName) {
+    async function loadArtistView(artistName, preferredPfp = null) {
         if (!artistName || artistName === 'Select a song to start' || artistName === 'Unknown Artist') return;
 
         const currentHash = window.location.hash.replace('#', '') || 'search';
@@ -3356,9 +3379,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const scrollContainer = document.getElementById('page-artist-scroll');
         if (scrollContainer) scrollContainer.scrollTop = 0;
 
+        let artwork = preferredPfp || artistPfpMap.get(artistName.toLowerCase().trim()) || null;
+        if (artwork) {
+            const proxiedArt = getProxyUrl(artwork, '400x400');
+            if (heroImg) {
+                heroImg.src = proxiedArt;
+                heroImg.classList.remove('hidden');
+            }
+            if (heroPlaceholder) heroPlaceholder.classList.add('hidden');
+            extractDominantColor(proxiedArt, (rgb) => {
+                if (rgb && tintEl) {
+                    tintEl.style.background = `linear-gradient(180deg, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.38) 0%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.22) 22%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.08) 45%, rgba(252, 251, 248, 0.95) 65%, #FCFBF8 85%)`;
+                    tintEl.style.opacity = '1';
+                }
+            });
+        }
+
         try {
             let tracks = [];
-            let artwork = null;
             let description = '';
 
             // 1. Fetch from artist endpoint
@@ -3367,7 +3405,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (res.ok) {
                     const data = await res.json();
                     if (data) {
-                        if (data.artwork_url) artwork = data.artwork_url;
+                        if (data.artwork_url) {
+                            artwork = data.artwork_url;
+                            artistPfpMap.set(artistName.toLowerCase().trim(), artwork);
+                        }
                         if (data.description) description = data.description;
                         if (Array.isArray(data.tracks) && data.tracks.length > 0) {
                             tracks = data.tracks.filter(t => isExactArtistMatch(t, artistName));
@@ -3399,6 +3440,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return true;
             });
 
+            // Fallback to top song artwork ONLY if artist profile picture is not available
             if (!artwork && tracks.length > 0) {
                 artwork = tracks[0].artwork_url || tracks[0].image;
             }
@@ -3483,20 +3525,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function createAlbumTrackElement(track, trackNum, onPlayClick) {
         const div = document.createElement('div');
-        div.className = 'group flex items-center justify-between p-2 sm:p-2.5 rounded-xl bg-white/90 backdrop-blur-sm border border-zinc-200/70 hover:border-zinc-300 hover:shadow-sm transition-all cursor-pointer bubbly-hover mb-1.5';
+        div.className = 'group flex items-center justify-between p-2 sm:p-2.5 rounded-xl bg-white/90 backdrop-blur-sm border border-zinc-200/70 hover:border-zinc-300 hover:shadow-xs transition-all cursor-pointer scroll-row-hover mb-1.5 w-full max-w-full box-border overflow-hidden';
         const title = track.title || track.name || 'Unknown Title';
         const artist = track.artist_name || track.artist || 'Unknown Artist';
         const durStr = track.duration ? formatTime(track.duration > 1000 ? track.duration / 1000 : track.duration) : '';
 
         div.innerHTML = `
-            <div class="flex items-center gap-3.5 min-w-0 flex-1 mr-2">
-                <span class="w-6 text-center text-xs font-bold text-zinc-400 group-hover:text-zinc-900 group-hover:hidden transition-colors">${trackNum}</span>
-                <div class="w-6 hidden group-hover:flex items-center justify-center text-zinc-900">
+            <div class="flex items-center gap-3.5 min-w-0 flex-1 mr-2 overflow-hidden">
+                <span class="w-6 text-center text-xs font-bold text-zinc-400 group-hover:text-zinc-900 group-hover:hidden transition-colors shrink-0">${trackNum}</span>
+                <div class="w-6 hidden group-hover:flex items-center justify-center text-zinc-900 shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                 </div>
-                <div class="flex flex-col text-left min-w-0">
-                    <span class="font-semibold text-zinc-900 text-xs sm:text-sm truncate">${escapeHtml(title)}</span>
-                    <span class="artist-name-link text-[11px] text-zinc-500 hover:text-zinc-950 hover:underline cursor-pointer truncate transition-colors inline-block w-fit" title="View artist">${escapeHtml(artist)}</span>
+                <div class="flex flex-col text-left min-w-0 flex-1 overflow-hidden">
+                    <span class="font-semibold text-zinc-900 text-xs sm:text-sm truncate block max-w-full" title="${escapeHtml(title)}">${escapeHtml(title)}</span>
+                    <span class="artist-name-link text-[11px] text-zinc-500 hover:text-zinc-950 hover:underline cursor-pointer truncate block max-w-full transition-colors inline-block w-fit" title="View artist">${escapeHtml(artist)}</span>
                 </div>
             </div>
             <div class="flex items-center gap-1 shrink-0">
@@ -3951,21 +3993,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 upcomingTracks.forEach((track, offset) => {
                     const actualIdx = currentQueueIndex + 1 + offset;
                     const row = document.createElement('div');
-                    row.className = 'group flex items-center justify-between p-2 rounded-xl bg-zinc-50/70 hover:bg-zinc-100/90 border border-zinc-200/60 hover:border-zinc-300 transition-all cursor-pointer bubbly-hover';
+                    row.className = 'group flex items-center justify-between p-2 rounded-xl bg-zinc-50/70 hover:bg-zinc-100/90 border border-zinc-200/60 hover:border-zinc-300 transition-all cursor-pointer scroll-row-hover mb-1 w-full max-w-full box-border overflow-hidden';
                     const artwork = getProxyUrl(track.artwork_url || track.image, '60x60');
                     const title = track.title || track.name || 'Unknown Title';
                     const artist = track.artist_name || track.artist || 'Unknown Artist';
                     const durStr = track.duration ? formatTime(track.duration > 1000 ? track.duration / 1000 : track.duration) : '';
 
                     row.innerHTML = `
-                        <div class="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
-                            <span class="w-4 text-center text-[11px] font-bold text-zinc-400 group-hover:text-zinc-900">${offset + 1}</span>
+                        <div class="flex items-center gap-2.5 min-w-0 flex-1 mr-2 overflow-hidden">
+                            <span class="w-4 text-center text-[11px] font-bold text-zinc-400 group-hover:text-zinc-900 shrink-0">${offset + 1}</span>
                             <div class="w-9 h-9 bg-zinc-100 rounded-lg overflow-hidden shrink-0 border border-zinc-200/50 flex items-center justify-center">
                                 ${artwork ? `<img src="${artwork}" class="w-full h-full object-cover">` : ''}
                             </div>
-                            <div class="flex flex-col text-left min-w-0">
-                                <span class="font-bold text-zinc-900 text-xs truncate">${escapeHtml(title)}</span>
-                                <span class="text-[11px] text-zinc-500 truncate">${escapeHtml(artist)}</span>
+                            <div class="flex flex-col text-left min-w-0 flex-1 overflow-hidden">
+                                <span class="font-bold text-zinc-900 text-xs truncate block max-w-full" title="${escapeHtml(title)}">${escapeHtml(title)}</span>
+                                <span class="text-[11px] text-zinc-500 truncate block max-w-full" title="${escapeHtml(artist)}">${escapeHtml(artist)}</span>
                             </div>
                         </div>
                         <div class="flex items-center gap-1.5 shrink-0">
