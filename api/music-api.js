@@ -825,15 +825,14 @@ export default async function handler(req, res) {
                 return true;
             });
 
-            if (!artistArtwork && deduplicated.length > 0) {
-                artistArtwork = deduplicated[0].artwork_url;
-            }
+            const fallbackSongArt = deduplicated.length > 0 ? deduplicated[0].artwork_url : null;
 
             return res.status(200).json({
                 id: `ytm-${cleanArtistId}`,
                 name: artistName,
                 description: artistDescription,
-                artwork_url: artistArtwork,
+                artwork_url: artistArtwork || null,
+                fallback_artwork_url: fallbackSongArt,
                 tracks: deduplicated
             });
         } catch (e) {

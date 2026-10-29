@@ -3761,7 +3761,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const scrollContainer = document.getElementById('page-artist-scroll');
         if (scrollContainer) scrollContainer.scrollTop = 0;
 
-        let artwork = preferredPfp || artistPfpMap.get(artistName.toLowerCase().trim()) || null;
+        const cachedPfp = artistPfpMap.get(artistName.toLowerCase().trim());
+        let hasGenuinePfp = !!(preferredPfp || cachedPfp);
+        let artwork = preferredPfp || cachedPfp || null;
+        if (preferredPfp) {
+            artistPfpMap.set(artistName.toLowerCase().trim(), preferredPfp);
+        }
         if (artwork) {
             const proxiedArt = getProxyUrl(artwork, '400x400');
             if (heroImg) {
@@ -3790,6 +3795,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (data.artwork_url) {
                             artwork = data.artwork_url;
                             artistPfpMap.set(artistName.toLowerCase().trim(), artwork);
+                            hasGenuinePfp = true;
+                        } else if (!hasGenuinePfp && data.fallback_artwork_url) {
+                            artwork = data.fallback_artwork_url;
                         }
                         if (data.description) description = data.description;
                         if (Array.isArray(data.tracks) && data.tracks.length > 0) {
@@ -3822,8 +3830,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return true;
             });
 
-            // Fallback to top song artwork ONLY if artist profile picture is not available
-            if (!artwork && tracks.length > 0) {
+            // Fallback to top song artwork ONLY if artist profile picture is not available AT ALL
+            if (!hasGenuinePfp && !artwork && tracks.length > 0) {
                 artwork = tracks[0].artwork_url || tracks[0].image;
             }
 
