@@ -808,6 +808,94 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function createSearchAlbumRow(album) {
+        const div = document.createElement('div');
+        div.className = 'group flex items-center justify-between p-2 rounded-xl bg-white/90 backdrop-blur-sm border border-zinc-200/70 hover:border-zinc-300 hover:shadow-xs transition-all cursor-pointer bubbly-hover mb-1';
+        const artwork = getProxyUrl(album.artwork_url, '80x80');
+        div.innerHTML = `
+            <div class="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
+                <div class="w-10 h-10 bg-zinc-100 rounded-xl overflow-hidden shrink-0 relative border border-zinc-200/50 flex items-center justify-center">
+                    ${artwork ? `<img src="${artwork}" alt="${escapeHtml(album.name)}" class="w-full h-full object-cover">` : `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="text-zinc-400"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>`}
+                </div>
+                <div class="flex flex-col text-left min-w-0">
+                    <span class="font-bold text-zinc-900 text-xs truncate">${escapeHtml(album.name)}</span>
+                    <span class="text-[11px] text-zinc-500 truncate mt-0.5">${escapeHtml(album.artist_name || 'Album')}</span>
+                </div>
+            </div>
+            <span class="text-[9px] uppercase font-bold text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-full shrink-0">Album</span>
+        `;
+        div.addEventListener('click', () => {
+            if (typeof window.loadAlbumView === 'function') {
+                window.loadAlbumView(album.id);
+            }
+        });
+        return div;
+    }
+
+    function createSearchPlaylistRow(playlist) {
+        const div = document.createElement('div');
+        div.className = 'group flex items-center justify-between p-2 rounded-xl bg-white/90 backdrop-blur-sm border border-zinc-200/70 hover:border-zinc-300 hover:shadow-xs transition-all cursor-pointer bubbly-hover mb-1';
+        const artwork = getProxyUrl(playlist.artwork_url, '80x80');
+        div.innerHTML = `
+            <div class="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
+                <div class="w-10 h-10 bg-zinc-100 rounded-xl overflow-hidden shrink-0 relative border border-zinc-200/50 flex items-center justify-center">
+                    ${artwork ? `<img src="${artwork}" alt="${escapeHtml(playlist.name)}" class="w-full h-full object-cover">` : `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="text-zinc-400"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>`}
+                </div>
+                <div class="flex flex-col text-left min-w-0">
+                    <span class="font-bold text-zinc-900 text-xs truncate">${escapeHtml(playlist.name)}</span>
+                    <span class="text-[11px] text-zinc-500 truncate mt-0.5">${playlist.song_count ? `${playlist.song_count} songs` : 'Playlist'}</span>
+                </div>
+            </div>
+            <button class="pl-play-btn w-7 h-7 rounded-full bg-zinc-900 text-white flex items-center justify-center shrink-0 hover:scale-105 active:scale-95 transition-all shadow-xs" title="Play Playlist">
+                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            </button>
+        `;
+        div.addEventListener('click', async (e) => {
+            showSpinner(true);
+            try {
+                const res = await fetch(`${API_BASE}?endpoint=playlist&id=${encodeURIComponent((playlist.id || '').replace('ytm-', ''))}`);
+                const data = await res.json();
+                if (data && Array.isArray(data.tracks) && data.tracks.length > 0) {
+                    currentQueue = data.tracks;
+                    currentQueueIndex = 0;
+                    currentPlayingPlaylistContextId = null;
+                    playTrack(data.tracks[0]);
+                } else {
+                    showToast('Unable to load playlist tracks');
+                }
+            } catch (_) {
+                showToast('Failed to load playlist');
+            } finally {
+                showSpinner(false);
+            }
+        });
+        return div;
+    }
+
+    function createSearchArtistRow(artist) {
+        const div = document.createElement('div');
+        div.className = 'group flex items-center justify-between p-2 rounded-xl bg-white/90 backdrop-blur-sm border border-zinc-200/70 hover:border-zinc-300 hover:shadow-xs transition-all cursor-pointer bubbly-hover mb-1';
+        const artwork = getProxyUrl(artist.artwork_url, '80x80');
+        div.innerHTML = `
+            <div class="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
+                <div class="w-10 h-10 bg-zinc-100 rounded-full overflow-hidden shrink-0 relative border border-zinc-200/50 flex items-center justify-center shadow-xs">
+                    ${artwork ? `<img src="${artwork}" alt="${escapeHtml(artist.name)}" class="w-full h-full object-cover">` : `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="text-zinc-400"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`}
+                </div>
+                <div class="flex flex-col text-left min-w-0">
+                    <span class="font-bold text-zinc-900 text-xs truncate">${escapeHtml(artist.name)}</span>
+                    <span class="text-[9px] uppercase font-bold text-blue-600 mt-0.5">Artist</span>
+                </div>
+            </div>
+            <button class="px-2.5 py-1 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-[11px] font-semibold transition-colors shrink-0">View</button>
+        `;
+        div.addEventListener('click', () => {
+            if (typeof window.loadArtistView === 'function') {
+                window.loadArtistView(artist.name);
+            }
+        });
+        return div;
+    }
+
     function renderSearchAllTab(tracks, albums, artists, playlists) {
         // 1. Check for Best Match / Top Result Card (Artist or Album or Top Track)
         const q = (currentSearchQuery || '').toLowerCase().trim();
@@ -864,23 +952,27 @@ document.addEventListener('DOMContentLoaded', () => {
             searchResults.appendChild(bestAlbumCard);
         }
 
-        // 2. Songs Section
-        if (tracks && tracks.length > 0) {
-            const secHeader = document.createElement('div');
-            secHeader.className = 'flex items-center justify-between text-[11px] font-semibold text-zinc-400 uppercase tracking-widest pl-2 pr-1 mb-2 mt-2';
-            secHeader.innerHTML = `
-                <span>Songs</span>
-                <button class="text-zinc-500 hover:text-zinc-950 normal-case font-semibold text-xs transition-colors hover:underline cursor-pointer">Show all</button>
-            `;
-            secHeader.querySelector('button').onclick = () => {
-                currentSearchTab = 'songs';
-                updateSearchTabsUI();
-                renderSearchResults();
-            };
-            searchResults.appendChild(secHeader);
+        // Panoramic 4-Column Layout: Songs (Left), Albums (Left Middle), Playlists (Right Middle), Artists (Right)
+        // Each column features an independent scroll menu
+        const columnsGrid = document.createElement('div');
+        columnsGrid.className = 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 w-full mt-2 items-start';
 
-            const displayTracks = tracks.slice(0, 5);
-            displayTracks.forEach((track, idx) => {
+        // 1. Songs Column (Left)
+        const songsCol = document.createElement('div');
+        songsCol.className = 'bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-3.5 sm:p-4 shadow-sm flex flex-col min-w-0';
+        songsCol.innerHTML = `
+            <div class="flex items-center justify-between text-[11px] font-bold text-zinc-500 uppercase tracking-wider pb-2.5 mb-2.5 border-b border-zinc-100 shrink-0">
+                <span class="flex items-center gap-1.5 text-zinc-900 font-extrabold">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                    Songs (${tracks ? tracks.length : 0})
+                </span>
+                <button class="songs-all-btn text-zinc-500 hover:text-zinc-950 normal-case font-semibold text-xs transition-colors hover:underline cursor-pointer">Show all</button>
+            </div>
+            <div class="songs-scroll max-h-[64vh] overflow-y-auto pr-1 sleek-scrollbar flex flex-col gap-1"></div>
+        `;
+        const songsScroll = songsCol.querySelector('.songs-scroll');
+        if (tracks && tracks.length > 0) {
+            tracks.forEach((track, idx) => {
                 const el = createTrackElement(track, () => {
                     currentQueue = tracks;
                     currentQueueIndex = idx;
@@ -888,78 +980,103 @@ document.addEventListener('DOMContentLoaded', () => {
                     currentPlayingPlaylistContextId = null;
                     playTrack(track);
                 });
-                searchResults.appendChild(el);
+                songsScroll.appendChild(el);
             });
+        } else {
+            songsScroll.innerHTML = '<div class="py-8 text-center text-xs text-zinc-400 font-medium">No songs found</div>';
         }
+        songsCol.querySelector('.songs-all-btn').onclick = () => {
+            currentSearchTab = 'songs';
+            updateSearchTabsUI();
+            renderSearchResults();
+        };
+        columnsGrid.appendChild(songsCol);
 
-        // 3. Albums Section
+        // 2. Albums Column (Left Middle)
+        const albumsCol = document.createElement('div');
+        albumsCol.className = 'bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-3.5 sm:p-4 shadow-sm flex flex-col min-w-0';
+        albumsCol.innerHTML = `
+            <div class="flex items-center justify-between text-[11px] font-bold text-zinc-500 uppercase tracking-wider pb-2.5 mb-2.5 border-b border-zinc-100 shrink-0">
+                <span class="flex items-center gap-1.5 text-zinc-900 font-extrabold">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+                    Albums (${albums ? albums.length : 0})
+                </span>
+                <button class="albums-all-btn text-zinc-500 hover:text-zinc-950 normal-case font-semibold text-xs transition-colors hover:underline cursor-pointer">Show all</button>
+            </div>
+            <div class="albums-scroll max-h-[64vh] overflow-y-auto pr-1 sleek-scrollbar flex flex-col gap-1"></div>
+        `;
+        const albumsScroll = albumsCol.querySelector('.albums-scroll');
         if (albums && albums.length > 0) {
-            const secHeader = document.createElement('div');
-            secHeader.className = 'flex items-center justify-between text-[11px] font-semibold text-zinc-400 uppercase tracking-widest pl-2 pr-1 mb-2 mt-5';
-            secHeader.innerHTML = `
-                <span>Albums</span>
-                <button class="text-zinc-500 hover:text-zinc-950 normal-case font-semibold text-xs transition-colors hover:underline cursor-pointer">Show all</button>
-            `;
-            secHeader.querySelector('button').onclick = () => {
-                currentSearchTab = 'albums';
-                updateSearchTabsUI();
-                renderSearchResults();
-            };
-            searchResults.appendChild(secHeader);
-
-            const albumGrid = document.createElement('div');
-            albumGrid.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3';
-            albums.slice(0, 4).forEach(album => {
-                albumGrid.appendChild(createAlbumCard(album));
+            albums.forEach(album => {
+                albumsScroll.appendChild(createSearchAlbumRow(album));
             });
-            searchResults.appendChild(albumGrid);
+        } else {
+            albumsScroll.innerHTML = '<div class="py-8 text-center text-xs text-zinc-400 font-medium">No albums found</div>';
         }
+        albumsCol.querySelector('.albums-all-btn').onclick = () => {
+            currentSearchTab = 'albums';
+            updateSearchTabsUI();
+            renderSearchResults();
+        };
+        columnsGrid.appendChild(albumsCol);
 
-        // 4. Artists Section
-        if (artists && artists.length > 0) {
-            const secHeader = document.createElement('div');
-            secHeader.className = 'flex items-center justify-between text-[11px] font-semibold text-zinc-400 uppercase tracking-widest pl-2 pr-1 mb-2 mt-5';
-            secHeader.innerHTML = `
-                <span>Artists</span>
-                <button class="text-zinc-500 hover:text-zinc-950 normal-case font-semibold text-xs transition-colors hover:underline cursor-pointer">Show all</button>
-            `;
-            secHeader.querySelector('button').onclick = () => {
-                currentSearchTab = 'artists';
-                updateSearchTabsUI();
-                renderSearchResults();
-            };
-            searchResults.appendChild(secHeader);
-
-            const artistGrid = document.createElement('div');
-            artistGrid.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3';
-            artists.slice(0, 4).forEach(artist => {
-                artistGrid.appendChild(createArtistCard(artist));
-            });
-            searchResults.appendChild(artistGrid);
-        }
-
-        // 5. Playlists Section
+        // 3. Playlists Column (Right Middle)
+        const playlistsCol = document.createElement('div');
+        playlistsCol.className = 'bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-3.5 sm:p-4 shadow-sm flex flex-col min-w-0';
+        playlistsCol.innerHTML = `
+            <div class="flex items-center justify-between text-[11px] font-bold text-zinc-500 uppercase tracking-wider pb-2.5 mb-2.5 border-b border-zinc-100 shrink-0">
+                <span class="flex items-center gap-1.5 text-zinc-900 font-extrabold">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15V6M18.5 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM12 12H3M16 6H3M12 18H3"></path></svg>
+                    Playlists (${playlists ? playlists.length : 0})
+                </span>
+                <button class="playlists-all-btn text-zinc-500 hover:text-zinc-950 normal-case font-semibold text-xs transition-colors hover:underline cursor-pointer">Show all</button>
+            </div>
+            <div class="playlists-scroll max-h-[64vh] overflow-y-auto pr-1 sleek-scrollbar flex flex-col gap-1"></div>
+        `;
+        const playlistsScroll = playlistsCol.querySelector('.playlists-scroll');
         if (playlists && playlists.length > 0) {
-            const secHeader = document.createElement('div');
-            secHeader.className = 'flex items-center justify-between text-[11px] font-semibold text-zinc-400 uppercase tracking-widest pl-2 pr-1 mb-2 mt-5';
-            secHeader.innerHTML = `
-                <span>Playlists</span>
-                <button class="text-zinc-500 hover:text-zinc-950 normal-case font-semibold text-xs transition-colors hover:underline cursor-pointer">Show all</button>
-            `;
-            secHeader.querySelector('button').onclick = () => {
-                currentSearchTab = 'playlists';
-                updateSearchTabsUI();
-                renderSearchResults();
-            };
-            searchResults.appendChild(secHeader);
-
-            const plGrid = document.createElement('div');
-            plGrid.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3';
-            playlists.slice(0, 4).forEach(pl => {
-                plGrid.appendChild(createPlaylistCard(pl));
+            playlists.forEach(pl => {
+                playlistsScroll.appendChild(createSearchPlaylistRow(pl));
             });
-            searchResults.appendChild(plGrid);
+        } else {
+            playlistsScroll.innerHTML = '<div class="py-8 text-center text-xs text-zinc-400 font-medium">No playlists found</div>';
         }
+        playlistsCol.querySelector('.playlists-all-btn').onclick = () => {
+            currentSearchTab = 'playlists';
+            updateSearchTabsUI();
+            renderSearchResults();
+        };
+        columnsGrid.appendChild(playlistsCol);
+
+        // 4. Artists Column (Right)
+        const artistsCol = document.createElement('div');
+        artistsCol.className = 'bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-3.5 sm:p-4 shadow-sm flex flex-col min-w-0';
+        artistsCol.innerHTML = `
+            <div class="flex items-center justify-between text-[11px] font-bold text-zinc-500 uppercase tracking-wider pb-2.5 mb-2.5 border-b border-zinc-100 shrink-0">
+                <span class="flex items-center gap-1.5 text-zinc-900 font-extrabold">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    Artists (${artists ? artists.length : 0})
+                </span>
+                <button class="artists-all-btn text-zinc-500 hover:text-zinc-950 normal-case font-semibold text-xs transition-colors hover:underline cursor-pointer">Show all</button>
+            </div>
+            <div class="artists-scroll max-h-[64vh] overflow-y-auto pr-1 sleek-scrollbar flex flex-col gap-1"></div>
+        `;
+        const artistsScroll = artistsCol.querySelector('.artists-scroll');
+        if (artists && artists.length > 0) {
+            artists.forEach(artist => {
+                artistsScroll.appendChild(createSearchArtistRow(artist));
+            });
+        } else {
+            artistsScroll.innerHTML = '<div class="py-8 text-center text-xs text-zinc-400 font-medium">No artists found</div>';
+        }
+        artistsCol.querySelector('.artists-all-btn').onclick = () => {
+            currentSearchTab = 'artists';
+            updateSearchTabsUI();
+            renderSearchResults();
+        };
+        columnsGrid.appendChild(artistsCol);
+
+        searchResults.appendChild(columnsGrid);
     }
 
     function renderSearchSongsTab(tracks) {
@@ -1138,6 +1255,9 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="flex items-center gap-1 shrink-0">
                 ${durStr ? `<span class="text-[11px] text-zinc-400 font-medium mr-1.5 hidden sm:inline">${durStr}</span>` : ''}
+                <button class="add-to-queue-btn text-zinc-400 hover:text-zinc-800 transition-colors p-1.5 rounded-full hover:bg-zinc-100" title="Add to Queue">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                </button>
                 <button class="add-to-pl-btn text-zinc-400 hover:text-zinc-800 transition-colors p-1.5 rounded-full hover:bg-zinc-100" title="Add to Playlist">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
                 </button>
@@ -1176,6 +1296,14 @@ document.addEventListener('DOMContentLoaded', () => {
             e.stopPropagation();
             openAddToPlaylistModal(track);
         });
+
+        const addQueueBtn = div.querySelector('.add-to-queue-btn');
+        if (addQueueBtn) {
+            addQueueBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                addToQueue(track);
+            });
+        }
 
         if (onRemoveClick) {
             const removeBtn = div.querySelector('.remove-btn');
@@ -1404,6 +1532,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateNowPlayingUI(track);
         updateBottomPlayerUI(track);
         updateNowPlayingFavButton();
+        if (typeof updateQueueModalUI === 'function') updateQueueModalUI();
 
         // Autoplay Preload: keep queue filled with continuous recommendations
         if (currentQueue.length <= 2 || currentQueueIndex >= currentQueue.length - 2) {
@@ -2205,10 +2334,13 @@ document.addEventListener('DOMContentLoaded', () => {
             s = Math.min(1, s * 1.35 + 0.08);
         }
 
-        // Keep deep colors deep & vibrant without bleaching them to salmon pink!
-        // Only if a color is pitch black (l < 0.20), give it a slight lift so black elements stay visible
-        if (l < 0.20) {
-            l = 0.26;
+        // Lift dark colors so they are slightly lighter for dark colors like black (ensures black icons/text remain legible)
+        if (l < 0.38) {
+            l = 0.44;
+            if (s < 0.15) {
+                s = 0.16;
+                h = 42; // subtle warm yolk tone instead of pitch black void
+            }
         } else if (l > 0.78 && s > 0.25) {
             // Keep bright colors richly saturated instead of blown out
             l = 0.68;
@@ -2305,14 +2437,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     const base = picked[picked.length - 1];
                     const rot = (picked.length % 2 === 1) ? 55 : -45;
                     const newH = (base.h + rot + 360) % 360;
-                    const genRgb = hslToRgb(newH, Math.max(0.7, base.s), Math.max(0.38, Math.min(0.62, base.l)));
+                    const genRgb = hslToRgb(newH, Math.max(0.65, base.s), Math.max(0.44, Math.min(0.64, base.l)));
                     picked.push({
                         r: genRgb.r,
                         g: genRgb.g,
                         b: genRgb.b,
                         h: newH,
-                        s: Math.max(0.7, base.s),
-                        l: Math.max(0.38, Math.min(0.62, base.l))
+                        s: Math.max(0.65, base.s),
+                        l: Math.max(0.44, Math.min(0.64, base.l))
                     });
                 }
 
@@ -3369,6 +3501,9 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="flex items-center gap-1 shrink-0">
                 ${durStr ? `<span class="text-[11px] text-zinc-400 font-medium mr-1.5 hidden sm:inline">${durStr}</span>` : ''}
+                <button class="add-to-queue-btn text-zinc-400 hover:text-zinc-800 transition-colors p-1.5 rounded-full hover:bg-zinc-100" title="Add to Queue">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                </button>
                 <button class="add-to-pl-btn text-zinc-400 hover:text-zinc-800 transition-colors p-1.5 rounded-full hover:bg-zinc-100" title="Add to Playlist">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
                 </button>
@@ -3402,6 +3537,14 @@ document.addEventListener('DOMContentLoaded', () => {
             e.stopPropagation();
             openAddToPlaylistModal(track);
         });
+
+        const addQueueBtn = div.querySelector('.add-to-queue-btn');
+        if (addQueueBtn) {
+            addQueueBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                addToQueue(track);
+            });
+        }
 
         return div;
     }
@@ -3673,8 +3816,190 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // ==== QUEUE MANAGEMENT SYSTEM ====
+    const queueModal = document.getElementById('queue-modal');
+    const queueCloseBtn = document.getElementById('queue-close-btn');
+    const queueClearBtn = document.getElementById('queue-clear-btn');
+    const bpQueueBtn = document.getElementById('bp-queue-btn');
+    const npQueueBtn = document.getElementById('np-queue-btn');
+
+    function addToQueue(track, playImmediately = false) {
+        if (!track) return;
+        const trackTitle = track.title || track.name || 'Song';
+        if (!currentTrack && (!currentQueue || currentQueue.length === 0)) {
+            currentQueue = [track];
+            currentQueueIndex = 0;
+            currentPlaylistContextId = null;
+            currentPlayingPlaylistContextId = null;
+            playTrack(track);
+            showToast(`Now playing: ${trackTitle}`);
+            return;
+        }
+
+        if (playImmediately) {
+            currentQueue.splice(currentQueueIndex + 1, 0, track);
+            showToast(`Playing next: ${trackTitle}`);
+        } else {
+            currentQueue.push(track);
+            showToast(`Added to queue: ${trackTitle}`);
+        }
+        updateQueueModalUI();
+    }
+
+    function removeFromQueue(index) {
+        if (!currentQueue || index < 0 || index >= currentQueue.length) return;
+        if (index === currentQueueIndex) {
+            playNext();
+            currentQueue.splice(index, 1);
+            if (currentQueueIndex > 0) currentQueueIndex--;
+        } else {
+            currentQueue.splice(index, 1);
+            if (index < currentQueueIndex) {
+                currentQueueIndex--;
+            }
+        }
+        updateQueueModalUI();
+    }
+
+    function clearUpcomingQueue() {
+        if (!currentQueue || currentQueue.length === 0) return;
+        if (currentTrack && currentQueueIndex >= 0 && currentQueueIndex < currentQueue.length) {
+            currentQueue = [currentQueue[currentQueueIndex]];
+            currentQueueIndex = 0;
+        } else {
+            currentQueue = [];
+            currentQueueIndex = -1;
+        }
+        updateQueueModalUI();
+        showToast('Upcoming queue cleared');
+    }
+
+    function openQueueModal() {
+        if (!queueModal) return;
+        updateQueueModalUI();
+        queueModal.classList.add('active');
+    }
+
+    function closeQueueModal() {
+        if (!queueModal) return;
+        queueModal.classList.remove('active');
+    }
+
+    function updateQueueModalUI() {
+        if (!queueModal) return;
+
+        const countBadge = document.getElementById('queue-count-badge');
+        const nowPlayingItem = document.getElementById('queue-now-playing-item');
+        const upNextList = document.getElementById('queue-up-next-list');
+        const upNextCount = document.getElementById('queue-up-next-count');
+
+        const upcomingTracks = (currentQueue && currentQueueIndex >= 0)
+            ? currentQueue.slice(currentQueueIndex + 1)
+            : [];
+
+        if (countBadge) {
+            const total = currentQueue ? currentQueue.length : 0;
+            countBadge.textContent = `${total} ${total === 1 ? 'song' : 'songs'} in queue`;
+        }
+
+        if (upNextCount) {
+            upNextCount.textContent = `${upcomingTracks.length} upcoming`;
+        }
+
+        // Render Current Track
+        if (nowPlayingItem) {
+            if (currentTrack) {
+                const artwork = getProxyUrl(currentTrack.artwork_url || currentTrack.image, '60x60');
+                const title = currentTrack.title || currentTrack.name || 'Unknown Title';
+                const artist = currentTrack.artist_name || currentTrack.artist || 'Unknown Artist';
+                nowPlayingItem.innerHTML = `
+                    <div class="flex items-center gap-3 min-w-0 flex-1 mr-2">
+                        <div class="w-10 h-10 bg-zinc-100 rounded-xl overflow-hidden shrink-0 relative border border-zinc-200/50 flex items-center justify-center">
+                            ${artwork ? `<img src="${artwork}" class="w-full h-full object-cover">` : ''}
+                            <div class="absolute inset-0 bg-black/25 flex items-center justify-center">
+                                <span class="flex gap-0.5 items-end h-3">
+                                    <span class="w-0.5 h-3 bg-white rounded-full animate-pulse"></span>
+                                    <span class="w-0.5 h-2 bg-white rounded-full animate-pulse" style="animation-delay: 150ms"></span>
+                                    <span class="w-0.5 h-2.5 bg-white rounded-full animate-pulse" style="animation-delay: 300ms"></span>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="flex flex-col text-left min-w-0">
+                            <span class="font-bold text-zinc-900 text-xs sm:text-sm truncate">${escapeHtml(title)}</span>
+                            <span class="text-[11px] text-zinc-500 truncate">${escapeHtml(artist)}</span>
+                        </div>
+                    </div>
+                    <span class="text-[9px] uppercase font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full shrink-0">Playing</span>
+                `;
+            } else {
+                nowPlayingItem.innerHTML = `
+                    <span class="text-xs text-zinc-400 py-1 font-medium">No track currently playing</span>
+                `;
+            }
+        }
+
+        // Render Upcoming Tracks
+        if (upNextList) {
+            upNextList.innerHTML = '';
+            if (upcomingTracks.length === 0) {
+                upNextList.innerHTML = `
+                    <div class="py-8 text-center text-xs text-zinc-400 font-medium">
+                        No upcoming tracks in queue.<br>Click the queue icon on any song to add it!
+                    </div>
+                `;
+            } else {
+                upcomingTracks.forEach((track, offset) => {
+                    const actualIdx = currentQueueIndex + 1 + offset;
+                    const row = document.createElement('div');
+                    row.className = 'group flex items-center justify-between p-2 rounded-xl bg-zinc-50/70 hover:bg-zinc-100/90 border border-zinc-200/60 hover:border-zinc-300 transition-all cursor-pointer bubbly-hover';
+                    const artwork = getProxyUrl(track.artwork_url || track.image, '60x60');
+                    const title = track.title || track.name || 'Unknown Title';
+                    const artist = track.artist_name || track.artist || 'Unknown Artist';
+                    const durStr = track.duration ? formatTime(track.duration > 1000 ? track.duration / 1000 : track.duration) : '';
+
+                    row.innerHTML = `
+                        <div class="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
+                            <span class="w-4 text-center text-[11px] font-bold text-zinc-400 group-hover:text-zinc-900">${offset + 1}</span>
+                            <div class="w-9 h-9 bg-zinc-100 rounded-lg overflow-hidden shrink-0 border border-zinc-200/50 flex items-center justify-center">
+                                ${artwork ? `<img src="${artwork}" class="w-full h-full object-cover">` : ''}
+                            </div>
+                            <div class="flex flex-col text-left min-w-0">
+                                <span class="font-bold text-zinc-900 text-xs truncate">${escapeHtml(title)}</span>
+                                <span class="text-[11px] text-zinc-500 truncate">${escapeHtml(artist)}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            ${durStr ? `<span class="text-[11px] text-zinc-400 font-medium hidden sm:inline mr-1">${durStr}</span>` : ''}
+                            <button class="remove-queue-item-btn text-zinc-400 hover:text-red-500 transition-colors p-1.5 rounded-full hover:bg-red-50 cursor-pointer" title="Remove from queue">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
+                        </div>
+                    `;
+
+                    row.addEventListener('click', (e) => {
+                        if (e.target.closest('.remove-queue-item-btn')) {
+                            e.stopPropagation();
+                            removeFromQueue(actualIdx);
+                            return;
+                        }
+                        currentQueueIndex = actualIdx;
+                        playTrack(track);
+                        updateQueueModalUI();
+                    });
+
+                    upNextList.appendChild(row);
+                });
+            }
+        }
+    }
+
+    if (bpQueueBtn) bpQueueBtn.addEventListener('click', () => openQueueModal());
+    if (npQueueBtn) npQueueBtn.addEventListener('click', () => openQueueModal());
+    if (queueCloseBtn) queueCloseBtn.addEventListener('click', () => closeQueueModal());
+    if (queueClearBtn) queueClearBtn.addEventListener('click', () => clearUpcomingQueue());
+
     // Close modals on clicking backdrop
-    [playlistModal, addToPlaylistModal, ytImportModal].forEach(modal => {
+    [playlistModal, addToPlaylistModal, ytImportModal, queueModal].forEach(modal => {
         if (!modal) return;
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {

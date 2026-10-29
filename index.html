@@ -145,7 +145,7 @@
             transform: translate(-50%, -50%);
             opacity: 0;
             width: 100%;
-            max-width: 34rem;
+            max-width: 51rem;
             transition: top 0.6s var(--parabola-ease), 
                         transform 0.6s var(--parabola-ease), 
                         opacity 0.6s var(--parabola-ease);
@@ -160,6 +160,7 @@
             opacity: 1;
             transform: translate(-50%, -50%);
             padding-bottom: 0;
+            max-width: 51rem;
         }
 
         body.is-searching #search-block {
@@ -167,6 +168,22 @@
             transform: translate(-50%, 0);
             padding-bottom: 140px;
             opacity: 1;
+            max-width: 96rem;
+        }
+
+        .sleek-scrollbar::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        .sleek-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .sleek-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.12);
+            border-radius: 9999px;
+        }
+        .sleek-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.25);
         }
 
         .logo-inner {
@@ -711,58 +728,61 @@
                 </div>
             </div>
 
-            <!-- Fullscreen Playlist Detail View -->
-            <div id="playlist-detail-view" class="w-full max-w-5xl mx-auto hidden pb-24">
-                <button id="playlist-back-btn" class="bubbly-hover mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 hover:bg-white backdrop-blur-md border border-zinc-200/80 shadow-sm text-xs font-semibold text-zinc-700 hover:text-zinc-950 transition-all">
+            <!-- Fullscreen Playlist Detail View (Split View) -->
+            <div id="playlist-detail-view" class="w-full max-w-6xl mx-auto hidden pb-20">
+                <button id="playlist-back-btn" class="bubbly-hover mb-5 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 hover:bg-white backdrop-blur-md border border-zinc-200/80 shadow-sm text-xs font-semibold text-zinc-700 hover:text-zinc-950 transition-all">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                     <span>Back to Library</span>
                 </button>
 
-                <!-- Fullscreen Hero Header -->
-                <div class="flex flex-col md:flex-row items-center md:items-end gap-7 p-6 sm:p-8 bg-white/70 backdrop-blur-xl rounded-3xl border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-8">
-                    <div id="playlist-detail-art" class="w-44 h-44 sm:w-52 sm:h-52 md:w-60 md:h-60 rounded-2xl bg-zinc-100 flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.12)] border border-white/60 relative group/art cursor-pointer" title="Click to upload album cover">
-                        <img id="playlist-detail-img" src="" class="w-full h-full object-cover hidden" referrerpolicy="no-referrer">
-                        <div id="playlist-detail-icon" class="text-zinc-900">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                <!-- Two-Column Side-by-Side Split: Left Info, Right Independent Scrollable Tracklist -->
+                <div class="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start w-full">
+                    <!-- Left Column: Playlist Card & Details -->
+                    <div class="w-full lg:w-80 shrink-0 flex flex-col items-center lg:items-start p-6 bg-white/75 backdrop-blur-xl rounded-3xl border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] lg:sticky lg:top-24">
+                        <div id="playlist-detail-art" class="w-44 h-44 sm:w-52 sm:h-52 lg:w-64 lg:h-64 rounded-2xl bg-zinc-100 flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.12)] border border-white/60 relative group/art cursor-pointer mb-5" title="Click to upload album cover">
+                            <img id="playlist-detail-img" src="" class="w-full h-full object-cover hidden" referrerpolicy="no-referrer">
+                            <div id="playlist-detail-icon" class="text-zinc-900">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                            </div>
+                            <div id="playlist-detail-upload-overlay" class="absolute inset-0 bg-black/40 backdrop-blur-[2px] opacity-0 group-hover/art:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-1.5 pointer-events-none">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                                <span class="text-[11px] font-bold uppercase tracking-wider">Change Cover</span>
+                            </div>
                         </div>
-                        <div id="playlist-detail-upload-overlay" class="absolute inset-0 bg-black/40 backdrop-blur-[2px] opacity-0 group-hover/art:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-1.5 pointer-events-none">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                            <span class="text-[11px] font-bold uppercase tracking-wider">Change Cover</span>
+                        <input type="file" id="playlist-detail-cover-input" accept="image/*" class="hidden">
+
+                        <div class="w-full text-center lg:text-left min-w-0">
+                            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/5 text-[10px] uppercase tracking-widest font-bold text-zinc-600 mb-2">
+                                <span>Playlist Collection</span>
+                            </div>
+                            <h2 id="playlist-detail-name" class="text-2xl sm:text-3xl font-extrabold text-zinc-900 tracking-tight leading-tight line-clamp-2">Playlist Name</h2>
+                            <p id="playlist-detail-desc" class="text-sm text-zinc-500 mt-2 line-clamp-3 font-medium">Playlist description</p>
+                            <p id="playlist-detail-meta" class="text-xs font-semibold text-zinc-400 mt-2">0 songs</p>
+
+                            <div class="flex items-center justify-center lg:justify-start gap-2.5 mt-5 flex-wrap w-full">
+                                <button id="playlist-play-all-btn" class="bubbly-hover flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-zinc-900 text-white text-xs font-semibold shadow hover:bg-zinc-800 transition-all flex-1 min-w-[110px]">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                    <span>Play All</span>
+                                </button>
+                                <button id="playlist-edit-btn" class="bubbly-hover px-3.5 py-2.5 rounded-full bg-white text-zinc-700 text-xs font-semibold hover:bg-zinc-100 transition-all border border-zinc-200/80 shadow-sm">
+                                    Edit
+                                </button>
+                                <button id="playlist-delete-btn" class="bubbly-hover px-3.5 py-2.5 rounded-full bg-red-50 text-red-600 text-xs font-semibold hover:bg-red-100 transition-all border border-red-200/50 shadow-sm">
+                                    Delete
+                                </button>
+                            </div>
                         </div>
                     </div>
-                    <input type="file" id="playlist-detail-cover-input" accept="image/*" class="hidden">
 
-                    <div class="flex-1 text-center md:text-left min-w-0">
-                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/5 text-[10px] uppercase tracking-widest font-bold text-zinc-600 mb-2">
-                            <span>Playlist Collection</span>
+                    <!-- Right Column: Independent Scrollable Tracklist (Page does not scroll) -->
+                    <div class="flex-1 w-full bg-white/80 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-6 shadow-sm flex flex-col h-[calc(100vh-210px)] max-h-[740px] min-h-[460px]">
+                        <div class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-3 px-2 flex justify-between items-center border-b border-zinc-100 pb-2.5 shrink-0">
+                            <span>Tracks</span>
+                            <span id="playlist-tracks-count" class="text-[10px] font-semibold text-zinc-500"></span>
                         </div>
-                        <h2 id="playlist-detail-name" class="text-3xl sm:text-4xl md:text-5xl font-extrabold text-zinc-900 tracking-tight leading-tight truncate">Playlist Name</h2>
-                        <p id="playlist-detail-desc" class="text-sm text-zinc-500 mt-2 line-clamp-2 max-w-xl font-medium">Playlist description</p>
-                        <p id="playlist-detail-meta" class="text-xs font-semibold text-zinc-400 mt-2">0 songs</p>
-
-                        <div class="flex items-center justify-center md:justify-start gap-3 mt-5 flex-wrap">
-                            <button id="playlist-play-all-btn" class="bubbly-hover flex items-center gap-2 px-6 py-2.5 rounded-full bg-zinc-900 text-white text-xs font-semibold shadow-lg hover:bg-zinc-800 transition-all">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                                <span>Play All</span>
-                            </button>
-                            <button id="playlist-edit-btn" class="bubbly-hover px-4 py-2.5 rounded-full bg-white/90 text-zinc-700 text-xs font-semibold hover:bg-white transition-all border border-zinc-200/70 shadow-sm">
-                                Edit Playlist
-                            </button>
-                            <button id="playlist-delete-btn" class="bubbly-hover px-4 py-2.5 rounded-full bg-red-50 text-red-600 text-xs font-semibold hover:bg-red-100 transition-all border border-red-200/50 shadow-sm">
-                                Delete
-                            </button>
+                        <div id="playlist-track-list" class="flex-1 overflow-y-auto pr-1.5 sleek-scrollbar flex flex-col gap-1.5">
+                            <!-- Populated by JS -->
                         </div>
-                    </div>
-                </div>
-
-                <!-- Fullscreen Contained Track List -->
-                <div class="bg-white/80 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-7 shadow-sm">
-                    <div class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-4 px-3 flex justify-between items-center border-b border-zinc-100 pb-2">
-                        <span>Tracks</span>
-                        <span id="playlist-tracks-count" class="text-[10px] font-medium text-zinc-400"></span>
-                    </div>
-                    <div id="playlist-track-list" class="flex flex-col gap-1.5">
-                        <!-- Populated by JS -->
                     </div>
                 </div>
             </div>
@@ -773,7 +793,7 @@
     <div id="page-now-playing" class="page relative overflow-hidden bg-white">
         <!-- Blurred Cover Art & Apple Music Mesh Background -->
         <div id="now-playing-bg-wrapper" class="absolute inset-0 overflow-hidden pointer-events-none z-0 bg-white">
-            <img id="now-playing-bg-art" src="" alt="" class="absolute inset-[-60px] w-[calc(100%+120px)] h-[calc(100%+120px)] object-cover pointer-events-none transition-all duration-700 opacity-0" style="filter: blur(70px) saturate(180%) contrast(1.1); transform: scale(1.15);">
+            <img id="now-playing-bg-art" src="" alt="" class="absolute inset-[-60px] w-[calc(100%+120px)] h-[calc(100%+120px)] object-cover pointer-events-none transition-all duration-700 opacity-0" style="filter: blur(70px) saturate(180%) contrast(1.05) brightness(1.18); transform: scale(1.15);">
             <div id="now-playing-mesh" class="absolute inset-[-20%] w-[140%] h-[140%] pointer-events-none transition-opacity duration-1000 opacity-0 apple-mesh-drift" style="filter: blur(60px);"></div>
         </div>
         <div id="now-playing-bg-tint" class="pointer-events-none transition-all duration-700 opacity-0 absolute inset-0 z-0 hidden"></div>
@@ -804,7 +824,7 @@
                 </div>
 
                 <!-- Controls Cluster (Buttons on Left) -->
-                <div class="flex items-center justify-center gap-4 sm:gap-5 mt-2 shrink-0">
+                <div class="flex items-center justify-center gap-3.5 sm:gap-4 mt-2 shrink-0 flex-wrap">
                     <button id="now-playing-fav-btn" class="sleek-hover text-black transition-transform hover:scale-110 p-2 cursor-pointer" title="Favorite">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                     </button>
@@ -819,6 +839,9 @@
                     </button>
                     <button id="now-playing-add-btn" class="sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer" title="Add to Playlist">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+                    </button>
+                    <button id="np-queue-btn" class="sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer" title="Play Queue">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
                     </button>
 
                     <!-- Volume Bar (Small Button until Hovered -> Expands to the right) -->
@@ -1010,15 +1033,20 @@
             </div>
 
             <!-- Right: Progress & Time -->
-            <div class="w-1/3 min-w-[150px] flex justify-end items-center gap-2">
+            <div class="w-1/3 min-w-[170px] flex justify-end items-center gap-2">
                 <span id="bottom-player-current-time" class="text-[10px] text-zinc-400 font-medium select-none">0:00</span>
-                <div id="bottom-player-progress-bar" class="w-full max-w-[90px] sm:max-w-[120px] h-1.5 bg-zinc-200/80 rounded-full overflow-hidden relative cursor-pointer hover:h-2 transition-all">
+                <div id="bottom-player-progress-bar" class="w-full max-w-[70px] sm:max-w-[100px] h-1.5 bg-zinc-200/80 rounded-full overflow-hidden relative cursor-pointer hover:h-2 transition-all">
                     <div id="bottom-player-progress-fill" class="absolute left-0 top-0 w-0 h-full bg-zinc-800 pointer-events-none"></div>
                 </div>
                 <span id="bottom-player-duration" class="text-[10px] text-zinc-400 font-medium select-none">0:00</span>
 
+                <!-- Queue Button -->
+                <button id="bp-queue-btn" class="sleek-hover text-zinc-500 hover:text-zinc-900 transition-colors p-1.5 rounded-full hover:bg-black/5 flex items-center justify-center cursor-pointer shrink-0" title="Play Queue">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                </button>
+
                 <!-- Volume Bar (Small Button until Hovered -> Expands to the right) -->
-                <div id="bp-volume-container" class="relative flex items-center group/bpvol pl-1">
+                <div id="bp-volume-container" class="relative flex items-center group/bpvol pl-0.5">
                     <button id="bp-volume-btn" class="sleek-hover text-zinc-500 hover:text-zinc-900 transition-colors p-1 rounded-full hover:bg-black/5 flex items-center justify-center cursor-pointer shrink-0" title="Volume">
                         <svg id="bp-volume-icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
                     </button>
@@ -1195,6 +1223,51 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                     <span>Import Songs</span>
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Play Queue -->
+    <div id="queue-modal" class="modal-overlay fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="modal-card bg-white rounded-3xl p-5 sm:p-6 w-full max-w-lg shadow-2xl border border-zinc-100 max-h-[85vh] flex flex-col">
+            <div class="flex items-center justify-between pb-3 border-b border-zinc-100 shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-full bg-zinc-900 text-white flex items-center justify-center shadow-xs">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-base sm:text-lg font-bold text-zinc-900 leading-tight">Play Queue</h3>
+                        <p id="queue-count-badge" class="text-[11px] font-medium text-zinc-400">0 songs in queue</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="queue-clear-btn" class="bubbly-hover text-xs font-semibold px-3 py-1.5 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition-colors cursor-pointer">Clear</button>
+                    <button id="queue-close-btn" class="text-zinc-400 hover:text-zinc-700 p-1.5 rounded-full hover:bg-zinc-100 transition-colors cursor-pointer" title="Close Queue">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Queue Scroll Container -->
+            <div class="flex-1 overflow-y-auto pr-1 pt-3 sleek-scrollbar flex flex-col gap-4">
+                <!-- Now Playing Box -->
+                <div id="queue-now-playing-section">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400 px-1 mb-1.5 block">Now Playing</span>
+                    <div id="queue-now-playing-item" class="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex items-center justify-between">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Up Next Section -->
+                <div>
+                    <div class="flex items-center justify-between px-1 mb-1.5">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Up Next</span>
+                        <span id="queue-up-next-count" class="text-[10px] font-medium text-zinc-400"></span>
+                    </div>
+                    <div id="queue-up-next-list" class="flex flex-col gap-1.5">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
             </div>
         </div>
     </div>
