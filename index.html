@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Yolk! - Minimalist Music</title>
     
     <!-- Favicon & App Icons -->
@@ -15,7 +15,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Yolk!">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="theme-color" content="#ffffff">
+    <meta name="theme-color" id="meta-theme-color" content="#FCFBF8">
 
     <!-- Open Graph / iMessage / Social Preview -->
     <meta property="og:type" content="website">
@@ -47,6 +47,14 @@
 
         body {
             background-color: #FCFBF8;
+        }
+
+        #top-nav-bar a {
+            min-width: 105px !important;
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+            text-align: center !important;
+            user-select: none !important;
         }
 
         /* SPA Pages */
@@ -764,14 +772,14 @@
 
     <!-- Top Navigation Bar -->
     <header class="fixed top-6 left-1/2 -translate-x-1/2 z-30 flex justify-center w-[calc(100%-3rem)] max-w-fit">
-        <nav id="top-nav-bar" class="flex gap-1.5 items-center bg-white/70 backdrop-blur-md p-[10px] h-[56px] rounded-full border border-zinc-200 shadow-sm transition-all duration-500">
-            <a href="#search" id="nav-search" class="yolk-active text-sm font-medium px-5 h-8 flex items-center justify-center rounded-full sleek-transition">
+        <nav id="top-nav-bar" class="flex gap-1.5 items-center flex-nowrap shrink-0 bg-white/70 backdrop-blur-md p-[10px] h-[56px] rounded-full border border-zinc-200 shadow-sm transition-all duration-500">
+            <a href="#search" id="nav-search" class="yolk-active min-w-[105px] whitespace-nowrap shrink-0 text-center text-sm font-medium px-5 h-8 flex items-center justify-center rounded-full sleek-transition">
                 Search
             </a>
-            <a href="#library" id="nav-library" class="sleek-hover text-sm font-medium px-5 h-8 flex items-center justify-center rounded-full text-zinc-600 sleek-transition">
+            <a href="#library" id="nav-library" class="sleek-hover min-w-[105px] whitespace-nowrap shrink-0 text-center text-sm font-medium px-5 h-8 flex items-center justify-center rounded-full text-zinc-600 sleek-transition">
                 Library
             </a>
-            <a href="#now-playing" id="nav-now-playing" class="sleek-hover text-sm font-medium px-5 h-8 flex items-center justify-center rounded-full text-zinc-600 sleek-transition">
+            <a href="#now-playing" id="nav-now-playing" class="sleek-hover min-w-[105px] whitespace-nowrap shrink-0 text-center text-sm font-medium px-5 h-8 flex items-center justify-center rounded-full text-zinc-600 sleek-transition">
                 Now Playing
             </a>
         </nav>
@@ -1523,9 +1531,9 @@
                 // Update nav links
                 Object.keys(navLinks).forEach(key => {
                     if (key === hash) {
-                        navLinks[key].className = 'yolk-active text-sm font-medium px-5 h-8 flex items-center justify-center rounded-full sleek-transition';
+                        navLinks[key].className = 'yolk-active min-w-[105px] whitespace-nowrap shrink-0 text-center select-none text-sm font-medium px-5 h-8 flex items-center justify-center rounded-full sleek-transition';
                     } else {
-                        navLinks[key].className = 'sleek-hover text-sm font-medium px-5 h-8 flex items-center justify-center rounded-full text-zinc-600 sleek-transition';
+                        navLinks[key].className = 'sleek-hover min-w-[105px] whitespace-nowrap shrink-0 text-center select-none text-sm font-medium px-5 h-8 flex items-center justify-center rounded-full text-zinc-600 sleek-transition';
                     }
                 });
 

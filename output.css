@@ -736,6 +736,9 @@
   .min-w-0 {
     min-width: 0px;
   }
+  .min-w-\[105px\] {
+    min-width: 105px;
+  }
   .min-w-\[120px\] {
     min-width: 120px;
   }
@@ -1474,6 +1477,9 @@
   .tracking-widest {
     --tw-tracking: var(--tracking-widest);
     letter-spacing: var(--tracking-widest);
+  }
+  .whitespace-nowrap {
+    white-space: nowrap;
   }
   .text-\[var\(--tb-accent\)\] {
     color: var(--tb-accent);

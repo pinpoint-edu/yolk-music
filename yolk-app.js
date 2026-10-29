@@ -1959,20 +1959,76 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     let currentCoverColor = null;
+    let currentActivePageTint = null;
+    let currentPlaylistTintRgb = null;
+
+    function updateSafariThemeTint(r, g, b, alpha = 0.38) {
+        const metaTheme = document.getElementById('meta-theme-color') || document.querySelector('meta[name="theme-color"]');
+        if (r === null || r === undefined) {
+            currentActivePageTint = null;
+            if (metaTheme) metaTheme.setAttribute('content', '#FCFBF8');
+            document.documentElement.style.backgroundColor = '#FCFBF8';
+            document.body.style.backgroundColor = '#FCFBF8';
+            return;
+        }
+
+        currentActivePageTint = { r, g, b, alpha };
+        const topR = Math.round(r * alpha + 252 * (1 - alpha));
+        const topG = Math.round(g * alpha + 251 * (1 - alpha));
+        const topB = Math.round(b * alpha + 248 * (1 - alpha));
+        const hex = `#${topR.toString(16).padStart(2, '0')}${topG.toString(16).padStart(2, '0')}${topB.toString(16).padStart(2, '0')}`;
+
+        if (metaTheme) metaTheme.setAttribute('content', hex);
+        document.documentElement.style.backgroundColor = hex;
+        document.body.style.backgroundColor = hex;
+    }
+    window.updateSafariThemeTint = updateSafariThemeTint;
 
     function updateTopNavTint() {
         const topNav = document.getElementById('top-nav-bar');
-        if (!topNav) return;
         const page = document.body.getAttribute('data-page');
         if (page === 'now-playing' && currentCoverColor) {
             const { r, g, b } = currentCoverColor;
-            topNav.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.18)`;
-            topNav.style.borderColor = `rgba(${r}, ${g}, ${b}, 0.35)`;
-            topNav.style.boxShadow = `0 8px 25px rgba(${r}, ${g}, ${b}, 0.12)`;
+            if (topNav) {
+                topNav.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.18)`;
+                topNav.style.borderColor = `rgba(${r}, ${g}, ${b}, 0.35)`;
+                topNav.style.boxShadow = `0 8px 25px rgba(${r}, ${g}, ${b}, 0.12)`;
+            }
+            updateSafariThemeTint(r, g, b, 0.28);
+        } else if (page === 'library') {
+            if (topNav) {
+                topNav.style.backgroundColor = '';
+                topNav.style.borderColor = '';
+                topNav.style.boxShadow = '';
+            }
+            if (currentPlaylistContextId) {
+                const pl = playlists.find(p => p.id === currentPlaylistContextId);
+                if (pl && pl.custom_tint) {
+                    updateSafariThemeTint(pl.custom_tint.r, pl.custom_tint.g, pl.custom_tint.b, 0.38);
+                } else if (currentPlaylistTintRgb) {
+                    updateSafariThemeTint(currentPlaylistTintRgb.r, currentPlaylistTintRgb.g, currentPlaylistTintRgb.b, 0.38);
+                } else {
+                    updateSafariThemeTint(null);
+                }
+            } else {
+                updateSafariThemeTint(null);
+            }
+        } else if (page === 'artist' || page === 'album') {
+            if (topNav) {
+                topNav.style.backgroundColor = '';
+                topNav.style.borderColor = '';
+                topNav.style.boxShadow = '';
+            }
+            if (currentActivePageTint) {
+                updateSafariThemeTint(currentActivePageTint.r, currentActivePageTint.g, currentActivePageTint.b, currentActivePageTint.alpha);
+            }
         } else {
-            topNav.style.backgroundColor = '';
-            topNav.style.borderColor = '';
-            topNav.style.boxShadow = '';
+            if (topNav) {
+                topNav.style.backgroundColor = '';
+                topNav.style.borderColor = '';
+                topNav.style.boxShadow = '';
+            }
+            updateSafariThemeTint(null);
         }
     }
     window.updateTopNavTint = updateTopNavTint;
@@ -2348,10 +2404,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function applyPlaylistTint(r, g, b) {
+        currentPlaylistTintRgb = { r, g, b };
         const tintEl = document.getElementById('playlist-bg-tint');
         if (!tintEl) return;
         tintEl.style.background = `linear-gradient(180deg, rgba(${r}, ${g}, ${b}, 0.38) 0%, rgba(${r}, ${g}, ${b}, 0.22) 22%, rgba(${r}, ${g}, ${b}, 0.08) 45%, rgba(252, 251, 248, 0.95) 65%, #FCFBF8 85%)`;
         tintEl.style.opacity = '1';
+        updateSafariThemeTint(r, g, b, 0.38);
     }
 
     function hslToRgb(h, s, l) {
@@ -2838,9 +2896,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!tintEl) return;
         if (!colors || colors.length === 0) {
             tintEl.style.opacity = '0';
+            currentPlaylistTintRgb = null;
+            updateSafariThemeTint(null);
             return;
         }
         const [c1, c2, c3, c4] = colors;
+        currentPlaylistTintRgb = c1;
         tintEl.style.background = `
             radial-gradient(ellipse at 18% 12%, rgba(${c1.r}, ${c1.g}, ${c1.b}, 0.55) 0%, transparent 60%),
             radial-gradient(ellipse at 82% 16%, rgba(${c2.r}, ${c2.g}, ${c2.b}, 0.48) 0%, transparent 55%),
@@ -2849,6 +2910,7 @@ document.addEventListener('DOMContentLoaded', () => {
             linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(252, 251, 248, 0.8) 60%, #FCFBF8 100%)
         `;
         tintEl.style.opacity = '1';
+        updateSafariThemeTint(c1.r, c1.g, c1.b, 0.45);
     }
 
     // Client-side image compression for playlist covers (persisted in localStorage as base64)
@@ -3160,8 +3222,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function closePlaylistDetail() {
         currentPlaylistContextId = null;
+        currentPlaylistTintRgb = null;
         const tintEl = document.getElementById('playlist-bg-tint');
         if (tintEl) tintEl.style.opacity = '0';
+        updateSafariThemeTint(null);
         playlistDetailView.classList.add('hidden');
         libraryOverview.classList.remove('hidden');
         renderLibrary();
@@ -3782,6 +3846,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (rgb && tintEl) {
                     tintEl.style.background = `linear-gradient(180deg, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.38) 0%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.22) 22%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.08) 45%, rgba(252, 251, 248, 0.95) 65%, #FCFBF8 85%)`;
                     tintEl.style.opacity = '1';
+                    updateSafariThemeTint(rgb.r, rgb.g, rgb.b, 0.38);
                 }
             });
         }
@@ -3858,6 +3923,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (rgb && tintEl) {
                         tintEl.style.background = `linear-gradient(180deg, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.38) 0%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.22) 22%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.08) 45%, rgba(252, 251, 248, 0.95) 65%, #FCFBF8 85%)`;
                         tintEl.style.opacity = '1';
+                        updateSafariThemeTint(rgb.r, rgb.g, rgb.b, 0.38);
                     }
                 });
             } else {
@@ -4064,6 +4130,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (rgb && tintEl) {
                         tintEl.style.background = `linear-gradient(180deg, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.38) 0%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.22) 22%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.08) 45%, rgba(252, 251, 248, 0.95) 65%, #FCFBF8 85%)`;
                         tintEl.style.opacity = '1';
+                        updateSafariThemeTint(rgb.r, rgb.g, rgb.b, 0.38);
                     }
                 });
             } else {
