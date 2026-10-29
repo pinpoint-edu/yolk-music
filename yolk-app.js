@@ -1624,6 +1624,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function getSupportedAudioFormat() {
+        const dummy = document.createElement('audio');
+        const canMp4 = !!(dummy.canPlayType && dummy.canPlayType('audio/mp4; codecs="mp4a.40.2"').replace(/no/, ''));
+        const canWebm = !!(dummy.canPlayType && dummy.canPlayType('audio/webm; codecs="opus"').replace(/no/, ''));
+
+        // If browser has WebM but lacks MP4 AAC (e.g. Opera / Chromium on older Windows / Linux without proprietary codecs)
+        if (!canMp4 && canWebm) return 'webm';
+        // If browser supports MP4 (iOS Safari, modern Chrome, modern Edge)
+        if (canMp4) return 'mp4';
+        return canWebm ? 'webm' : 'auto';
+    }
+
     function loadDirectAudioPlayer(streamUrl) {
         activeSource = 'audio';
         if (ytPlayer && typeof ytPlayer.stopVideo === 'function') {
@@ -1645,6 +1657,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 showSpinner(false);
                 if (e.name !== 'AbortError') {
                     console.warn('Audio playback notice:', e.message);
+                    // If error is NotSupportedError (unsupported codec on this device/browser), trigger immediate format recovery
+                    if (e.name === 'NotSupportedError' && !currentAudio._recovering) {
+                        currentAudio.dispatchEvent(new Event('error'));
+                    }
                 }
             });
         }
@@ -1716,10 +1732,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const videoId = await getYoutubeId(track);
         if (videoId) {
-            // Direct native HTML5 audio stream via first-party API (auto-recovering, zero iframes, filter-proof)
-            const streamUrl = `/api/music-api?endpoint=stream&id=${encodeURIComponent(videoId)}`;
+            // Direct native HTML5 audio stream via first-party API with client-side codec negotiation (MP4 vs WebM)
+            const prefFormat = getSupportedAudioFormat();
+            currentAudio._activeFormat = prefFormat;
             currentAudio._activeVideoId = videoId;
             currentAudio._recovering = false;
+            const streamUrl = `/api/music-api?endpoint=stream&id=${encodeURIComponent(videoId)}&format=${prefFormat}`;
             loadDirectAudioPlayer(streamUrl);
             return;
         }
@@ -1774,16 +1792,18 @@ document.addEventListener('DOMContentLoaded', () => {
             currentAudio._recovering = true;
             const videoId = await getYoutubeId(currentTrack);
             if (videoId) {
-                // Retry direct stream with fresh timestamp
-                const retryUrl = `/api/music-api?endpoint=stream&id=${encodeURIComponent(videoId)}&_t=${Date.now()}`;
-                if (!currentAudio.src.includes('_t=')) {
-                    currentAudio.src = retryUrl;
-                    currentAudio.load();
-                    currentAudio.play().catch(() => {
-                        showToast('Playback error: Stream unavailable.');
-                    });
-                    return;
-                }
+                // Swap to alternative codec (MP4 <-> WebM) to seamlessly recover on machines lacking proprietary codecs (like older Windows/Opera)
+                const currentFmt = currentAudio._activeFormat || (currentAudio.src.includes('format=webm') ? 'webm' : 'mp4');
+                const altFmt = currentFmt === 'mp4' ? 'webm' : 'mp4';
+                currentAudio._activeFormat = altFmt;
+                const retryUrl = `/api/music-api?endpoint=stream&id=${encodeURIComponent(videoId)}&format=${altFmt}&_t=${Date.now()}`;
+                currentAudio.removeAttribute('src');
+                currentAudio.src = retryUrl;
+                currentAudio.load();
+                currentAudio.play().catch(() => {
+                    showToast('Playback error: Stream unavailable.');
+                });
+                return;
             }
         }
         showToast('Playback error: Stream unavailable.');

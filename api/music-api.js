@@ -1330,6 +1330,8 @@ export default async function handler(req, res) {
         const videoId = /^[a-zA-Z0-9_-]{11}$/.test(targetId) ? targetId : (videoIdMatch?.[1] ?? null);
         if (!videoId) return res.status(400).json({ error: 'Could not parse video ID' });
 
+        const requestedFormat = (req.query.format || 'auto').toLowerCase();
+
         // 1. Try Cloudflare Worker stream check ONLY if CF_WORKER_URL environment variable is set
         if (process.env.CF_WORKER_URL) {
             try {
@@ -1344,7 +1346,7 @@ export default async function handler(req, res) {
             } catch (_) {}
         }
 
-        // 2. Fast parallel stream resolution across high-health instances prioritizing iOS Safari-compatible MP4 (AAC)
+        // 2. Fast parallel stream resolution across high-health instances with codec negotiation (MP4 vs WebM)
         const streamInstances = [
             'https://yt.chocolatemoo53.com',
             'https://echostreamz.com',
@@ -1363,15 +1365,31 @@ export default async function handler(req, res) {
                 const audioFormats = (data.adaptiveFormats || []).filter(f => f.type?.includes('audio') && f.url);
                 if (!audioFormats.length) throw new Error('No audio ' + inst);
 
-                // Prioritize audio/mp4 (AAC/m4a, itag 140) for native HTML5 audio compatibility on iOS Safari and WebKit
-                const mp4Formats = audioFormats.filter(f => f.type?.includes('audio/mp4') || f.container === 'm4a');
-                let chosenFormat;
-                if (mp4Formats.length > 0) {
-                    mp4Formats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-                    chosenFormat = mp4Formats[0];
-                } else {
-                    audioFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-                    chosenFormat = audioFormats[0];
+                let chosenFormat = null;
+                if (requestedFormat === 'webm') {
+                    const webmFormats = audioFormats.filter(f => f.type?.includes('audio/webm') || f.container === 'webm');
+                    if (webmFormats.length > 0) {
+                        webmFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+                        chosenFormat = webmFormats[0];
+                    }
+                } else if (requestedFormat === 'mp4') {
+                    const mp4Formats = audioFormats.filter(f => f.type?.includes('audio/mp4') || f.container === 'm4a');
+                    if (mp4Formats.length > 0) {
+                        mp4Formats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+                        chosenFormat = mp4Formats[0];
+                    }
+                }
+
+                // If requested format was auto or not available, default to MP4 for Safari with WebM fallback
+                if (!chosenFormat) {
+                    const mp4Formats = audioFormats.filter(f => f.type?.includes('audio/mp4') || f.container === 'm4a');
+                    if (mp4Formats.length > 0) {
+                        mp4Formats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+                        chosenFormat = mp4Formats[0];
+                    } else {
+                        audioFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+                        chosenFormat = audioFormats[0];
+                    }
                 }
 
                 const rawUrl = chosenFormat.url;
