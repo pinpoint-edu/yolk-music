@@ -1329,14 +1329,16 @@ async function getDirectAudioFormat(videoId) {
       const info = await yt.getBasicInfo(videoId);
       const format = info.chooseFormat({ type: 'audio', quality: 'best' });
       if (format) {
-        const url = format.decipher(yt.session.player);
-        if (url) {
-          return {
-            url,
-            mimeType: format.mime_type || 'audio/mp4',
-            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-          };
-        }
+        try {
+          const url = await format.decipher(yt.session.player);
+          if (url && typeof url === 'string') {
+            return {
+              url,
+              mimeType: format.mime_type || 'audio/mp4',
+              userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            };
+          }
+        } catch (_) {}
       }
     }
   } catch (e) {
