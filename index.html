@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Yolk! - Minimalist Music</title>
     
     <!-- Favicon & App Icons -->
@@ -50,6 +50,43 @@
 
         body {
             background-color: #FCFBF8;
+        }
+
+        /* Prevent iOS Safari auto-zoom on input focus/typing */
+        input,
+        textarea,
+        select {
+            font-size: 16px !important;
+        }
+
+        @media (max-width: 639px) {
+            #page-library-scroll,
+            #page-artist-scroll,
+            #page-album-scroll {
+                padding-top: 120px !important;
+            }
+            .library-shell {
+                padding-top: 8px !important;
+            }
+            #playlist-detail-view {
+                padding-top: 8px !important;
+            }
+            body.is-searching[data-phone-search-view="search"] #search-block {
+                top: 24px !important;
+            }
+            body.is-searching[data-phone-search-view="nav"] #search-block {
+                top: 120px !important;
+            }
+            body[data-page="search"][data-phone-search-view="search"] #main-header {
+                opacity: 0 !important;
+                pointer-events: none !important;
+                transform: translate(-50%, -24px) scale(0.95) !important;
+            }
+            body[data-page="search"][data-phone-search-view="nav"] #main-header {
+                opacity: 1 !important;
+                pointer-events: auto !important;
+                transform: translate(-50%, 0) scale(1) !important;
+            }
         }
 
         #top-nav-bar a {
@@ -788,7 +825,7 @@
     </div>
 
     <!-- Top Navigation Bar -->
-    <header class="fixed top-12 sm:top-6 left-1/2 -translate-x-1/2 z-30 flex justify-center w-[calc(100%-1.5rem)] sm:w-[calc(100%-3rem)] max-w-fit">
+    <header id="main-header" class="fixed top-12 sm:top-6 left-1/2 -translate-x-1/2 z-30 flex justify-center w-[calc(100%-1.5rem)] sm:w-[calc(100%-3rem)] max-w-fit transition-all duration-300">
         <nav id="top-nav-bar" class="flex gap-1.5 items-center flex-nowrap shrink-0 bg-white/70 backdrop-blur-md p-[10px] h-[56px] rounded-full border border-zinc-200 shadow-sm transition-all duration-500">
             <a href="#search" id="nav-search" class="yolk-active min-w-[105px] whitespace-nowrap shrink-0 text-center text-sm font-medium px-5 h-8 flex items-center justify-center rounded-full sleek-transition">
                 Search
@@ -799,6 +836,11 @@
             <a href="#now-playing" id="nav-now-playing" class="sleek-hover min-w-[105px] whitespace-nowrap shrink-0 text-center text-sm font-medium px-5 h-8 flex items-center justify-center rounded-full text-zinc-600 sleek-transition">
                 Now Playing
             </a>
+            <!-- Switch back to Search Bar button (visible on phone when in search view) -->
+            <button id="nav-bar-toggle-search-btn" type="button" class="sm:hidden flex items-center gap-1.5 px-3 h-8 rounded-full bg-zinc-900 text-white text-xs font-bold active:scale-95 transition-all shadow-xs shrink-0 cursor-pointer" title="Switch back to Search Bar">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <span>Search</span>
+            </button>
         </nav>
     </header>
 
@@ -822,10 +864,15 @@
                     id="searchInput"
                     type="text" 
                     placeholder="Search songs, artists, or playlists..." 
-                    class="w-full h-[56px] bg-white border border-zinc-200 text-zinc-800 text-base rounded-full px-6 py-[10px] outline-none transition-all duration-300 focus:border-zinc-300 focus:shadow-lg placeholder:text-zinc-400 shadow-sm"
+                    class="w-full h-[56px] bg-white border border-zinc-200 text-zinc-800 text-base rounded-full pl-6 pr-24 py-[10px] outline-none transition-all duration-300 focus:border-zinc-300 focus:shadow-lg placeholder:text-zinc-400 shadow-sm"
                     autocomplete="off"
                 >
-                <div class="absolute right-[14px] top-1/2 -translate-y-1/2 text-zinc-400 transition-colors duration-300">
+                <!-- Switch to Nav Bar button (visible on phone on right side of search bar) -->
+                <button id="search-bar-toggle-nav-btn" type="button" class="sm:hidden absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-100 hover:bg-zinc-200 active:scale-95 transition-all text-xs font-bold text-zinc-700 shadow-2xs z-30 cursor-pointer" title="Switch to Navigation Bar">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                    <span>Nav</span>
+                </button>
+                <div class="hidden sm:block absolute right-[18px] top-1/2 -translate-y-1/2 text-zinc-400 transition-colors duration-300 pointer-events-none">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                 </div>
             </div>
@@ -1249,28 +1296,28 @@
     </div>
 
     <!-- Bottom Player Bar (Visible on search and library) -->
-    <div id="bottom-player" class="fixed bottom-6 left-1/2 w-[calc(100%-3rem)] max-w-4xl h-[56px] bg-white/85 backdrop-blur-lg border border-zinc-200/90 shadow-[0_8px_30px_rgb(0,0,0,0.06)] rounded-full px-4 box-border flex justify-between items-center z-20 group hidden-force">
+    <div id="bottom-player" class="fixed bottom-6 left-1/2 w-[calc(100%-1.5rem)] sm:w-[calc(100%-3rem)] max-w-4xl h-[56px] bg-white/85 backdrop-blur-lg border border-zinc-200/90 shadow-[0_8px_30px_rgb(0,0,0,0.06)] rounded-full px-3 sm:px-4 box-border flex justify-between items-center z-20 group hidden-force">
         <div id="bottom-player-content" class="w-full h-full flex justify-between items-center">
             <!-- Left: Track info -->
-            <div class="flex items-center gap-3 w-1/3 min-w-[170px] h-full cursor-pointer" id="bottom-player-info">
+            <div class="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0 sm:w-1/3 sm:min-w-[170px] h-full cursor-pointer pr-1" id="bottom-player-info">
                 <div class="bottom-thumb w-9 h-9 bg-zinc-100 border border-zinc-200 rounded-[11px] shrink-0 flex items-center justify-center shadow-inner overflow-hidden relative">
                     <img id="bottom-player-img" src="" alt="Cover" class="w-full h-full object-cover hidden" referrerpolicy="no-referrer">
                     <div id="bottom-player-placeholder" class="flex items-center justify-center text-zinc-400">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
                     </div>
                 </div>
-                <div class="flex flex-col justify-center min-w-0 pr-2">
+                <div class="flex flex-col justify-center min-w-0 pr-1">
                     <span id="bottom-player-title" class="text-xs sm:text-sm font-semibold text-zinc-800 leading-none truncate">Not Playing</span>
                     <span id="bottom-player-artist" class="player-artist text-[10px] sm:text-[11px] font-medium text-zinc-500 leading-none truncate mt-0.5 hover:text-zinc-900 hover:underline">Select a song to start</span>
                 </div>
             </div>
 
-            <!-- Center: Controls (Queue, Fav, Prev, Play/Pause, Next, Add to Playlist) -->
-            <div class="flex items-center justify-center gap-2.5 sm:gap-3 shrink-0">
-                <button id="bp-queue-btn" class="sleek-hover text-zinc-500 hover:text-zinc-900 transition-colors p-1.5 rounded-full hover:bg-black/5 flex items-center justify-center cursor-pointer shrink-0" title="Play Queue">
+            <!-- Center: Controls -->
+            <div class="flex items-center justify-center gap-1 sm:gap-3 shrink-0">
+                <button id="bp-queue-btn" class="hidden sm:inline-flex sleek-hover text-zinc-500 hover:text-zinc-900 transition-colors p-1.5 rounded-full hover:bg-black/5 items-center justify-center cursor-pointer shrink-0" title="Play Queue">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
                 </button>
-                <button id="bottom-player-fav-btn" class="sleek-hover text-zinc-900 transition-transform hover:scale-110 p-1.5 rounded-full hover:bg-black/5 shrink-0" title="Favorite">
+                <button id="bottom-player-fav-btn" class="hidden sm:inline-flex sleek-hover text-zinc-900 transition-transform hover:scale-110 p-1.5 rounded-full hover:bg-black/5 shrink-0" title="Favorite">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#18181b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                 </button>
                 <button id="bottom-player-prev" class="sleek-hover text-zinc-400 hover:text-zinc-800 transition-colors p-1 shrink-0" title="Previous Track">
@@ -1282,13 +1329,42 @@
                 <button id="bottom-player-next" class="sleek-hover text-zinc-400 hover:text-zinc-800 transition-colors p-1 shrink-0" title="Next Track">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
                 </button>
-                <button id="bottom-player-add-btn" class="sleek-hover text-zinc-400 hover:text-zinc-800 transition-colors p-1.5 rounded-full hover:bg-black/5 shrink-0" title="Add to Playlist">
+                <button id="bottom-player-add-btn" class="hidden sm:inline-flex sleek-hover text-zinc-400 hover:text-zinc-800 transition-colors p-1.5 rounded-full hover:bg-black/5 shrink-0" title="Add to Playlist">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
                 </button>
+
+                <!-- Mobile More Button & Popover (Phone view puts all extra options into this button) -->
+                <div class="relative sm:hidden flex items-center shrink-0">
+                    <button id="bp-mobile-more-btn" class="sleek-hover text-zinc-600 hover:text-zinc-950 p-1.5 rounded-full hover:bg-black/5 cursor-pointer shrink-0" title="More options">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+                    </button>
+                    <div id="bp-mobile-more-popover" class="hidden absolute right-0 bottom-full mb-3 w-56 bg-white/95 backdrop-blur-2xl border border-zinc-200/90 rounded-2xl p-2.5 shadow-[0_16px_40px_rgba(0,0,0,0.18)] flex flex-col gap-1 z-50">
+                        <button id="bp-more-fav-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#18181b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                            <span>Favorite</span>
+                        </button>
+                        <button id="bp-more-add-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+                            <span>Add to Playlist</span>
+                        </button>
+                        <button id="bp-more-queue-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                            <span>Play Queue</span>
+                        </button>
+                        <button id="bp-more-download-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            <span>Download Offline</span>
+                        </button>
+                        <div class="px-3 py-2 flex items-center gap-2 border-t border-black/5 mt-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-zinc-500 shrink-0"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                            <input id="bp-more-volume-slider" type="range" min="0" max="100" value="100" class="yolk-volume-slider w-full cursor-pointer">
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <!-- Right: Progress & Time & Volume -->
-            <div class="w-1/3 min-w-[170px] flex justify-end items-center gap-2">
+            <!-- Right: Progress & Time & Volume (Hidden on phone view to keep bar compact) -->
+            <div class="hidden sm:flex w-1/3 min-w-[170px] justify-end items-center gap-2">
                 <span id="bottom-player-current-time" class="text-[10px] text-zinc-400 font-medium select-none">0:00</span>
                 <div id="bottom-player-progress-bar" class="w-full max-w-[70px] sm:max-w-[100px] h-1.5 bg-zinc-200/80 rounded-full overflow-hidden relative cursor-pointer hover:h-2 transition-all">
                     <div id="bottom-player-progress-fill" class="absolute left-0 top-0 w-0 h-full bg-zinc-800 pointer-events-none"></div>
@@ -1617,6 +1693,12 @@
                 // Set body data attribute for conditional CSS (like hiding bottom player)
                 body.setAttribute('data-page', hash);
 
+                if (hash === 'search') {
+                    body.setAttribute('data-phone-search-view', 'search');
+                } else {
+                    body.removeAttribute('data-phone-search-view');
+                }
+
                 if (hash !== 'library') {
                     const tintEl = document.getElementById('playlist-bg-tint');
                     if (tintEl) tintEl.style.opacity = '0';
@@ -1690,6 +1772,34 @@
                 }
             }
 
+            // Mobile Phone Search vs Navigation Bar Toggle
+            const searchBarToggleNavBtn = document.getElementById('search-bar-toggle-nav-btn');
+            const navBarToggleSearchBtn = document.getElementById('nav-bar-toggle-search-btn');
+            const searchInputEl = document.getElementById('searchInput');
+
+            if (searchBarToggleNavBtn) {
+                searchBarToggleNavBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    body.setAttribute('data-phone-search-view', 'nav');
+                });
+            }
+
+            if (navBarToggleSearchBtn) {
+                navBarToggleSearchBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    body.setAttribute('data-phone-search-view', 'search');
+                    if (searchInputEl) searchInputEl.focus();
+                });
+            }
+
+            if (searchInputEl) {
+                searchInputEl.addEventListener('focus', () => {
+                    if (window.innerWidth < 640) {
+                        body.setAttribute('data-phone-search-view', 'search');
+                    }
+                });
+            }
+
             Object.keys(navLinks).forEach(key => {
                 const link = navLinks[key];
                 if (!link) return;
@@ -1697,7 +1807,12 @@
                     const currentHash = window.location.hash.replace('#', '') || 'search';
                     if (currentHash === key) {
                         e.preventDefault();
-                        scrollToTopOf(key);
+                        if (key === 'search' && window.innerWidth < 640) {
+                            body.setAttribute('data-phone-search-view', 'search');
+                            if (searchInputEl) searchInputEl.focus();
+                        } else {
+                            scrollToTopOf(key);
+                        }
                     }
                 });
             });

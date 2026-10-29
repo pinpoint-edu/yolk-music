@@ -496,6 +496,19 @@ function showToast(msg) {
     }, 2800);
 }
 
+// Browser audio codec capability negotiation (MP4 vs WebM)
+function getSupportedAudioFormat() {
+    const dummy = document.createElement('audio');
+    const canMp4 = !!(dummy.canPlayType && dummy.canPlayType('audio/mp4; codecs="mp4a.40.2"').replace(/no/, ''));
+    const canWebm = !!(dummy.canPlayType && dummy.canPlayType('audio/webm; codecs="opus"').replace(/no/, ''));
+
+    // If browser has WebM but lacks MP4 AAC (e.g. Opera / Chromium on older Windows / Linux without proprietary codecs)
+    if (!canMp4 && canWebm) return 'webm';
+    // If browser supports MP4 (iOS Safari, modern Chrome, modern Edge)
+    if (canMp4) return 'mp4';
+    return canWebm ? 'webm' : 'auto';
+}
+
 // ==========================================
 // IndexedDB Offline Storage Manager
 // Enables 100% offline playback on iOS & browsers as an installable PWA
@@ -706,6 +719,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const npMobileMoreDownloadBtn = document.getElementById('np-mobile-more-download-btn');
     const npMobileMoreVolumeSlider = document.getElementById('np-mobile-more-volume-slider');
 
+    const bpMobileMoreBtn = document.getElementById('bp-mobile-more-btn');
+    const bpMobileMorePopover = document.getElementById('bp-mobile-more-popover');
+    const bpMoreFavBtn = document.getElementById('bp-more-fav-btn');
+    const bpMoreAddBtn = document.getElementById('bp-more-add-btn');
+    const bpMoreQueueBtn = document.getElementById('bp-more-queue-btn');
+    const bpMoreDownloadBtn = document.getElementById('bp-more-download-btn');
+    const bpMoreVolumeSlider = document.getElementById('bp-more-volume-slider');
+
     const nowPlayingContainer = document.getElementById('now-playing-container');
     let isLyricsAvailable = false;
     let isLyricsUserEnabled = false;
@@ -806,12 +827,23 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
     }
+    if (bpMobileMoreBtn) {
+        bpMobileMoreBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (bpMobileMorePopover) {
+                bpMobileMorePopover.classList.toggle('hidden');
+            }
+        };
+    }
     document.addEventListener('click', (e) => {
         if (lyricsBarMorePopover && !lyricsBarMorePopover.contains(e.target) && e.target !== lyricsBarMoreBtn) {
             lyricsBarMorePopover.classList.add('hidden');
         }
         if (npMobileMorePopover && !npMobileMorePopover.contains(e.target) && e.target !== npMobileMoreBtn) {
             npMobileMorePopover.classList.add('hidden');
+        }
+        if (bpMobileMorePopover && !bpMobileMorePopover.contains(e.target) && e.target !== bpMobileMoreBtn) {
+            bpMobileMorePopover.classList.add('hidden');
         }
     });
     if (lyricsMoreAddBtn) {
@@ -850,8 +882,41 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentTrack) YolkOfflineDB.downloadTrack(currentTrack);
         };
     }
+    if (bpMoreFavBtn) {
+        bpMoreFavBtn.onclick = () => {
+            if (bpMobileMorePopover) bpMobileMorePopover.classList.add('hidden');
+            if (currentTrack) {
+                toggleFavorite(currentTrack, null);
+                updateNowPlayingFavButton();
+                updateBottomPlayerFavButton();
+            }
+        };
+    }
+    if (bpMoreAddBtn) {
+        bpMoreAddBtn.onclick = () => {
+            if (bpMobileMorePopover) bpMobileMorePopover.classList.add('hidden');
+            if (currentTrack) openAddToPlaylistModal(currentTrack);
+        };
+    }
+    if (bpMoreQueueBtn) {
+        bpMoreQueueBtn.onclick = () => {
+            if (bpMobileMorePopover) bpMobileMorePopover.classList.add('hidden');
+            if (typeof openQueueModal === 'function') openQueueModal();
+        };
+    }
+    if (bpMoreDownloadBtn) {
+        bpMoreDownloadBtn.onclick = () => {
+            if (bpMobileMorePopover) bpMobileMorePopover.classList.add('hidden');
+            if (currentTrack) YolkOfflineDB.downloadTrack(currentTrack);
+        };
+    }
     if (npMobileMoreVolumeSlider) {
         npMobileMoreVolumeSlider.addEventListener('input', (e) => {
+            setMasterVolume(parseFloat(e.target.value) / 100);
+        });
+    }
+    if (bpMoreVolumeSlider) {
+        bpMoreVolumeSlider.addEventListener('input', (e) => {
             setMasterVolume(parseFloat(e.target.value) / 100);
         });
     }
@@ -919,6 +984,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (npVolumeSlider) npVolumeSlider.value = percentVal;
         if (lyricsMoreVolumeSlider) lyricsMoreVolumeSlider.value = percentVal;
         if (npMobileMoreVolumeSlider) npMobileMoreVolumeSlider.value = percentVal;
+        if (bpMoreVolumeSlider) bpMoreVolumeSlider.value = percentVal;
 
         if (bpVolumeIcon) {
             bpVolumeIcon.innerHTML = getVolumeIconSvg(currentVolume, 'currentColor', '2');
@@ -1902,18 +1968,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function getSupportedAudioFormat() {
-        const dummy = document.createElement('audio');
-        const canMp4 = !!(dummy.canPlayType && dummy.canPlayType('audio/mp4; codecs="mp4a.40.2"').replace(/no/, ''));
-        const canWebm = !!(dummy.canPlayType && dummy.canPlayType('audio/webm; codecs="opus"').replace(/no/, ''));
-
-        // If browser has WebM but lacks MP4 AAC (e.g. Opera / Chromium on older Windows / Linux without proprietary codecs)
-        if (!canMp4 && canWebm) return 'webm';
-        // If browser supports MP4 (iOS Safari, modern Chrome, modern Edge)
-        if (canMp4) return 'mp4';
-        return canWebm ? 'webm' : 'auto';
-    }
-
     function loadDirectAudioPlayer(streamUrl) {
         activeSource = 'audio';
         if (ytPlayer && typeof ytPlayer.stopVideo === 'function') {
@@ -2518,12 +2572,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateBottomPlayerFavButton() {
-        if (!bpFavBtn || !currentTrack) return;
+        if (!currentTrack) return;
         const fav = isFavorite(currentTrack.id);
-        const svg = bpFavBtn.querySelector('svg');
-        if (svg) {
-            svg.setAttribute('fill', fav ? '#18181b' : 'none');
-            svg.setAttribute('stroke', '#18181b');
+        if (bpFavBtn) {
+            const svg = bpFavBtn.querySelector('svg');
+            if (svg) {
+                svg.setAttribute('fill', fav ? '#18181b' : 'none');
+                svg.setAttribute('stroke', '#18181b');
+            }
+        }
+        if (bpMoreFavBtn) {
+            const msvg = bpMoreFavBtn.querySelector('svg');
+            if (msvg) {
+                msvg.setAttribute('fill', fav ? '#18181b' : 'none');
+                msvg.setAttribute('stroke', '#18181b');
+            }
         }
     }
 
