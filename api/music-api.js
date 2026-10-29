@@ -3,6 +3,9 @@ import { Readable } from 'stream';
 
 const MUSIC_API_BASE = 'https://bhindi1.ddns.net/music/api';
 
+// In-memory stream resolution cache for instantaneous (<5ms) sub-sequent playback & queue lookahead
+const streamUrlCache = new Map();
+
 let youtubeInstance = null;
 let isInitializing = false;
 
@@ -1331,6 +1334,15 @@ export default async function handler(req, res) {
         if (!videoId) return res.status(400).json({ error: 'Could not parse video ID' });
 
         const requestedFormat = (req.query.format || 'auto').toLowerCase();
+        const cacheKey = `${videoId}:${requestedFormat}`;
+
+        // Return immediately if cached in memory
+        const cached = streamUrlCache.get(cacheKey);
+        if (cached && cached.expires > Date.now()) {
+            res.setHeader('Cache-Control', 'public, max-age=3600');
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            return res.redirect(302, cached.url);
+        }
 
         // 1. Try Cloudflare Worker stream check ONLY if CF_WORKER_URL environment variable is set
         if (process.env.CF_WORKER_URL) {
@@ -1404,6 +1416,7 @@ export default async function handler(req, res) {
             });
 
             const resolvedUrl = await Promise.any(resolvePromises);
+            streamUrlCache.set(cacheKey, { url: resolvedUrl, expires: Date.now() + 25 * 60 * 1000 });
             res.setHeader('Cache-Control', 'public, max-age=3600');
             res.setHeader('Access-Control-Allow-Origin', '*');
             return res.redirect(302, resolvedUrl);

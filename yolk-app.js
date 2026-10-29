@@ -11,6 +11,10 @@ let playlists = JSON.parse(localStorage.getItem('yolk_playlists') || '[]').map(p
     return pl;
 });
 let currentAudio = new Audio();
+currentAudio.preload = 'auto';
+let preloadedNextAudio = new Audio();
+preloadedNextAudio.preload = 'auto';
+let preloadedNextTrackUid = null;
 let activeSource = 'audio'; // 'audio' or 'youtube'
 let ytPlayer = null;
 let ytProgressInterval = null;
@@ -138,9 +142,8 @@ function getDownloadUrl(item) {
     return '';
 }
 
-// YouTube search fallback
-const pendingSearches = new Map();
-async function getYoutubeId(track) {
+// Synchronous fast-path extraction of YouTube video ID
+function getYoutubeIdSync(track) {
     if (!track) return null;
     if (track.youtube_id || track.videoId || track.video_id) {
         return track.youtube_id || track.videoId || track.video_id;
@@ -177,6 +180,15 @@ async function getYoutubeId(track) {
             return match[1];
         }
     }
+    return null;
+}
+
+// YouTube search fallback
+const pendingSearches = new Map();
+async function getYoutubeId(track) {
+    if (!track) return null;
+    const syncId = getYoutubeIdSync(track);
+    if (syncId) return syncId;
 
     const uid = getTrackUid(track);
     if (pendingSearches.has(uid)) return pendingSearches.get(uid);
@@ -484,6 +496,167 @@ function showToast(msg) {
     }, 2800);
 }
 
+// ==========================================
+// IndexedDB Offline Storage Manager
+// Enables 100% offline playback on iOS & browsers as an installable PWA
+// ==========================================
+const YolkOfflineDB = {
+    DB_NAME: 'yolk_offline_storage',
+    DB_VERSION: 1,
+    STORE_NAME: 'tracks',
+    _db: null,
+
+    async getDB() {
+        if (this._db) return this._db;
+        return new Promise((resolve, reject) => {
+            if (!('indexedDB' in window)) {
+                return reject(new Error('IndexedDB not supported in this browser.'));
+            }
+            const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
+            request.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(this.STORE_NAME)) {
+                    db.createObjectStore(this.STORE_NAME, { keyPath: 'uid' });
+                }
+            };
+            request.onsuccess = (e) => {
+                this._db = e.target.result;
+                resolve(this._db);
+            };
+            request.onerror = (e) => {
+                reject(e.target.error);
+            };
+        });
+    },
+
+    async saveTrack(track, audioBlob, artworkBlob) {
+        const db = await this.getDB();
+        const uid = getTrackUid(track);
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(this.STORE_NAME, 'readwrite');
+            const store = tx.objectStore(this.STORE_NAME);
+            const record = {
+                uid: uid,
+                id: track.id || uid,
+                youtube_id: track.youtube_id || (track.id?.startsWith('ytm-') ? track.id.replace('ytm-', '') : null),
+                title: track.title || track.name || 'Unknown Title',
+                artist_name: track.artist_name || track.artist || 'Unknown Artist',
+                artwork_url: track.artwork_url || track.image || '',
+                duration: track.duration || 0,
+                audioBlob: audioBlob,
+                artworkBlob: artworkBlob || null,
+                downloadedAt: Date.now(),
+                size: audioBlob ? audioBlob.size : 0
+            };
+            const req = store.put(record);
+            req.onsuccess = () => resolve(record);
+            req.onerror = (e) => reject(e.target.error);
+        });
+    },
+
+    async getTrack(uid) {
+        if (!uid) return null;
+        try {
+            const db = await this.getDB();
+            return new Promise((resolve) => {
+                const tx = db.transaction(this.STORE_NAME, 'readonly');
+                const store = tx.objectStore(this.STORE_NAME);
+                const req = store.get(uid);
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = () => resolve(null);
+            });
+        } catch (_) {
+            return null;
+        }
+    },
+
+    async getAllTracks() {
+        try {
+            const db = await this.getDB();
+            return new Promise((resolve) => {
+                const tx = db.transaction(this.STORE_NAME, 'readonly');
+                const store = tx.objectStore(this.STORE_NAME);
+                const req = store.getAll();
+                req.onsuccess = () => resolve(req.result || []);
+                req.onerror = () => resolve([]);
+            });
+        } catch (_) {
+            return [];
+        }
+    },
+
+    async deleteTrack(uid) {
+        if (!uid) return;
+        const db = await this.getDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(this.STORE_NAME, 'readwrite');
+            const store = tx.objectStore(this.STORE_NAME);
+            const req = store.delete(uid);
+            req.onsuccess = () => resolve();
+            req.onerror = (e) => reject(e.target.error);
+        });
+    },
+
+    async isDownloaded(uid) {
+        const item = await this.getTrack(uid);
+        return !!(item && item.audioBlob);
+    },
+
+    async downloadTrack(track) {
+        if (!track) return;
+        const uid = getTrackUid(track);
+        if (await this.isDownloaded(uid)) {
+            showToast(`"${track.title || 'Track'}" is already downloaded!`);
+            return;
+        }
+
+        const title = track.title || track.name || 'Track';
+        showToast(`Downloading "${title}" for offline playback…`);
+
+        try {
+            let videoId = getYoutubeIdSync(track);
+            if (!videoId) {
+                videoId = await getYoutubeId(track);
+            }
+            if (!videoId) {
+                throw new Error('Could not resolve stream URL for track');
+            }
+
+            const prefFormat = getSupportedAudioFormat();
+            const streamUrl = `/api/music-api?endpoint=stream&id=${encodeURIComponent(videoId)}&format=${prefFormat}`;
+
+            // Fetch binary audio blob
+            const audioRes = await fetch(streamUrl);
+            if (!audioRes.ok) throw new Error(`Audio download failed: HTTP ${audioRes.status}`);
+            const audioBlob = await audioRes.blob();
+
+            // Fetch artwork blob
+            let artworkBlob = null;
+            const artUrl = getProxyUrl(track.artwork_url || track.image);
+            if (artUrl) {
+                try {
+                    const artRes = await fetch(artUrl);
+                    if (artRes.ok) artworkBlob = await artRes.blob();
+                } catch (_) {}
+            }
+
+            await this.saveTrack(track, audioBlob, artworkBlob);
+            showToast(`✓ Downloaded "${title}" for offline play!`);
+
+            if (currentPlaylistContextId === 'downloaded' && typeof openPlaylistDetail === 'function') {
+                openPlaylistDetail('downloaded');
+            }
+            if (typeof renderLibrary === 'function') {
+                renderLibrary();
+            }
+        } catch (err) {
+            console.error('Download offline track error:', err);
+            showToast(`Download failed: ${err.message || 'Stream unavailable'}`);
+        }
+    }
+};
+window.YolkOfflineDB = YolkOfflineDB;
+
 document.addEventListener('DOMContentLoaded', () => {
     // DOM Elements
     const bottomPlayer = document.getElementById('bottom-player');
@@ -519,11 +692,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const lyricsBarMorePopover = document.getElementById('lyrics-bar-more-popover');
     const lyricsMoreAddBtn = document.getElementById('lyrics-more-add-btn');
     const lyricsMoreQueueBtn = document.getElementById('lyrics-more-queue-btn');
+    const lyricsMoreDownloadBtn = document.getElementById('lyrics-more-download-btn');
     const lyricsMoreVolumeSlider = document.getElementById('lyrics-more-volume-slider');
     const lyricsBarTitle = document.getElementById('lyrics-bar-title');
     const lyricsBarArtist = document.getElementById('lyrics-bar-artist');
     const lyricsBarThumb = document.getElementById('lyrics-bar-thumb');
     const lyricsBarInfo = document.getElementById('lyrics-bar-info');
+
+    const npMobileMoreBtn = document.getElementById('np-mobile-more-btn');
+    const npMobileMorePopover = document.getElementById('np-mobile-more-popover');
+    const npMobileMoreAddBtn = document.getElementById('np-mobile-more-add-btn');
+    const npMobileMoreQueueBtn = document.getElementById('np-mobile-more-queue-btn');
+    const npMobileMoreDownloadBtn = document.getElementById('np-mobile-more-download-btn');
+    const npMobileMoreVolumeSlider = document.getElementById('np-mobile-more-volume-slider');
 
     const nowPlayingContainer = document.getElementById('now-playing-container');
     let isLyricsAvailable = false;
@@ -617,9 +798,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
     }
+    if (npMobileMoreBtn) {
+        npMobileMoreBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (npMobileMorePopover) {
+                npMobileMorePopover.classList.toggle('hidden');
+            }
+        };
+    }
     document.addEventListener('click', (e) => {
         if (lyricsBarMorePopover && !lyricsBarMorePopover.contains(e.target) && e.target !== lyricsBarMoreBtn) {
             lyricsBarMorePopover.classList.add('hidden');
+        }
+        if (npMobileMorePopover && !npMobileMorePopover.contains(e.target) && e.target !== npMobileMoreBtn) {
+            npMobileMorePopover.classList.add('hidden');
         }
     });
     if (lyricsMoreAddBtn) {
@@ -633,6 +825,40 @@ document.addEventListener('DOMContentLoaded', () => {
             if (lyricsBarMorePopover) lyricsBarMorePopover.classList.add('hidden');
             if (typeof openQueueModal === 'function') openQueueModal();
         };
+    }
+    if (lyricsMoreDownloadBtn) {
+        lyricsMoreDownloadBtn.onclick = () => {
+            if (lyricsBarMorePopover) lyricsBarMorePopover.classList.add('hidden');
+            if (currentTrack) YolkOfflineDB.downloadTrack(currentTrack);
+        };
+    }
+    if (npMobileMoreAddBtn) {
+        npMobileMoreAddBtn.onclick = () => {
+            if (npMobileMorePopover) npMobileMorePopover.classList.add('hidden');
+            if (currentTrack) openAddToPlaylistModal(currentTrack);
+        };
+    }
+    if (npMobileMoreQueueBtn) {
+        npMobileMoreQueueBtn.onclick = () => {
+            if (npMobileMorePopover) npMobileMorePopover.classList.add('hidden');
+            if (typeof openQueueModal === 'function') openQueueModal();
+        };
+    }
+    if (npMobileMoreDownloadBtn) {
+        npMobileMoreDownloadBtn.onclick = () => {
+            if (npMobileMorePopover) npMobileMorePopover.classList.add('hidden');
+            if (currentTrack) YolkOfflineDB.downloadTrack(currentTrack);
+        };
+    }
+    if (npMobileMoreVolumeSlider) {
+        npMobileMoreVolumeSlider.addEventListener('input', (e) => {
+            setMasterVolume(parseFloat(e.target.value) / 100);
+        });
+    }
+    if (lyricsMoreVolumeSlider) {
+        lyricsMoreVolumeSlider.addEventListener('input', (e) => {
+            setMasterVolume(parseFloat(e.target.value) / 100);
+        });
     }
     updateLyricsVisibilityUI();
 
@@ -692,6 +918,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (bpVolumeSlider) bpVolumeSlider.value = percentVal;
         if (npVolumeSlider) npVolumeSlider.value = percentVal;
         if (lyricsMoreVolumeSlider) lyricsMoreVolumeSlider.value = percentVal;
+        if (npMobileMoreVolumeSlider) npMobileMoreVolumeSlider.value = percentVal;
 
         if (bpVolumeIcon) {
             bpVolumeIcon.innerHTML = getVolumeIconSvg(currentVolume, 'currentColor', '2');
@@ -1448,6 +1675,9 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="flex items-center gap-1 shrink-0">
                 ${durStr ? `<span class="text-[11px] text-zinc-400 font-semibold mr-1.5 hidden sm:inline">${durStr}</span>` : ''}
+                <button class="download-track-btn text-zinc-400 hover:text-zinc-900 transition-colors p-1.5 rounded-full hover:bg-zinc-100 cursor-pointer" title="Download offline">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                </button>
                 <button class="add-to-queue-btn text-zinc-400 hover:text-zinc-900 transition-colors p-1.5 rounded-full hover:bg-zinc-100 cursor-pointer" title="Add to Queue">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
                 </button>
@@ -1489,6 +1719,14 @@ document.addEventListener('DOMContentLoaded', () => {
             e.stopPropagation();
             openAddToPlaylistModal(track);
         });
+
+        const dlBtn = div.querySelector('.download-track-btn');
+        if (dlBtn) {
+            dlBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                YolkOfflineDB.downloadTrack(track);
+            });
+        }
 
         const addQueueBtn = div.querySelector('.add-to-queue-btn');
         if (addQueueBtn) {
@@ -1733,6 +1971,95 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function updateMediaSessionMetadata(track) {
+        if (!('mediaSession' in navigator)) return;
+        const artworkUrl = getProxyUrl(track.artwork_url || track.image);
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: track.title || track.name || 'Unknown Title',
+            artist: track.artist_name || track.artist || 'Unknown Artist',
+            album: track.album_name || track.album || 'Yolk Music',
+            artwork: artworkUrl ? [
+                { src: artworkUrl, sizes: '96x96', type: 'image/jpeg' },
+                { src: artworkUrl, sizes: '128x128', type: 'image/jpeg' },
+                { src: artworkUrl, sizes: '192x192', type: 'image/jpeg' },
+                { src: artworkUrl, sizes: '256x256', type: 'image/jpeg' },
+                { src: artworkUrl, sizes: '512x512', type: 'image/jpeg' }
+            ] : []
+        });
+
+        try {
+            navigator.mediaSession.setActionHandler('play', () => togglePlayPause());
+            navigator.mediaSession.setActionHandler('pause', () => togglePlayPause());
+            navigator.mediaSession.setActionHandler('nexttrack', () => playNext());
+            navigator.mediaSession.setActionHandler('previoustrack', () => playPrev());
+            navigator.mediaSession.setActionHandler('seekto', (details) => {
+                if (details.fastSeek && 'fastSeek' in currentAudio) {
+                    currentAudio.fastSeek(details.seekTime);
+                    return;
+                }
+                if (details.seekTime !== undefined && !isNaN(details.seekTime)) {
+                    currentAudio.currentTime = details.seekTime;
+                    updateMediaSessionPosition();
+                }
+            });
+            navigator.mediaSession.setActionHandler('seekforward', (details) => {
+                const skipTime = details.seekOffset || 10;
+                currentAudio.currentTime = Math.min(currentAudio.currentTime + skipTime, currentAudio.duration || Infinity);
+                updateMediaSessionPosition();
+            });
+            navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+                const skipTime = details.seekOffset || 10;
+                currentAudio.currentTime = Math.max(currentAudio.currentTime - skipTime, 0);
+                updateMediaSessionPosition();
+            });
+        } catch (err) {}
+    }
+
+    function updateMediaSessionPosition() {
+        if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession) {
+            if (currentAudio && !isNaN(currentAudio.duration) && currentAudio.duration > 0) {
+                try {
+                    navigator.mediaSession.setPositionState({
+                        duration: currentAudio.duration,
+                        playbackRate: currentAudio.playbackRate || 1.0,
+                        position: Math.min(currentAudio.currentTime || 0, currentAudio.duration)
+                    });
+                } catch (e) {}
+            }
+        }
+    }
+
+    async function preloadNextQueueTrack() {
+        if (!currentQueue || currentQueue.length === 0) return;
+        const nextIdx = currentQueueIndex + 1;
+        if (nextIdx < 0 || nextIdx >= currentQueue.length) return;
+        const nextTrack = currentQueue[nextIdx];
+        if (!nextTrack) return;
+        const uid = getTrackUid(nextTrack);
+        if (preloadedNextTrackUid === uid) return;
+
+        try {
+            const isOffline = await YolkOfflineDB.getTrack(uid);
+            if (isOffline) {
+                preloadedNextTrackUid = uid;
+                return;
+            }
+
+            let videoId = getYoutubeIdSync(nextTrack);
+            if (!videoId) {
+                videoId = await getYoutubeId(nextTrack);
+            }
+            if (videoId) {
+                const prefFormat = getSupportedAudioFormat();
+                const streamUrl = `/api/music-api?endpoint=stream&id=${encodeURIComponent(videoId)}&format=${prefFormat}`;
+                preloadedNextAudio.removeAttribute('src');
+                preloadedNextAudio.src = streamUrl;
+                preloadedNextAudio.load();
+                preloadedNextTrackUid = uid;
+            }
+        } catch (_) {}
+    }
+
     // Playback Execution
     async function playTrack(track) {
         if (!track) return;
@@ -1753,38 +2080,53 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // System Media Session Integration
-        if ('mediaSession' in navigator) {
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: track.title || track.name || 'Unknown Title',
-                artist: track.artist_name || track.artist || 'Unknown Artist',
-                artwork: [{ src: getProxyUrl(track.artwork_url || track.image), sizes: '512x512', type: 'image/jpeg' }]
-            });
-            try {
-                navigator.mediaSession.setActionHandler('play', () => togglePlayPause());
-                navigator.mediaSession.setActionHandler('pause', () => togglePlayPause());
-                navigator.mediaSession.setActionHandler('nexttrack', () => playNext());
-                navigator.mediaSession.setActionHandler('previoustrack', () => playPrev());
-            } catch (err) {}
-        }
+        updateMediaSessionMetadata(track);
 
         // Fetch lyrics
         fetchLyrics(track);
 
+        // 1. Check Offline Database FIRST (instantaneous playback, 0 network lag, works fully offline)
+        const uid = getTrackUid(track);
+        try {
+            const offlineItem = await YolkOfflineDB.getTrack(uid);
+            if (offlineItem && offlineItem.audioBlob) {
+                const objectUrl = URL.createObjectURL(offlineItem.audioBlob);
+                loadDirectAudioPlayer(objectUrl);
+                preloadNextQueueTrack();
+                return;
+            }
+        } catch (_) {}
+
+        // 2. Synchronous fast-path: if video ID is already known on track, start playback immediately
+        const syncVideoId = getYoutubeIdSync(track);
+        if (syncVideoId) {
+            const prefFormat = getSupportedAudioFormat();
+            currentAudio._activeFormat = prefFormat;
+            currentAudio._activeVideoId = syncVideoId;
+            currentAudio._recovering = false;
+            const streamUrl = `/api/music-api?endpoint=stream&id=${encodeURIComponent(syncVideoId)}&format=${prefFormat}`;
+            loadDirectAudioPlayer(streamUrl);
+            preloadNextQueueTrack();
+            return;
+        }
+
+        // 3. Asynchronous fallback resolution
         const videoId = await getYoutubeId(track);
         if (videoId) {
-            // Direct native HTML5 audio stream via first-party API with client-side codec negotiation (MP4 vs WebM)
             const prefFormat = getSupportedAudioFormat();
             currentAudio._activeFormat = prefFormat;
             currentAudio._activeVideoId = videoId;
             currentAudio._recovering = false;
             const streamUrl = `/api/music-api?endpoint=stream&id=${encodeURIComponent(videoId)}&format=${prefFormat}`;
             loadDirectAudioPlayer(streamUrl);
+            preloadNextQueueTrack();
             return;
         }
 
         let streamUrl = getDownloadUrl(track);
         if (streamUrl) {
             loadDirectAudioPlayer(streamUrl);
+            preloadNextQueueTrack();
             return;
         }
 
@@ -1795,9 +2137,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Audio Event Handlers
     currentAudio.addEventListener('canplay', () => {
         showSpinner(false);
+        updateMediaSessionPosition();
         if (document.body.getAttribute('data-page') !== 'now-playing') {
             bottomPlayer.classList.remove('hidden-force');
         }
+    });
+
+    currentAudio.addEventListener('loadedmetadata', () => {
+        updateMediaSessionPosition();
+    });
+
+    currentAudio.addEventListener('seeked', () => {
+        updateMediaSessionPosition();
     });
 
     currentAudio.addEventListener('waiting', () => showSpinner(true));
@@ -1805,6 +2156,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showSpinner(false);
         isPlaying = true;
         updatePlayPauseButtons();
+        updateMediaSessionPosition();
         if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
         if (document.body.getAttribute('data-page') !== 'now-playing') {
             bottomPlayer.classList.remove('hidden-force');
@@ -1813,6 +2165,7 @@ document.addEventListener('DOMContentLoaded', () => {
     currentAudio.addEventListener('pause', () => {
         isPlaying = false;
         updatePlayPauseButtons();
+        updateMediaSessionPosition();
         if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
     });
 
@@ -1850,12 +2203,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Time & Progress Update
+    let lastMediaSessionPosUpdate = 0;
     currentAudio.addEventListener('timeupdate', () => {
         if (activeSource !== 'audio') return;
         const cur = currentAudio.currentTime || 0;
         const dur = currentAudio.duration || (currentTrack?.duration ? currentTrack.duration / 1000 : 0);
         updateProgressUI(cur, dur);
         updateLyricsSync(cur);
+
+        const now = Date.now();
+        if (now - lastMediaSessionPosUpdate > 1000) {
+            lastMediaSessionPosUpdate = now;
+            updateMediaSessionPosition();
+        }
     });
 
     // Progress Bar Scrubbing
@@ -1882,6 +2242,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const dur = currentAudio.duration || (currentTrack?.duration ? currentTrack.duration / 1000 : 0);
             if (dur > 0) {
                 currentAudio.currentTime = clickPos * dur;
+                updateMediaSessionPosition();
                 if (!isPlaying) {
                     currentAudio.play().then(() => {
                         isPlaying = true;
@@ -2248,7 +2609,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 topNav.style.borderColor = `rgba(${r}, ${g}, ${b}, 0.35)`;
                 topNav.style.boxShadow = `0 8px 25px rgba(${r}, ${g}, ${b}, 0.12)`;
             }
-            updateSafariThemeTint(r, g, b, 0.28);
+            updateSafariThemeTint(r, g, b, 0.90);
 
             // Adaptive contrast for Search & Library buttons on dynamic background
             const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
@@ -3136,11 +3497,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function applyAppleMusicNowPlayingBg(colors) {
         const meshEl = document.getElementById('now-playing-mesh');
+        const fadeEl = document.getElementById('now-playing-top-safari-fade');
         if (!meshEl) return;
 
         if (!colors || colors.length === 0) {
             meshEl.style.opacity = '0';
             meshEl.style.background = '';
+            if (fadeEl) fadeEl.style.opacity = '0';
             return;
         }
 
@@ -3154,8 +3517,18 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         meshEl.style.opacity = '1';
 
+        // Calculate top bar blend color between top-left (c1) and top-right (c2)
+        const topR = Math.round(c1.r * 0.55 + c2.r * 0.45);
+        const topG = Math.round(c1.g * 0.55 + c2.g * 0.45);
+        const topB = Math.round(c1.b * 0.55 + c2.b * 0.45);
+
+        if (fadeEl) {
+            fadeEl.style.background = `linear-gradient(180deg, rgba(${topR}, ${topG}, ${topB}, 0.95) 0%, rgba(${topR}, ${topG}, ${topB}, 0.45) 50%, transparent 100%)`;
+            fadeEl.style.opacity = '1';
+        }
+
         if (typeof updateTopNavTint === 'function') {
-            currentCoverColor = c1;
+            currentCoverColor = { r: topR, g: topG, b: topB };
             updateTopNavTint();
         }
     }
@@ -3236,7 +3609,29 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         libraryGrid.appendChild(favCard);
 
-        // 2. Custom Playlists Cards
+        // 2. Downloaded Songs Card
+        const dlCard = document.createElement('div');
+        dlCard.className = 'group cursor-pointer bubbly-hover text-left';
+        dlCard.innerHTML = `
+            <div class="w-full aspect-square bg-[#F4F4F5] rounded-2xl border border-zinc-200/80 mb-2 relative overflow-hidden flex items-center justify-center shadow-sm group-hover:shadow-md transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#18181b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            </div>
+            <h3 class="font-semibold text-xs sm:text-sm text-zinc-900 truncate">Downloaded</h3>
+            <p id="library-downloaded-count" class="text-[11px] text-zinc-500 mt-0.5">Offline</p>
+        `;
+        dlCard.addEventListener('click', () => {
+            openPlaylistDetail('downloaded');
+        });
+        libraryGrid.appendChild(dlCard);
+
+        YolkOfflineDB.getAllTracks().then(offlineTracks => {
+            const countEl = document.getElementById('library-downloaded-count');
+            if (countEl) {
+                countEl.textContent = `${offlineTracks.length} ${offlineTracks.length === 1 ? 'song' : 'songs'}`;
+            }
+        });
+
+        // 3. Custom Playlists Cards
         playlists.forEach((pl) => {
             const plCard = document.createElement('div');
             plCard.className = 'group cursor-pointer bubbly-hover text-left';
@@ -3261,7 +3656,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Open Playlist Detail View (does NOT automatically play!)
-    function openPlaylistDetail(playlistId) {
+    async function openPlaylistDetail(playlistId) {
         currentPlaylistContextId = playlistId;
 
         const detailArt = document.getElementById('playlist-detail-art');
@@ -3301,6 +3696,26 @@ document.addEventListener('DOMContentLoaded', () => {
             detailArtImg.classList.add('hidden');
             detailArtIcon.classList.remove('hidden');
             detailArtIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="#18181b" stroke="#18181b" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
+            if (tintBtn) tintBtn.classList.add('hidden');
+            editBtn.classList.add('hidden');
+            deleteBtn.classList.add('hidden');
+        } else if (playlistId === 'downloaded') {
+            playlistName = 'Downloaded Songs';
+            playlistDesc = 'Offline songs stored directly on this device';
+            trackList = await YolkOfflineDB.getAllTracks();
+
+            applyPlaylistTint(215, 225, 238);
+
+            if (detailArt) {
+                detailArt.className = 'w-44 h-44 sm:w-52 sm:h-52 md:w-60 md:h-60 rounded-2xl bg-[#F4F4F5] flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.08)] border border-zinc-200/80 relative';
+                detailArt.title = 'Downloaded Songs';
+                detailArt.style.cursor = 'default';
+            }
+            if (detailUploadOverlay) detailUploadOverlay.classList.add('hidden');
+
+            detailArtImg.classList.add('hidden');
+            detailArtIcon.classList.remove('hidden');
+            detailArtIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#18181b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
             if (tintBtn) tintBtn.classList.add('hidden');
             editBtn.classList.add('hidden');
             deleteBtn.classList.add('hidden');
@@ -3441,6 +3856,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     () => {
                         if (isFav) {
                             toggleFavorite(track, null);
+                        } else if (playlistId === 'downloaded') {
+                            YolkOfflineDB.deleteTrack(getTrackUid(track)).then(() => {
+                                showToast('Removed from offline downloads');
+                                openPlaylistDetail('downloaded');
+                            });
                         } else {
                             removeTrackFromPlaylist(playlistId, getTrackUid(track));
                         }
@@ -4272,6 +4692,9 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="flex items-center gap-1 shrink-0">
                 ${durStr ? `<span class="text-[11px] text-zinc-400 font-semibold mr-1.5 hidden sm:inline">${durStr}</span>` : ''}
+                <button class="download-track-btn text-zinc-400 hover:text-zinc-900 transition-colors p-2 rounded-full hover:bg-zinc-100 cursor-pointer" title="Download offline">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                </button>
                 <button class="add-to-queue-btn text-zinc-400 hover:text-zinc-900 transition-colors p-2 rounded-full hover:bg-zinc-100 cursor-pointer" title="Add to Queue">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
                 </button>
@@ -4308,6 +4731,14 @@ document.addEventListener('DOMContentLoaded', () => {
             e.stopPropagation();
             openAddToPlaylistModal(track);
         });
+
+        const dlBtn = div.querySelector('.download-track-btn');
+        if (dlBtn) {
+            dlBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                YolkOfflineDB.downloadTrack(track);
+            });
+        }
 
         const addQueueBtn = div.querySelector('.add-to-queue-btn');
         if (addQueueBtn) {
