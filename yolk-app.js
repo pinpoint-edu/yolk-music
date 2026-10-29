@@ -606,12 +606,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof openQueueModal === 'function') openQueueModal();
         };
     }
-    if (lyricsMoreVolumeSlider) {
-        lyricsMoreVolumeSlider.value = Math.round(currentVolume * 100);
-        lyricsMoreVolumeSlider.oninput = (e) => {
-            setMasterVolume(parseFloat(e.target.value) / 100);
-        };
-    }
     updateLyricsVisibilityUI();
 
     const bpPlayPauseBtn = document.getElementById('bottom-player-play-pause');
@@ -669,6 +663,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const percentVal = Math.round(currentVolume * 100);
         if (bpVolumeSlider) bpVolumeSlider.value = percentVal;
         if (npVolumeSlider) npVolumeSlider.value = percentVal;
+        if (lyricsMoreVolumeSlider) lyricsMoreVolumeSlider.value = percentVal;
 
         if (bpVolumeIcon) {
             bpVolumeIcon.innerHTML = getVolumeIconSvg(currentVolume, 'currentColor', '2');
@@ -696,6 +691,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (npVolumeSlider) {
         npVolumeSlider.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value) / 100;
+            setMasterVolume(val);
+        });
+    }
+
+    if (lyricsMoreVolumeSlider) {
+        lyricsMoreVolumeSlider.addEventListener('input', (e) => {
             const val = parseFloat(e.target.value) / 100;
             setMasterVolume(val);
         });
