@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@source "./index.html";
+@source "./yolk-app.js";
 
 @theme {
   --color-creme: #FCFBF8;

@@ -55,6 +55,24 @@ dynamicStyle.innerHTML = `
         transform: scale(0.99) !important;
     }
 
+    .song-row-card {
+        background-color: #ffffff !important;
+        border: 1px solid rgba(228, 228, 231, 0.9) !important;
+        border-radius: 16px !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02) !important;
+        transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease !important;
+    }
+    .song-row-card:hover {
+        background-color: #ffffff !important;
+        border-color: rgba(200, 200, 205, 1) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08) !important;
+    }
+    .song-row-card:active {
+        transform: translateY(0) !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+    }
+
     .hidden-force {
         opacity: 0 !important;
         pointer-events: none !important;
@@ -830,19 +848,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function createSearchAlbumRow(album) {
         const div = document.createElement('div');
-        div.className = 'group flex items-center justify-between p-2 rounded-xl bg-white/90 backdrop-blur-sm border border-zinc-200/70 hover:border-zinc-300 hover:shadow-xs transition-all cursor-pointer scroll-row-hover mb-1 w-full max-w-full box-border overflow-hidden';
+        div.className = 'group flex items-center justify-between p-2.5 rounded-2xl song-row-card mb-2 w-full max-w-full box-border cursor-pointer select-none';
         const artwork = getProxyUrl(album.artwork_url, '80x80');
         div.innerHTML = `
-            <div class="flex items-center gap-2.5 min-w-0 flex-1 mr-2 overflow-hidden">
-                <div class="w-10 h-10 bg-zinc-100 rounded-xl overflow-hidden shrink-0 relative border border-zinc-200/50 flex items-center justify-center">
+            <div class="flex items-center gap-3 min-w-0 flex-1 mr-2 overflow-hidden">
+                <div class="w-10 h-10 bg-zinc-100 rounded-xl overflow-hidden shrink-0 relative border border-zinc-200/60 shadow-xs flex items-center justify-center">
                     ${artwork ? `<img src="${artwork}" alt="${escapeHtml(album.name)}" class="w-full h-full object-cover">` : `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="text-zinc-400"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>`}
                 </div>
                 <div class="flex flex-col text-left min-w-0 flex-1 overflow-hidden">
-                    <span class="font-bold text-zinc-900 text-xs truncate block max-w-full" title="${escapeHtml(album.name)}">${escapeHtml(album.name)}</span>
-                    <span class="text-[11px] text-zinc-500 truncate block max-w-full mt-0.5" title="${escapeHtml(album.artist_name || 'Album')}">${escapeHtml(album.artist_name || 'Album')}</span>
+                    <span class="font-bold text-zinc-900 text-xs sm:text-sm truncate block max-w-full" title="${escapeHtml(album.name)}">${escapeHtml(album.name)}</span>
+                    <span class="text-[11px] text-zinc-500 font-medium truncate block max-w-full mt-0.5" title="${escapeHtml(album.artist_name || 'Album')}">${escapeHtml(album.artist_name || 'Album')}</span>
                 </div>
             </div>
-            <span class="text-[9px] uppercase font-bold text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-full shrink-0">Album</span>
+            <span class="text-[9px] uppercase font-bold text-zinc-600 bg-zinc-100 px-2.5 py-1 rounded-full shrink-0 border border-zinc-200/50">Album</span>
         `;
         div.addEventListener('click', () => {
             if (typeof window.loadAlbumView === 'function') {
@@ -854,20 +872,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function createSearchPlaylistRow(playlist) {
         const div = document.createElement('div');
-        div.className = 'group flex items-center justify-between p-2 rounded-xl bg-white/90 backdrop-blur-sm border border-zinc-200/70 hover:border-zinc-300 hover:shadow-xs transition-all cursor-pointer scroll-row-hover mb-1 w-full max-w-full box-border overflow-hidden';
+        div.className = 'group flex items-center justify-between p-2.5 rounded-2xl song-row-card mb-2 w-full max-w-full box-border cursor-pointer select-none';
         const artwork = getProxyUrl(playlist.artwork_url, '80x80');
         div.innerHTML = `
-            <div class="flex items-center gap-2.5 min-w-0 flex-1 mr-2 overflow-hidden">
-                <div class="w-10 h-10 bg-zinc-100 rounded-xl overflow-hidden shrink-0 relative border border-zinc-200/50 flex items-center justify-center">
+            <div class="flex items-center gap-3 min-w-0 flex-1 mr-2 overflow-hidden">
+                <div class="w-10 h-10 bg-zinc-100 rounded-xl overflow-hidden shrink-0 relative border border-zinc-200/60 shadow-xs flex items-center justify-center">
                     ${artwork ? `<img src="${artwork}" alt="${escapeHtml(playlist.name)}" class="w-full h-full object-cover">` : `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="text-zinc-400"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>`}
                 </div>
                 <div class="flex flex-col text-left min-w-0 flex-1 overflow-hidden">
-                    <span class="font-bold text-zinc-900 text-xs truncate block max-w-full" title="${escapeHtml(playlist.name)}">${escapeHtml(playlist.name)}</span>
-                    <span class="text-[11px] text-zinc-500 truncate block max-w-full mt-0.5">${playlist.song_count ? `${playlist.song_count} songs` : 'Playlist'}</span>
+                    <span class="font-bold text-zinc-900 text-xs sm:text-sm truncate block max-w-full" title="${escapeHtml(playlist.name)}">${escapeHtml(playlist.name)}</span>
+                    <span class="text-[11px] text-zinc-500 font-medium truncate block max-w-full mt-0.5">${playlist.song_count ? `${playlist.song_count} songs` : 'Playlist'}</span>
                 </div>
             </div>
-            <button class="pl-play-btn w-7 h-7 rounded-full bg-zinc-900 text-white flex items-center justify-center shrink-0 hover:scale-105 active:scale-95 transition-all shadow-xs" title="Play Playlist">
-                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            <button class="pl-play-btn w-8 h-8 rounded-full bg-zinc-900 text-white flex items-center justify-center shrink-0 hover:scale-105 active:scale-95 transition-all shadow-xs" title="Play Playlist">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
             </button>
         `;
         div.addEventListener('click', async (e) => {
@@ -894,19 +912,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function createSearchArtistRow(artist) {
         const div = document.createElement('div');
-        div.className = 'group flex items-center justify-between p-2 rounded-xl bg-white/90 backdrop-blur-sm border border-zinc-200/70 hover:border-zinc-300 hover:shadow-xs transition-all cursor-pointer scroll-row-hover mb-1 w-full max-w-full box-border overflow-hidden';
+        div.className = 'group flex items-center justify-between p-2.5 rounded-2xl song-row-card mb-2 w-full max-w-full box-border cursor-pointer select-none';
         const artwork = getProxyUrl(artist.artwork_url, '80x80');
         div.innerHTML = `
-            <div class="flex items-center gap-2.5 min-w-0 flex-1 mr-2 overflow-hidden">
-                <div class="w-10 h-10 bg-zinc-100 rounded-full overflow-hidden shrink-0 relative border border-zinc-200/50 flex items-center justify-center shadow-xs">
+            <div class="flex items-center gap-3 min-w-0 flex-1 mr-2 overflow-hidden">
+                <div class="w-10 h-10 bg-zinc-100 rounded-full overflow-hidden shrink-0 relative border border-zinc-200/60 flex items-center justify-center shadow-xs">
                     ${artwork ? `<img src="${artwork}" alt="${escapeHtml(artist.name)}" class="w-full h-full object-cover">` : `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="text-zinc-400"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`}
                 </div>
                 <div class="flex flex-col text-left min-w-0 flex-1 overflow-hidden">
-                    <span class="font-bold text-zinc-900 text-xs truncate block max-w-full" title="${escapeHtml(artist.name)}">${escapeHtml(artist.name)}</span>
+                    <span class="font-bold text-zinc-900 text-xs sm:text-sm truncate block max-w-full" title="${escapeHtml(artist.name)}">${escapeHtml(artist.name)}</span>
                     <span class="text-[9px] uppercase font-bold text-blue-600 mt-0.5">Artist</span>
                 </div>
             </div>
-            <button class="px-2.5 py-1 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-[11px] font-semibold transition-colors shrink-0">View</button>
+            <button class="px-3 py-1 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-[11px] font-semibold transition-colors shrink-0 border border-zinc-200/50">View</button>
         `;
         div.addEventListener('click', () => {
             if (typeof window.loadArtistView === 'function') {
@@ -1256,7 +1274,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Creates track list item with Play, Add to Playlist, and Favorite buttons
     function createTrackElement(track, onPlayClick, onRemoveClick = null) {
         const div = document.createElement('div');
-        div.className = 'group flex items-center justify-between p-2 sm:p-2.5 rounded-xl bg-white/90 backdrop-blur-sm border border-zinc-200/70 hover:border-zinc-300 hover:shadow-xs transition-all cursor-pointer scroll-row-hover mb-1.5 w-full max-w-full box-border overflow-hidden';
+        div.className = 'group flex items-center justify-between p-2.5 sm:p-3 rounded-2xl song-row-card mb-2 w-full max-w-full box-border cursor-pointer select-none';
         
         const artwork = getProxyUrl(track.artwork_url || track.image, '50x50');
         const title = track.title || track.name || 'Unknown Title';
@@ -1265,30 +1283,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
         div.innerHTML = `
             <div class="flex items-center gap-3 min-w-0 flex-1 mr-2 overflow-hidden">
-                <div class="w-10 h-10 bg-zinc-100 rounded-lg overflow-hidden flex-shrink-0 relative border border-zinc-200/50 flex items-center justify-center">
-                    ${artwork ? `<img src="${artwork}" alt="${escapeHtml(title)}" class="w-full h-full object-cover" referrerpolicy="no-referrer" onerror="this.style.display='none'">` : ''}
-                    <div class="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-[1px]">
+                <div class="w-11 h-11 bg-zinc-100 rounded-xl overflow-hidden shrink-0 relative border border-zinc-200/60 shadow-xs flex items-center justify-center">
+                    ${artwork ? `<img src="${artwork}" alt="${escapeHtml(title)}" class="w-full h-full object-cover" referrerpolicy="no-referrer" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.classList.remove('hidden');">` : ''}
+                    <div class="artwork-fallback ${artwork ? 'hidden' : ''} text-zinc-400 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                    </div>
+                    <div class="absolute inset-0 bg-black/25 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-[1px]">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                     </div>
                 </div>
                 <div class="flex flex-col text-left min-w-0 flex-1 overflow-hidden">
-                    <span class="font-semibold text-zinc-900 text-xs sm:text-sm truncate block max-w-full" title="${escapeHtml(title)}">${escapeHtml(title)}</span>
-                    <span class="artist-name-link text-[11px] text-zinc-500 hover:text-zinc-950 hover:underline cursor-pointer truncate block max-w-full transition-colors inline-block w-fit" title="View artist">${escapeHtml(artist)}</span>
+                    <span class="font-bold text-zinc-900 text-xs sm:text-sm truncate block max-w-full" title="${escapeHtml(title)}">${escapeHtml(title)}</span>
+                    <span class="artist-name-link text-[11px] text-zinc-500 hover:text-zinc-950 font-medium hover:underline cursor-pointer truncate block max-w-full transition-colors inline-block w-fit mt-0.5" title="View artist">${escapeHtml(artist)}</span>
                 </div>
             </div>
             <div class="flex items-center gap-1 shrink-0">
-                ${durStr ? `<span class="text-[11px] text-zinc-400 font-medium mr-1.5 hidden sm:inline">${durStr}</span>` : ''}
-                <button class="add-to-queue-btn text-zinc-400 hover:text-zinc-800 transition-colors p-1.5 rounded-full hover:bg-zinc-100" title="Add to Queue">
+                ${durStr ? `<span class="text-[11px] text-zinc-400 font-semibold mr-1.5 hidden sm:inline">${durStr}</span>` : ''}
+                <button class="add-to-queue-btn text-zinc-400 hover:text-zinc-900 transition-colors p-2 rounded-full hover:bg-zinc-100 cursor-pointer" title="Add to Queue">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
                 </button>
-                <button class="add-to-pl-btn text-zinc-400 hover:text-zinc-800 transition-colors p-1.5 rounded-full hover:bg-zinc-100" title="Add to Playlist">
+                <button class="add-to-pl-btn text-zinc-400 hover:text-zinc-900 transition-colors p-2 rounded-full hover:bg-zinc-100 cursor-pointer" title="Add to Playlist">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
                 </button>
-                <button class="favorite-btn text-zinc-900 hover:scale-110 transition-transform p-1.5 rounded-full hover:bg-zinc-100" title="Favorite">
+                <button class="favorite-btn text-zinc-900 hover:scale-110 transition-transform p-2 rounded-full hover:bg-zinc-100 cursor-pointer" title="Favorite">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="${isFavorite(track.id) ? '#18181b' : 'none'}" stroke="#18181b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                 </button>
                 ${onRemoveClick ? `
-                <button class="remove-btn text-zinc-400 hover:text-red-500 transition-colors p-1.5 rounded-full hover:bg-red-50" title="Remove from playlist">
+                <button class="remove-btn text-zinc-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50 cursor-pointer" title="Remove from playlist">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                 </button>
                 ` : ''}
@@ -2304,6 +2325,268 @@ document.addEventListener('DOMContentLoaded', () => {
         tintEl.style.opacity = '1';
     }
 
+    function hslToRgb(h, s, l) {
+        s = Math.max(0, Math.min(1, s));
+        l = Math.max(0, Math.min(1, l));
+        const c = (1 - Math.abs(2 * l - 1)) * s;
+        const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+        const m = l - c / 2;
+        let r = 0, g = 0, b = 0;
+
+        if (0 <= h && h < 60) { r = c; g = x; b = 0; }
+        else if (60 <= h && h < 120) { r = x; g = c; b = 0; }
+        else if (120 <= h && h < 180) { r = 0; g = c; b = x; }
+        else if (180 <= h && h < 240) { r = 0; g = x; b = c; }
+        else if (240 <= h && h < 300) { r = x; g = 0; b = c; }
+        else if (300 <= h && h <= 360) { r = c; g = 0; b = x; }
+
+        return {
+            r: Math.round((r + m) * 255),
+            g: Math.round((g + m) * 255),
+            b: Math.round((b + m) * 255)
+        };
+    }
+
+    function rgbToHex(r, g, b) {
+        const toHex = n => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0').toUpperCase();
+        return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+    }
+
+    // ============================================
+    // CUSTOM COLOR CHOOSER WHEEL (Canvas-based)
+    // ============================================
+    let isWheelDragging = false;
+    let wheelHue = 48; // default yolk yellow hue
+    let wheelSat = 0.85;
+    let wheelLightness = 0.65;
+    let currentWheelTint = { r: 253, g: 224, b: 71, hex: '#FDE047' };
+    let wheelApplyCallback = null;
+    let pendingModalTint = null;
+
+    const tintWheelModal = document.getElementById('tint-wheel-modal');
+    const tintWheelCanvas = document.getElementById('tint-color-wheel-canvas');
+    const tintWheelHandle = document.getElementById('tint-wheel-handle');
+    const tintBrightnessSlider = document.getElementById('tint-brightness-slider');
+    const tintBrightnessVal = document.getElementById('tint-brightness-val');
+    const tintPreviewSwatch = document.getElementById('tint-preview-swatch');
+    const tintHexText = document.getElementById('tint-hex-text');
+    const tintRgbText = document.getElementById('tint-rgb-text');
+    const tintAutoBtn = document.getElementById('tint-auto-btn');
+    const tintWheelCloseBtn = document.getElementById('tint-wheel-close-btn');
+    const tintWheelCancel = document.getElementById('tint-wheel-cancel');
+    const tintWheelApply = document.getElementById('tint-wheel-apply');
+    const modalOpenTintWheelBtn = document.getElementById('modal-open-tint-wheel-btn');
+    const modalTintDot = document.getElementById('modal-tint-dot');
+    const modalTintStatus = document.getElementById('modal-tint-status');
+
+    function drawColorWheel(canvas) {
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+        const cx = width / 2;
+        const cy = height / 2;
+        const radius = cx - 3;
+
+        ctx.clearRect(0, 0, width, height);
+
+        for (let angle = 0; angle < 360; angle += 1) {
+            const startAngle = (angle - 1.2) * Math.PI / 180;
+            const endAngle = (angle + 1.2) * Math.PI / 180;
+
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.arc(cx, cy, radius, startAngle, endAngle);
+            ctx.closePath();
+
+            const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+            grad.addColorStop(0, '#FFFFFF');
+            grad.addColorStop(1, `hsl(${angle}, 100%, 50%)`);
+
+            ctx.fillStyle = grad;
+            ctx.fill();
+        }
+    }
+
+    function refreshWheelColor() {
+        const rgb = hslToRgb(wheelHue, wheelSat, wheelLightness);
+        const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+        currentWheelTint = { r: rgb.r, g: rgb.g, b: rgb.b, hex: hex };
+
+        if (tintWheelHandle) tintWheelHandle.style.backgroundColor = hex;
+        if (tintPreviewSwatch) tintPreviewSwatch.style.backgroundColor = hex;
+        if (tintHexText) tintHexText.textContent = hex;
+        if (tintRgbText) tintRgbText.textContent = `RGB(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+        if (tintBrightnessSlider) {
+            tintBrightnessSlider.style.background = `linear-gradient(to right, #000000, hsl(${wheelHue}, ${Math.round(wheelSat * 100)}%, 50%), #ffffff)`;
+        }
+        if (tintBrightnessVal) {
+            tintBrightnessVal.textContent = `${Math.round(wheelLightness * 100)}%`;
+        }
+
+        // Live preview on playlist background if viewing playlist
+        if (playlistDetailView && !playlistDetailView.classList.contains('hidden')) {
+            applyPlaylistTint(rgb.r, rgb.g, rgb.b);
+        }
+    }
+
+    function updateWheelFromPointer(e, canvas, handle) {
+        if (!canvas) return;
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.clientX ?? (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+        const clientY = e.clientY ?? (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        const radius = cx - 3;
+
+        const dx = x - cx;
+        const dy = y - cy;
+        const dist = Math.min(radius, Math.hypot(dx, dy));
+        const angle = (Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360;
+
+        wheelHue = angle;
+        wheelSat = dist / radius;
+
+        const handleX = cx + Math.cos(angle * Math.PI / 180) * dist;
+        const handleY = cy + Math.sin(angle * Math.PI / 180) * dist;
+        if (handle) {
+            handle.style.left = `${handleX}px`;
+            handle.style.top = `${handleY}px`;
+        }
+
+        refreshWheelColor();
+    }
+
+    let previousBgStyle = null;
+    let previousBgOpacity = null;
+
+    function openTintWheelModal(playlist, onApply) {
+        wheelApplyCallback = onApply;
+        const tintEl = document.getElementById('playlist-bg-tint');
+        if (tintEl) {
+            previousBgStyle = tintEl.style.background;
+            previousBgOpacity = tintEl.style.opacity;
+        }
+
+        if (tintWheelCanvas) drawColorWheel(tintWheelCanvas);
+
+        let initialColor = playlist && playlist.custom_tint ? playlist.custom_tint : { r: 253, g: 224, b: 71, hex: '#FDE047' };
+
+        const cx = tintWheelCanvas ? tintWheelCanvas.width / 2 : 105;
+        const cy = tintWheelCanvas ? tintWheelCanvas.height / 2 : 105;
+        const radius = cx - 3;
+
+        const r = initialColor.r / 255, g = initialColor.g / 255, b = initialColor.b / 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h = 48, s = 0.85, l = (max + min) / 2;
+        if (max !== min) {
+            const d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            switch (max) {
+                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                case g: h = (b - r) / d + 2; break;
+                case b: h = (r - g) / d + 4; break;
+            }
+            h *= 60;
+        }
+
+        wheelHue = h;
+        wheelSat = Math.max(0.1, s);
+        wheelLightness = Math.max(0.2, Math.min(0.85, l));
+
+        if (tintBrightnessSlider) tintBrightnessSlider.value = Math.round(wheelLightness * 100);
+
+        const dist = wheelSat * radius;
+        const handleX = cx + Math.cos(wheelHue * Math.PI / 180) * dist;
+        const handleY = cy + Math.sin(wheelHue * Math.PI / 180) * dist;
+        if (tintWheelHandle) {
+            tintWheelHandle.style.left = `${handleX}px`;
+            tintWheelHandle.style.top = `${handleY}px`;
+        }
+
+        refreshWheelColor();
+        if (tintWheelModal) tintWheelModal.classList.remove('hidden');
+    }
+
+    function closeTintWheelModal(applied = false) {
+        if (tintWheelModal) tintWheelModal.classList.add('hidden');
+        isWheelDragging = false;
+        if (!applied) {
+            const tintEl = document.getElementById('playlist-bg-tint');
+            if (tintEl && previousBgStyle !== null) {
+                tintEl.style.background = previousBgStyle;
+                tintEl.style.opacity = previousBgOpacity;
+            }
+        }
+        previousBgStyle = null;
+        previousBgOpacity = null;
+        wheelApplyCallback = null;
+    }
+
+    const tintWheelBox = document.getElementById('tint-wheel-box');
+    if (tintWheelBox && tintWheelCanvas) {
+        const onStart = (e) => {
+            isWheelDragging = true;
+            updateWheelFromPointer(e, tintWheelCanvas, tintWheelHandle);
+        };
+        const onMove = (e) => {
+            if (!isWheelDragging) return;
+            e.preventDefault();
+            updateWheelFromPointer(e, tintWheelCanvas, tintWheelHandle);
+        };
+        const onEnd = () => {
+            isWheelDragging = false;
+        };
+
+        tintWheelBox.addEventListener('pointerdown', onStart);
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onEnd);
+        window.addEventListener('pointercancel', onEnd);
+    }
+
+    if (tintBrightnessSlider) {
+        tintBrightnessSlider.addEventListener('input', (e) => {
+            wheelLightness = parseFloat(e.target.value) / 100;
+            refreshWheelColor();
+        });
+    }
+
+    if (tintWheelCloseBtn) tintWheelCloseBtn.onclick = () => closeTintWheelModal(false);
+    if (tintWheelCancel) tintWheelCancel.onclick = () => closeTintWheelModal(false);
+
+    if (tintAutoBtn) {
+        tintAutoBtn.onclick = () => {
+            if (wheelApplyCallback) {
+                wheelApplyCallback(null);
+            }
+            closeTintWheelModal(true);
+            showToast('Reset to automatic artwork tint');
+        };
+    }
+
+    if (tintWheelApply) {
+        tintWheelApply.onclick = () => {
+            if (wheelApplyCallback) {
+                wheelApplyCallback(currentWheelTint);
+            }
+            closeTintWheelModal(true);
+            showToast('Playlist tint updated');
+        };
+    }
+
+    if (modalOpenTintWheelBtn) {
+        modalOpenTintWheelBtn.onclick = () => {
+            openTintWheelModal({ custom_tint: pendingModalTint }, (newTint) => {
+                pendingModalTint = newTint;
+                if (modalTintDot) modalTintDot.style.backgroundColor = newTint ? newTint.hex : '#FDE047';
+                if (modalTintStatus) modalTintStatus.textContent = newTint ? `Custom (${newTint.hex})` : 'Automatic (from artwork)';
+            });
+        };
+    }
+
     function rgbToHsl(r, g, b) {
         r /= 255; g /= 255; b /= 255;
         const max = Math.max(r, g, b), min = Math.min(r, g, b);
@@ -2618,6 +2901,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const editBtn = document.getElementById('playlist-edit-btn');
         const deleteBtn = document.getElementById('playlist-delete-btn');
         const trackListContainer = document.getElementById('playlist-track-list');
+        const tintBtn = document.getElementById('playlist-tint-btn');
+        const tintDot = document.getElementById('playlist-tint-dot');
 
         let playlistName = '';
         let playlistDesc = '';
@@ -2630,7 +2915,19 @@ document.addEventListener('DOMContentLoaded', () => {
             playlistDesc = 'Your liked songs collection';
             trackList = favorites;
 
-            applyPlaylistTint(225, 225, 230);
+            let favTint = null;
+            try {
+                const raw = localStorage.getItem('yolk_favorites_tint');
+                if (raw) favTint = JSON.parse(raw);
+            } catch (e) {}
+
+            if (favTint && favTint.r !== undefined) {
+                applyPlaylistTint(favTint.r, favTint.g, favTint.b);
+                if (tintDot) tintDot.style.backgroundColor = favTint.hex || `rgb(${favTint.r}, ${favTint.g}, ${favTint.b})`;
+            } else {
+                applyPlaylistTint(225, 225, 230);
+                if (tintDot) tintDot.style.backgroundColor = '#E1E1E6';
+            }
 
             if (detailArt) {
                 detailArt.className = 'w-44 h-44 sm:w-52 sm:h-52 md:w-60 md:h-60 rounded-2xl bg-[#F4F4F5] flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.08)] border border-zinc-200/80 relative';
@@ -2663,15 +2960,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 detailArtImg.src = coverSrc;
                 detailArtImg.classList.remove('hidden');
                 detailArtIcon.classList.add('hidden');
-                extractArtworkPalette(coverSrc, (colors) => {
-                    if (colors) applyPlaylistMultiTint(colors);
-                    else applyPlaylistTint(253, 224, 71);
-                });
             } else {
                 detailArtImg.classList.add('hidden');
                 detailArtIcon.classList.remove('hidden');
                 detailArtIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>`;
+            }
+
+            if (pl.custom_tint && pl.custom_tint.r !== undefined) {
+                applyPlaylistTint(pl.custom_tint.r, pl.custom_tint.g, pl.custom_tint.b);
+                if (tintDot) tintDot.style.backgroundColor = pl.custom_tint.hex || `rgb(${pl.custom_tint.r}, ${pl.custom_tint.g}, ${pl.custom_tint.b})`;
+            } else if (coverSrc) {
+                extractArtworkPalette(coverSrc, (colors) => {
+                    const freshPl = playlists.find(p => p.id === playlistId);
+                    if (freshPl && freshPl.custom_tint) return;
+                    if (colors) {
+                        applyPlaylistMultiTint(colors);
+                        if (tintDot) tintDot.style.backgroundColor = colors[0] ? `rgb(${colors[0].r}, ${colors[0].g}, ${colors[0].b})` : '#FDE047';
+                    } else {
+                        applyPlaylistTint(253, 224, 71);
+                        if (tintDot) tintDot.style.backgroundColor = '#FDE047';
+                    }
+                });
+            } else {
                 applyPlaylistTint(220, 220, 228);
+                if (tintDot) tintDot.style.backgroundColor = '#DCDCE4';
             }
 
             editBtn.classList.remove('hidden');
@@ -2687,6 +2999,56 @@ document.addEventListener('DOMContentLoaded', () => {
                     savePlaylists();
                     showToast('Playlist deleted');
                     closePlaylistDetail();
+                }
+            };
+        }
+
+        if (tintBtn) {
+            tintBtn.onclick = () => {
+                if (isFav) {
+                    let favTint = null;
+                    try {
+                        const raw = localStorage.getItem('yolk_favorites_tint');
+                        if (raw) favTint = JSON.parse(raw);
+                    } catch (e) {}
+                    openTintWheelModal({ custom_tint: favTint }, (newTint) => {
+                        if (newTint) {
+                            localStorage.setItem('yolk_favorites_tint', JSON.stringify(newTint));
+                            applyPlaylistTint(newTint.r, newTint.g, newTint.b);
+                            if (tintDot) tintDot.style.backgroundColor = newTint.hex;
+                        } else {
+                            localStorage.removeItem('yolk_favorites_tint');
+                            applyPlaylistTint(225, 225, 230);
+                            if (tintDot) tintDot.style.backgroundColor = '#E1E1E6';
+                        }
+                    });
+                } else {
+                    const pl = playlists.find(p => p.id === playlistId);
+                    if (!pl) return;
+                    openTintWheelModal(pl, (newTint) => {
+                        pl.custom_tint = newTint;
+                        savePlaylists();
+                        if (newTint) {
+                            applyPlaylistTint(newTint.r, newTint.g, newTint.b);
+                            if (tintDot) tintDot.style.backgroundColor = newTint.hex;
+                        } else {
+                            const coverSrc = pl.cover || (trackList[0] ? getProxyUrl(trackList[0].artwork_url || trackList[0].image, '300x300') : '');
+                            if (coverSrc) {
+                                extractArtworkPalette(coverSrc, (colors) => {
+                                    if (colors) {
+                                        applyPlaylistMultiTint(colors);
+                                        if (tintDot) tintDot.style.backgroundColor = colors[0] ? `rgb(${colors[0].r}, ${colors[0].g}, ${colors[0].b})` : '#FDE047';
+                                    } else {
+                                        applyPlaylistTint(253, 224, 71);
+                                        if (tintDot) tintDot.style.backgroundColor = '#FDE047';
+                                    }
+                                });
+                            } else {
+                                applyPlaylistTint(220, 220, 228);
+                                if (tintDot) tintDot.style.backgroundColor = '#DCDCE4';
+                            }
+                        }
+                    });
                 }
             };
         }
@@ -3170,6 +3532,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function openCreatePlaylistModal() {
         playlistToEditPending = null;
+        pendingModalTint = null;
+        if (modalTintDot) modalTintDot.style.backgroundColor = '#FDE047';
+        if (modalTintStatus) modalTintStatus.textContent = 'Automatic (from artwork)';
         playlistModalTitle.textContent = 'New Playlist';
         playlistNameInput.value = '';
         playlistDescInput.value = '';
@@ -3186,6 +3551,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function openEditPlaylistModal(pl) {
         playlistToEditPending = pl;
+        pendingModalTint = pl.custom_tint || null;
+        if (modalTintDot) modalTintDot.style.backgroundColor = pendingModalTint ? pendingModalTint.hex : '#FDE047';
+        if (modalTintStatus) modalTintStatus.textContent = pendingModalTint ? `Custom (${pendingModalTint.hex})` : 'Automatic (from artwork)';
         playlistModalTitle.textContent = 'Edit Playlist';
         playlistNameInput.value = pl.name || '';
         playlistDescInput.value = (pl.description && pl.description !== '[object Object]' && pl.description !== 'undefined') ? pl.description : '';
@@ -3203,6 +3571,7 @@ document.addEventListener('DOMContentLoaded', () => {
         playlistToEditPending = null;
         pendingModalCover = null;
         lastUploadedRawImage = null;
+        pendingModalTint = null;
     }
 
     if (createPlaylistBtn) {
@@ -3227,6 +3596,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 playlistToEditPending.name = name;
                 playlistToEditPending.description = desc;
                 playlistToEditPending.cover = pendingModalCover;
+                playlistToEditPending.custom_tint = pendingModalTint;
                 savePlaylists();
                 showToast('Playlist updated');
                 renderLibrary();
@@ -3241,6 +3611,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     name: name,
                     description: desc,
                     cover: pendingModalCover,
+                    custom_tint: pendingModalTint,
                     createdAt: new Date().toISOString(),
                     tracks: []
                 };
@@ -3525,7 +3896,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function createAlbumTrackElement(track, trackNum, onPlayClick) {
         const div = document.createElement('div');
-        div.className = 'group flex items-center justify-between p-2 sm:p-2.5 rounded-xl bg-white/90 backdrop-blur-sm border border-zinc-200/70 hover:border-zinc-300 hover:shadow-xs transition-all cursor-pointer scroll-row-hover mb-1.5 w-full max-w-full box-border overflow-hidden';
+        div.className = 'group flex items-center justify-between p-2.5 sm:p-3 rounded-2xl song-row-card mb-2 w-full max-w-full box-border cursor-pointer select-none';
         const title = track.title || track.name || 'Unknown Title';
         const artist = track.artist_name || track.artist || 'Unknown Artist';
         const durStr = track.duration ? formatTime(track.duration > 1000 ? track.duration / 1000 : track.duration) : '';
@@ -3537,19 +3908,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                 </div>
                 <div class="flex flex-col text-left min-w-0 flex-1 overflow-hidden">
-                    <span class="font-semibold text-zinc-900 text-xs sm:text-sm truncate block max-w-full" title="${escapeHtml(title)}">${escapeHtml(title)}</span>
-                    <span class="artist-name-link text-[11px] text-zinc-500 hover:text-zinc-950 hover:underline cursor-pointer truncate block max-w-full transition-colors inline-block w-fit" title="View artist">${escapeHtml(artist)}</span>
+                    <span class="font-bold text-zinc-900 text-xs sm:text-sm truncate block max-w-full" title="${escapeHtml(title)}">${escapeHtml(title)}</span>
+                    <span class="artist-name-link text-[11px] text-zinc-500 hover:text-zinc-950 font-medium hover:underline cursor-pointer truncate block max-w-full transition-colors inline-block w-fit mt-0.5" title="View artist">${escapeHtml(artist)}</span>
                 </div>
             </div>
             <div class="flex items-center gap-1 shrink-0">
-                ${durStr ? `<span class="text-[11px] text-zinc-400 font-medium mr-1.5 hidden sm:inline">${durStr}</span>` : ''}
-                <button class="add-to-queue-btn text-zinc-400 hover:text-zinc-800 transition-colors p-1.5 rounded-full hover:bg-zinc-100" title="Add to Queue">
+                ${durStr ? `<span class="text-[11px] text-zinc-400 font-semibold mr-1.5 hidden sm:inline">${durStr}</span>` : ''}
+                <button class="add-to-queue-btn text-zinc-400 hover:text-zinc-900 transition-colors p-2 rounded-full hover:bg-zinc-100 cursor-pointer" title="Add to Queue">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
                 </button>
-                <button class="add-to-pl-btn text-zinc-400 hover:text-zinc-800 transition-colors p-1.5 rounded-full hover:bg-zinc-100" title="Add to Playlist">
+                <button class="add-to-pl-btn text-zinc-400 hover:text-zinc-900 transition-colors p-2 rounded-full hover:bg-zinc-100 cursor-pointer" title="Add to Playlist">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
                 </button>
-                <button class="favorite-btn text-zinc-900 hover:scale-110 transition-transform p-1.5 rounded-full hover:bg-zinc-100" title="Favorite">
+                <button class="favorite-btn text-zinc-900 hover:scale-110 transition-transform p-2 rounded-full hover:bg-zinc-100 cursor-pointer" title="Favorite">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="${isFavorite(track.id) ? '#18181b' : 'none'}" stroke="#18181b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                 </button>
             </div>
