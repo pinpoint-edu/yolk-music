@@ -10,7 +10,7 @@ let playlists = JSON.parse(localStorage.getItem('yolk_playlists') || '[]').map(p
     }
     return pl;
 });
-let currentAudio = new Audio();
+let currentAudio = document.getElementById('yolk-audio-player') || new Audio();
 currentAudio.preload = 'auto';
 let preloadedNextAudio = new Audio();
 preloadedNextAudio.preload = 'auto';
@@ -1391,6 +1391,153 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // ==========================================
+    // Recent Searches Management
+    // ==========================================
+    const recentSearchesContainer = document.getElementById('recent-searches-container');
+    const recentSearchesList = document.getElementById('recent-searches-list');
+    const clearRecentBtn = document.getElementById('clear-recent-searches-btn');
+
+    function getRecentSearches() {
+        try {
+            const raw = localStorage.getItem('yolk_recent_searches');
+            return raw ? JSON.parse(raw) : [];
+        } catch (_) {
+            return [];
+        }
+    }
+
+    function saveRecentSearch(q) {
+        const term = String(q || '').trim();
+        if (!term || term.length < 2) return;
+        let list = getRecentSearches().filter(item => item.toLowerCase() !== term.toLowerCase());
+        list.unshift(term);
+        if (list.length > 8) list = list.slice(0, 8);
+        try {
+            localStorage.setItem('yolk_recent_searches', JSON.stringify(list));
+        } catch (_) {}
+        renderRecentSearches();
+    }
+
+    function removeRecentSearch(term) {
+        let list = getRecentSearches().filter(item => item.toLowerCase() !== term.toLowerCase());
+        try {
+            localStorage.setItem('yolk_recent_searches', JSON.stringify(list));
+        } catch (_) {}
+        renderRecentSearches();
+    }
+
+    function clearAllRecentSearches() {
+        try {
+            localStorage.removeItem('yolk_recent_searches');
+        } catch (_) {}
+        renderRecentSearches();
+    }
+
+    function renderRecentSearches() {
+        if (!recentSearchesList || !recentSearchesContainer) return;
+        const list = getRecentSearches();
+        if (list.length === 0) {
+            recentSearchesContainer.classList.add('hidden');
+            recentSearchesContainer.classList.remove('flex');
+            recentSearchesList.innerHTML = '';
+            return;
+        }
+
+        recentSearchesList.innerHTML = '';
+        list.forEach(term => {
+            const pill = document.createElement('div');
+            pill.className = 'group/pill flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 hover:bg-white text-zinc-700 text-xs font-semibold border border-zinc-200/80 shadow-xs transition-all cursor-pointer select-none';
+            
+            const textSpan = document.createElement('span');
+            textSpan.className = 'truncate max-w-[160px] sm:max-w-[220px]';
+            textSpan.textContent = term;
+            textSpan.addEventListener('click', () => {
+                if (searchInput) {
+                    searchInput.value = term;
+                    currentSearchQuery = term;
+                    searchOffset = 0;
+                    document.body.classList.add('is-searching');
+                    hideRecentSearches();
+                    if (searchTabsContainer) {
+                        searchTabsContainer.classList.remove('hidden');
+                        searchTabsContainer.classList.add('flex');
+                    }
+                    performSearch(term, true);
+                    saveRecentSearch(term);
+                }
+            });
+
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.title = 'Remove search';
+            delBtn.className = 'w-4 h-4 rounded-full flex items-center justify-center text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors cursor-pointer shrink-0 ml-0.5';
+            delBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+            delBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                removeRecentSearch(term);
+            });
+
+            pill.appendChild(textSpan);
+            pill.appendChild(delBtn);
+            recentSearchesList.appendChild(pill);
+        });
+    }
+
+    function showRecentSearches() {
+        const list = getRecentSearches();
+        if (list.length > 0 && (!searchInput || !searchInput.value.trim())) {
+            renderRecentSearches();
+            if (recentSearchesContainer) {
+                recentSearchesContainer.classList.remove('hidden');
+                recentSearchesContainer.classList.add('flex');
+            }
+        }
+    }
+
+    function hideRecentSearches() {
+        if (recentSearchesContainer) {
+            recentSearchesContainer.classList.add('hidden');
+            recentSearchesContainer.classList.remove('flex');
+        }
+    }
+
+    if (clearRecentBtn) {
+        clearRecentBtn.addEventListener('click', clearAllRecentSearches);
+    }
+
+    // ==========================================
+    // Logo Click -> Return to Home
+    // ==========================================
+    function returnToHomeScreen() {
+        if (searchInput) {
+            searchInput.value = '';
+        }
+        currentSearchQuery = '';
+        document.body.classList.remove('is-searching');
+        if (searchTabsContainer) {
+            searchTabsContainer.classList.add('hidden');
+            searchTabsContainer.classList.remove('flex');
+        }
+        if (searchResults) {
+            searchResults.innerHTML = '';
+        }
+        hideRecentSearches();
+        window.location.hash = '#search';
+        const pageSearch = document.getElementById('page-search');
+        if (pageSearch) pageSearch.scrollTo({ top: 0, behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    const smallLogo = document.getElementById('smallLogo');
+    if (smallLogo) {
+        smallLogo.addEventListener('click', returnToHomeScreen);
+    }
+    const largeLogo = document.getElementById('large-logo-wrapper');
+    if (largeLogo) {
+        largeLogo.addEventListener('click', returnToHomeScreen);
+    }
+
     let clearCollapseTimeout = null;
 
     if (searchInput) {
@@ -1398,10 +1545,13 @@ document.addEventListener('DOMContentLoaded', () => {
             clearTimeout(clearCollapseTimeout);
             if (searchInput.value.trim().length > 0) {
                 document.body.classList.add('is-searching');
+                hideRecentSearches();
                 if (searchTabsContainer) {
                     searchTabsContainer.classList.remove('hidden');
                     searchTabsContainer.classList.add('flex');
                 }
+            } else {
+                showRecentSearches();
             }
         });
 
@@ -1410,6 +1560,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const val = e.target.value.trim();
             if (val.length > 0) {
                 document.body.classList.add('is-searching');
+                hideRecentSearches();
                 if (searchTabsContainer) {
                     searchTabsContainer.classList.remove('hidden');
                     searchTabsContainer.classList.add('flex');
@@ -1424,6 +1575,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 clearTimeout(searchTimeout);
                 currentSearchQuery = '';
+                showRecentSearches();
                 // 1.2s delay before collapsing back to center hero mode, allowing user to type something else
                 clearCollapseTimeout = setTimeout(() => {
                     if (searchInput && !searchInput.value.trim()) {
@@ -1433,16 +1585,18 @@ document.addEventListener('DOMContentLoaded', () => {
                             searchTabsContainer.classList.remove('flex');
                         }
                         if (searchResults) searchResults.innerHTML = '';
+                        showRecentSearches();
                     }
                 }, 1200);
             }
         });
 
-        // Click outside search block when input is empty collapses search state back to center immediately
+        // Click outside search block collapses search state back to center immediately
         document.addEventListener('click', (e) => {
             if (searchInput && !searchInput.value.trim() && !e.target.closest('#search-block')) {
                 clearTimeout(clearCollapseTimeout);
                 document.body.classList.remove('is-searching');
+                hideRecentSearches();
                 if (searchTabsContainer) {
                     searchTabsContainer.classList.add('hidden');
                     searchTabsContainer.classList.remove('flex');
@@ -1469,6 +1623,9 @@ document.addEventListener('DOMContentLoaded', () => {
         isLoadingMore = true;
         if (clear) {
             searchResults.innerHTML = '<div class="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest text-left w-full mb-1 pl-5">Searching YouTube Music…</div>';
+            if (query && query.trim().length >= 2) {
+                saveRecentSearch(query.trim());
+            }
         }
         
         try {
@@ -2237,6 +2394,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 showSpinner(false);
                 isPlaying = true;
                 updatePlayPauseButtons();
+                updateNowPlayingNavVisibility(true);
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.playbackState = 'playing';
+                    updateMediaSessionPosition();
+                }
                 if (document.body.getAttribute('data-page') !== 'now-playing') {
                     bottomPlayer.classList.remove('hidden-force');
                 }
@@ -2252,6 +2414,21 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     }
+
+    function updateNowPlayingNavVisibility(isVisible) {
+        const npNav = document.getElementById('nav-now-playing');
+        if (!npNav) return;
+        if (isVisible) {
+            npNav.classList.remove('nav-hidden');
+            npNav.classList.add('nav-visible');
+        } else {
+            if (document.body.getAttribute('data-page') !== 'now-playing') {
+                npNav.classList.add('nav-hidden');
+                npNav.classList.remove('nav-visible');
+            }
+        }
+    }
+    window.updateNowPlayingNavVisibility = updateNowPlayingNavVisibility;
 
     // Infinite Autoplay Up-Next Fetcher
     let isFetchingUpNext = false;
@@ -2281,20 +2458,33 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateMediaSessionMetadata(track) {
-        if (!('mediaSession' in navigator)) return;
-        const artworkUrl = getProxyUrl(track.artwork_url || track.image);
-        navigator.mediaSession.metadata = new MediaMetadata({
-            title: track.title || track.name || 'Unknown Title',
-            artist: track.artist_name || track.artist || 'Unknown Artist',
-            album: track.album_name || track.album || 'Yolk Music',
-            artwork: artworkUrl ? [
-                { src: artworkUrl, sizes: '96x96', type: 'image/jpeg' },
-                { src: artworkUrl, sizes: '128x128', type: 'image/jpeg' },
-                { src: artworkUrl, sizes: '192x192', type: 'image/jpeg' },
-                { src: artworkUrl, sizes: '256x256', type: 'image/jpeg' },
-                { src: artworkUrl, sizes: '512x512', type: 'image/jpeg' }
-            ] : []
-        });
+        if (!('mediaSession' in navigator) || !track) return;
+        const rawArtwork = getProxyUrl(track.artwork_url || track.image);
+        let safeArtworkUrl = '';
+        if (rawArtwork) {
+            try {
+                safeArtworkUrl = new URL(rawArtwork, window.location.href).href;
+            } catch (_) {
+                safeArtworkUrl = rawArtwork;
+            }
+        }
+
+        try {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: track.title || track.name || 'Unknown Title',
+                artist: track.artist_name || track.artist || 'Unknown Artist',
+                album: track.album_name || track.album || 'Yolk Music',
+                artwork: safeArtworkUrl ? [
+                    { src: safeArtworkUrl, sizes: '96x96' },
+                    { src: safeArtworkUrl, sizes: '128x128' },
+                    { src: safeArtworkUrl, sizes: '192x192' },
+                    { src: safeArtworkUrl, sizes: '256x256' },
+                    { src: safeArtworkUrl, sizes: '512x512' }
+                ] : []
+            });
+        } catch (e) {
+            console.warn('MediaMetadata warning:', e);
+        }
 
         try {
             navigator.mediaSession.setActionHandler('play', () => togglePlayPause());
@@ -2311,19 +2501,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateMediaSessionPosition();
                 }
             });
-            navigator.mediaSession.setActionHandler('seekforward', null);
-            navigator.mediaSession.setActionHandler('seekbackward', null);
         } catch (err) {}
     }
 
     function updateMediaSessionPosition() {
         if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession) {
-            if (currentAudio && !isNaN(currentAudio.duration) && currentAudio.duration > 0) {
+            if (currentAudio && isFinite(currentAudio.duration) && currentAudio.duration > 0) {
                 try {
+                    const curPos = Math.max(0, Math.min(currentAudio.currentTime || 0, currentAudio.duration));
                     navigator.mediaSession.setPositionState({
                         duration: currentAudio.duration,
                         playbackRate: currentAudio.playbackRate || 1.0,
-                        position: Math.min(currentAudio.currentTime || 0, currentAudio.duration)
+                        position: curPos
                     });
                 } catch (e) {}
             }
@@ -2373,6 +2562,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateNowPlayingUI(track);
         updateBottomPlayerUI(track);
         updateNowPlayingFavButton();
+        updateNowPlayingNavVisibility(true);
         if (typeof updateQueueModalUI === 'function') updateQueueModalUI();
 
         // Autoplay Preload: keep queue filled with continuous recommendations
@@ -4041,8 +4231,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const editBtn = document.getElementById('playlist-edit-btn');
         const deleteBtn = document.getElementById('playlist-delete-btn');
         const trackListContainer = document.getElementById('playlist-track-list');
-        const tintBtn = document.getElementById('playlist-tint-btn');
-        const tintDot = document.getElementById('playlist-tint-dot');
 
         let playlistName = '';
         let playlistDesc = '';
@@ -4067,7 +4255,6 @@ document.addEventListener('DOMContentLoaded', () => {
             detailArtImg.classList.add('hidden');
             detailArtIcon.classList.remove('hidden');
             detailArtIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="#18181b" stroke="#18181b" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
-            if (tintBtn) tintBtn.classList.add('hidden');
             editBtn.classList.add('hidden');
             deleteBtn.classList.add('hidden');
         } else if (playlistId === 'downloaded') {
@@ -4087,7 +4274,6 @@ document.addEventListener('DOMContentLoaded', () => {
             detailArtImg.classList.add('hidden');
             detailArtIcon.classList.remove('hidden');
             detailArtIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#18181b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
-            if (tintBtn) tintBtn.classList.add('hidden');
             editBtn.classList.add('hidden');
             deleteBtn.classList.add('hidden');
         } else {
@@ -4117,25 +4303,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (pl.custom_tint && pl.custom_tint.r !== undefined) {
                 applyPlaylistTint(pl.custom_tint.r, pl.custom_tint.g, pl.custom_tint.b);
-                if (tintDot) tintDot.style.backgroundColor = pl.custom_tint.hex || `rgb(${pl.custom_tint.r}, ${pl.custom_tint.g}, ${pl.custom_tint.b})`;
             } else if (coverSrc) {
                 extractArtworkPalette(coverSrc, (colors) => {
                     const freshPl = playlists.find(p => p.id === playlistId);
                     if (freshPl && freshPl.custom_tint) return;
                     if (colors) {
                         applyPlaylistMultiTint(colors);
-                        if (tintDot) tintDot.style.backgroundColor = colors[0] ? `rgb(${colors[0].r}, ${colors[0].g}, ${colors[0].b})` : '#FDE047';
                     } else {
                         applyPlaylistTint(253, 224, 71);
-                        if (tintDot) tintDot.style.backgroundColor = '#FDE047';
                     }
                 });
             } else {
                 applyPlaylistTint(220, 220, 228);
-                if (tintDot) tintDot.style.backgroundColor = '#DCDCE4';
             }
 
-            if (tintBtn) tintBtn.classList.remove('hidden');
             editBtn.classList.remove('hidden');
             deleteBtn.classList.remove('hidden');
 
@@ -4150,38 +4331,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     showToast('Playlist deleted');
                     closePlaylistDetail();
                 }
-            };
-        }
-
-        if (tintBtn) {
-            tintBtn.onclick = () => {
-                if (isFav || !currentPlaylistContextId || currentPlaylistContextId === 'favorites') return;
-                const pl = playlists.find(p => p.id === currentPlaylistContextId);
-                if (!pl) return;
-                openTintWheelModal(pl, (newTint) => {
-                    pl.custom_tint = newTint;
-                    savePlaylists();
-                    if (newTint) {
-                        applyPlaylistTint(newTint.r, newTint.g, newTint.b);
-                        if (tintDot) tintDot.style.backgroundColor = newTint.hex;
-                    } else {
-                        const coverSrc = pl.cover || (trackList[0] ? getProxyUrl(trackList[0].artwork_url || trackList[0].image, '300x300') : '');
-                        if (coverSrc) {
-                            extractArtworkPalette(coverSrc, (colors) => {
-                                if (colors) {
-                                    applyPlaylistMultiTint(colors);
-                                    if (tintDot) tintDot.style.backgroundColor = colors[0] ? `rgb(${colors[0].r}, ${colors[0].g}, ${colors[0].b})` : '#FDE047';
-                                } else {
-                                    applyPlaylistTint(253, 224, 71);
-                                    if (tintDot) tintDot.style.backgroundColor = '#FDE047';
-                                }
-                            });
-                        } else {
-                            applyPlaylistTint(220, 220, 228);
-                            if (tintDot) tintDot.style.backgroundColor = '#DCDCE4';
-                        }
-                    }
-                });
             };
         }
 
@@ -5602,4 +5751,5 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial render of library and controls
     renderLibrary();
     updateLibraryButtons();
+    updateNowPlayingNavVisibility(!!currentTrack);
 });

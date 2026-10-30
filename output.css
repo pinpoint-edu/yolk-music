@@ -527,6 +527,9 @@
   .h-3\.5 {
     height: calc(var(--spacing) * 3.5);
   }
+  .h-4 {
+    height: calc(var(--spacing) * 4);
+  }
   .h-6 {
     height: calc(var(--spacing) * 6);
   }
@@ -2223,6 +2226,9 @@
     }
     .sm\:max-w-\[100px\] {
       max-width: 100px;
+    }
+    .sm\:max-w-\[220px\] {
+      max-width: 220px;
     }
     .sm\:min-w-\[170px\] {
       min-width: 170px;

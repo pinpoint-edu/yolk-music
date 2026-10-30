@@ -59,23 +59,55 @@
             font-size: 16px !important;
         }
 
+        /* Smooth expand/collapse animation for Now Playing nav pill */
+        #nav-now-playing {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+            overflow: hidden;
+            transition: max-width 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+                        opacity 0.35s ease,
+                        padding 0.35s ease,
+                        transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+            transform-origin: left center;
+        }
+
+        #nav-now-playing.nav-hidden {
+            max-width: 0 !important;
+            min-width: 0 !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            margin: 0 !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transform: scaleX(0.5) translateX(-8px) !important;
+        }
+
+        #nav-now-playing.nav-visible {
+            max-width: 140px !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            transform: scaleX(1) translateX(0) !important;
+        }
+
         @media (max-width: 639px) {
-            /* Initial Home Page: Navbar sits below the centered search bar */
-            body:not(.is-searching)[data-page="search"] #main-header {
-                position: absolute !important;
-                top: calc(50% + 56px) !important;
-                left: 50% !important;
-                transform: translateX(-50%) !important;
-                width: auto !important;
-                max-width: fit-content !important;
-                z-index: 30 !important;
+            #nav-now-playing.nav-visible {
+                max-width: 95px !important;
             }
 
-            /* When searching or on Library / Artist / Album pages: Compact navbar docks in top-right corner */
+            /* Initial Home Page: Do not show navbar at all on phone */
+            body:not(.is-searching)[data-page="search"] #main-header {
+                display: none !important;
+            }
+
+            /* When searching or on Library / Artist / Album / Now Playing pages: Compact navbar docks in top-right corner */
             body.is-searching[data-page="search"] #main-header,
             body[data-page="library"] #main-header,
             body[data-page="artist"] #main-header,
-            body[data-page="album"] #main-header {
+            body[data-page="album"] #main-header,
+            body[data-page="now-playing"] #main-header {
+                display: flex !important;
                 position: fixed !important;
                 top: 10px !important;
                 right: 12px !important;
@@ -89,7 +121,8 @@
             body.is-searching[data-page="search"] #top-nav-bar,
             body[data-page="library"] #top-nav-bar,
             body[data-page="artist"] #top-nav-bar,
-            body[data-page="album"] #top-nav-bar {
+            body[data-page="album"] #top-nav-bar,
+            body[data-page="now-playing"] #top-nav-bar {
                 height: 38px !important;
                 padding: 4px 6px !important;
                 gap: 4px !important;
@@ -98,7 +131,8 @@
             body.is-searching[data-page="search"] #top-nav-bar a,
             body[data-page="library"] #top-nav-bar a,
             body[data-page="artist"] #top-nav-bar a,
-            body[data-page="album"] #top-nav-bar a {
+            body[data-page="album"] #top-nav-bar a,
+            body[data-page="now-playing"] #top-nav-bar a {
                 min-width: 0 !important;
                 height: 28px !important;
                 padding: 0 10px !important;
@@ -892,7 +926,7 @@
 <body class="text-zinc-800 h-screen w-screen overflow-hidden selection:bg-zinc-200 selection:text-zinc-900 relative" data-page="search">
 
     <!-- Small Top-Left Logo -->
-    <div id="smallLogo" class="fixed top-3 left-4 sm:top-6 sm:left-8 z-40 flex items-center gap-2 pointer-events-none">
+    <div id="smallLogo" class="fixed top-3 left-4 sm:top-6 sm:left-8 z-40 flex items-center gap-2 cursor-pointer pointer-events-auto select-none transition-transform hover:scale-105 active:scale-95" title="Return to Home">
         <div class="w-6 h-6 rounded-full bg-[#FACC15] border-2 border-black shadow-sm shrink-0"></div>
         <span class="text-xl font-bold text-black tracking-tight">Yolk!</span>
     </div>
@@ -906,7 +940,7 @@
             <a href="#library" id="nav-library" class="sleek-hover min-w-[105px] whitespace-nowrap shrink-0 text-center text-sm font-medium px-5 h-8 flex items-center justify-center rounded-full text-zinc-600 sleek-transition">
                 Library
             </a>
-            <a href="#now-playing" id="nav-now-playing" class="sleek-hover min-w-[105px] whitespace-nowrap shrink-0 text-center text-sm font-medium px-5 h-8 flex items-center justify-center rounded-full text-zinc-600 sleek-transition">
+            <a href="#now-playing" id="nav-now-playing" class="sleek-hover nav-hidden min-w-0 whitespace-nowrap shrink-0 text-center text-sm font-medium h-8 flex items-center justify-center rounded-full text-zinc-600 sleek-transition">
                 Now Playing
             </a>
         </nav>
@@ -917,7 +951,7 @@
         <!-- Central Search Block -->
         <div id="search-block">
             <!-- Large Logo -->
-            <div id="large-logo-wrapper">
+            <div id="large-logo-wrapper" class="cursor-pointer select-none transition-transform hover:scale-[1.02] active:scale-95" title="Yolk! Home">
                 <div class="logo-inner flex flex-col items-center justify-center mb-8">
                     <div class="flex items-center gap-4">
                         <div class="w-12 h-12 rounded-full bg-[#FACC15] border-[2.5px] border-black shadow-md shrink-0"></div>
@@ -938,6 +972,18 @@
                 <div class="absolute right-[18px] top-1/2 -translate-y-1/2 text-zinc-400 transition-colors duration-300 pointer-events-none">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                 </div>
+            </div>
+
+            <!-- Recent Searches Container -->
+            <div id="recent-searches-container" class="w-full flex-col gap-2 pt-3 pb-1 hidden">
+                <div class="flex items-center justify-between px-2 mb-0.5">
+                    <span class="text-[11px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-1.5 select-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="text-zinc-400"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        Recent Searches
+                    </span>
+                    <button type="button" id="clear-recent-searches-btn" class="text-[11px] font-semibold text-zinc-400 hover:text-zinc-800 transition-colors cursor-pointer select-none">Clear</button>
+                </div>
+                <div id="recent-searches-list" class="flex flex-wrap gap-2 px-1"></div>
             </div>
 
             <!-- Search Category Tabs -->
@@ -1023,14 +1069,10 @@
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                                     <span>Play All</span>
                                 </button>
-                                <button id="playlist-tint-btn" class="bubbly-hover flex items-center gap-1.5 px-3.5 py-2.5 rounded-full bg-white text-zinc-700 text-xs font-semibold hover:bg-zinc-100 transition-all border border-zinc-200/80 shadow-sm cursor-pointer" title="Customize Playlist Tint">
-                                    <span id="playlist-tint-dot" class="w-3.5 h-3.5 rounded-full border border-black/20 shadow-xs inline-block" style="background-color: #FDE047;"></span>
-                                    <span>Tint</span>
-                                </button>
-                                <button id="playlist-edit-btn" class="bubbly-hover px-4 py-2.5 rounded-full bg-white text-zinc-700 text-xs font-semibold hover:bg-zinc-100 transition-all border border-zinc-200/80 shadow-sm">
+                                <button id="playlist-edit-btn" class="bubbly-hover px-4 py-2.5 rounded-full bg-white text-zinc-700 text-xs font-semibold hover:bg-zinc-100 transition-all border border-zinc-200/80 shadow-sm cursor-pointer">
                                     Edit
                                 </button>
-                                <button id="playlist-delete-btn" class="bubbly-hover px-4 py-2.5 rounded-full bg-red-50 text-red-600 text-xs font-semibold hover:bg-red-100 transition-all border border-red-200/50 shadow-sm">
+                                <button id="playlist-delete-btn" class="bubbly-hover px-4 py-2.5 rounded-full bg-red-50 text-red-600 text-xs font-semibold hover:bg-red-100 transition-all border border-red-200/50 shadow-sm cursor-pointer">
                                     Delete
                                 </button>
                             </div>
@@ -1787,14 +1829,23 @@
                 // Update nav links: map album and artist to library
                 const activeNavKey = (hash === 'library' || hash === 'album' || hash === 'artist') ? 'library' : hash;
                 Object.keys(navLinks).forEach(key => {
+                    const el = navLinks[key];
+                    if (!el) return;
                     if (key === activeNavKey) {
-                        navLinks[key].className = 'yolk-active min-w-[105px] whitespace-nowrap shrink-0 text-center select-none text-sm font-medium px-5 h-8 flex items-center justify-center rounded-full !text-white sleek-transition';
-                        navLinks[key].style.color = '#ffffff';
+                        el.classList.add('yolk-active', '!text-white');
+                        el.classList.remove('sleek-hover', 'text-zinc-600');
+                        el.style.color = '#ffffff';
                     } else {
-                        navLinks[key].className = 'sleek-hover min-w-[105px] whitespace-nowrap shrink-0 text-center select-none text-sm font-medium px-5 h-8 flex items-center justify-center rounded-full text-zinc-600 sleek-transition';
-                        navLinks[key].style.color = '';
+                        el.classList.remove('yolk-active', '!text-white');
+                        el.classList.add('sleek-hover', 'text-zinc-600');
+                        el.style.color = '';
                     }
                 });
+
+                if (hash === 'now-playing' && navLinks['now-playing']) {
+                    navLinks['now-playing'].classList.remove('nav-hidden');
+                    navLinks['now-playing'].classList.add('nav-visible');
+                }
 
                 if (typeof window.updateTopNavTint === 'function') {
                     window.updateTopNavTint();
@@ -1856,6 +1907,7 @@
         });
     </script>
     <div id="youtubePlayer"></div>
+    <audio id="yolk-audio-player" playsinline webkit-playsinline x-webkit-airplay="allow" preload="auto" class="hidden"></audio>
     <script src="yolk-app.js"></script>
 </body>
 </html>
