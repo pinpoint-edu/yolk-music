@@ -2400,12 +2400,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (ytPlayer && typeof ytPlayer.stopVideo === 'function') {
             try { ytPlayer.stopVideo(); } catch (_) {}
         }
+        currentAudio.pause();
         currentAudio.removeAttribute('src');
+        currentAudio.load();
+        currentAudio._recovering = false;
         currentAudio.src = streamUrl;
         currentAudio.load();
         const playPromise = currentAudio.play();
         if (playPromise !== undefined) {
             playPromise.then(() => {
+                currentAudio._recovering = false;
                 showSpinner(false);
                 isPlaying = true;
                 updatePlayPauseButtons();
@@ -2632,6 +2636,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (_) {}
 
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            showSpinner(false);
+            showToast('⚠️ Offline: This track is not downloaded.');
+            return;
+        }
+
         // 2. Synchronous fast-path: if video ID is already known on track, start playback immediately
         const syncVideoId = getYoutubeIdSync(track);
         if (syncVideoId) {
@@ -2713,56 +2723,82 @@ document.addEventListener('DOMContentLoaded', () => {
     currentAudio.addEventListener('error', async () => {
         // Do nothing if audio is not active or if src is empty/null/cleared
         if (activeSource !== 'audio' || !currentAudio.src || currentAudio.src === window.location.href) {
+            currentAudio._recovering = false;
             return;
         }
         showSpinner(false);
         if (currentTrack && !currentAudio._recovering) {
             currentAudio._recovering = true;
-            const videoId = await getYoutubeId(currentTrack);
-            if (videoId) {
-                // Swap to alternative codec (MP4 <-> WebM) to seamlessly recover on machines lacking proprietary codecs (like older Windows/Opera)
-                const currentFmt = currentAudio._activeFormat || (currentAudio.src.includes('format=webm') ? 'webm' : 'mp4');
-                const altFmt = currentFmt === 'mp4' ? 'webm' : 'mp4';
-                currentAudio._activeFormat = altFmt;
-                const retryUrl = `/api/music-api?endpoint=stream&id=${encodeURIComponent(videoId)}&format=${altFmt}&_t=${Date.now()}`;
-                currentAudio.removeAttribute('src');
-                currentAudio.src = retryUrl;
-                currentAudio.load();
-                currentAudio.play().catch(async () => {
-                    // Try alternative video ID if available
+            try {
+                const videoId = await getYoutubeId(currentTrack);
+                if (videoId) {
+                    // Swap to alternative codec (MP4 <-> WebM) to seamlessly recover on machines lacking proprietary codecs (like older Windows/Opera)
+                    const currentFmt = currentAudio._activeFormat || (currentAudio.src.includes('format=webm') ? 'webm' : 'mp4');
+                    const altFmt = currentFmt === 'mp4' ? 'webm' : 'mp4';
+                    currentAudio._activeFormat = altFmt;
+                    const retryUrl = `/api/music-api?endpoint=stream&id=${encodeURIComponent(videoId)}&format=${altFmt}&_t=${Date.now()}`;
+                    currentAudio.pause();
+                    currentAudio.removeAttribute('src');
+                    currentAudio.load();
+                    currentAudio.src = retryUrl;
+                    currentAudio.load();
                     try {
-                        const searchQ = `${currentTrack.title || ''} ${currentTrack.artist_name || ''}`.trim();
-                        if (searchQ) {
-                            const searchRes = await fetch(`/api/music-api?endpoint=search&q=${encodeURIComponent(searchQ)}&limit=5`);
-                            if (searchRes.ok) {
-                                const searchData = await searchRes.json();
-                                const items = Array.isArray(searchData) ? searchData : (searchData.tracks || []);
-                                const altItem = items.find(i => {
-                                    const vid = i.youtube_id || i.videoId;
-                                    return vid && vid !== videoId;
-                                });
-                                if (altItem) {
-                                    const altId = altItem.youtube_id || altItem.videoId;
-                                    currentTrack.youtube_id = altId;
-                                    currentAudio._activeVideoId = altId;
-                                    const altStreamUrl = `/api/music-api?endpoint=stream&id=${encodeURIComponent(altId)}&format=${altFmt}&_t=${Date.now()}`;
-                                    currentAudio.removeAttribute('src');
-                                    currentAudio.src = altStreamUrl;
-                                    currentAudio.load();
-                                    currentAudio.play().catch(() => {
-                                        showToast('Playback error: Stream unavailable.');
+                        await currentAudio.play();
+                        currentAudio._recovering = false;
+                        return;
+                    } catch (playErr) {
+                        // Try alternative video ID if available
+                        try {
+                            const searchQ = `${currentTrack.title || ''} ${currentTrack.artist_name || ''}`.trim();
+                            if (searchQ) {
+                                const searchRes = await fetch(`/api/music-api?endpoint=search&q=${encodeURIComponent(searchQ)}&limit=5`);
+                                if (searchRes.ok) {
+                                    const searchData = await searchRes.json();
+                                    const items = Array.isArray(searchData) ? searchData : (searchData.tracks || []);
+                                    const altItem = items.find(i => {
+                                        const vid = i.youtube_id || i.videoId;
+                                        return vid && vid !== videoId;
                                     });
-                                    return;
+                                    if (altItem) {
+                                        const altId = altItem.youtube_id || altItem.videoId;
+                                        currentTrack.youtube_id = altId;
+                                        currentAudio._activeVideoId = altId;
+                                        const altStreamUrl = `/api/music-api?endpoint=stream&id=${encodeURIComponent(altId)}&format=${altFmt}&_t=${Date.now()}`;
+                                        currentAudio.pause();
+                                        currentAudio.removeAttribute('src');
+                                        currentAudio.load();
+                                        currentAudio.src = altStreamUrl;
+                                        currentAudio.load();
+                                        await currentAudio.play();
+                                        currentAudio._recovering = false;
+                                        return;
+                                    }
                                 }
                             }
-                        }
-                    } catch (_) {}
-                    showToast('Playback error: Stream unavailable.');
-                });
-                return;
+                        } catch (_) {}
+                    }
+                }
+            } catch (_) {}
+            finally {
+                currentAudio._recovering = false;
             }
         }
+        currentAudio._recovering = false;
         showToast('Playback error: Stream unavailable.');
+    });
+
+    // Seamless Network Online / Offline Lifecycle Handling
+    window.addEventListener('online', () => {
+        showToast('✓ Back online');
+        currentAudio._recovering = false;
+        // If track was paused or failed during offline disconnect, resume seamlessly
+        if (currentTrack && (!currentAudio.src || currentAudio.error || (!isPlaying && currentAudio.paused && currentAudio.currentTime === 0))) {
+            playTrack(currentTrack);
+        }
+    });
+
+    window.addEventListener('offline', () => {
+        showToast('Offline mode: Playing downloaded songs');
     });
 
     // Time & Progress Update

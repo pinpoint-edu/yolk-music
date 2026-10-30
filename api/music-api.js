@@ -1329,7 +1329,7 @@ async function resolveAudioStream(videoId, requestedFormat = 'auto') {
     const cacheKey = `${videoId}:${requestedFormat}`;
     const cached = streamUrlCache.get(cacheKey);
     if (cached && cached.expires > Date.now()) {
-        return cached.url;
+        return cached.streamInfo;
     }
 
     // 1. Try Cloudflare Worker stream check ONLY if CF_WORKER_URL environment variable is set
@@ -1341,82 +1341,149 @@ async function resolveAudioStream(videoId, requestedFormat = 'auto') {
             });
             if (checkRes.status === 200 || checkRes.status === 206) {
                 const cfUrl = `${process.env.CF_WORKER_URL}?id=${videoId}&mode=stream`;
-                streamUrlCache.set(cacheKey, { url: cfUrl, expires: Date.now() + 25 * 60 * 1000 });
-                return cfUrl;
+                const info = { directUrl: cfUrl, proxiedUrl: cfUrl, mimeType: 'audio/mp4', clen: null, itag: null };
+                streamUrlCache.set(cacheKey, { streamInfo: info, expires: Date.now() + 25 * 60 * 1000 });
+                return info;
             }
         } catch (_) {}
     }
 
     // 2. High-health stream instances with fallback
     const streamInstances = [
-        'https://yt.chocolatemoo53.com',
-        'https://echostreamz.com',
-        'https://invidious.jing.rocks',
-        'https://invidious.nerdvpn.de',
-        'https://inv.nadeko.net'
+        'https://yt.chocolatemoo53.com'
     ];
 
-    const resolvePromises = streamInstances.map(async (inst) => {
-        const vidRes = await fetch(`${inst}/api/v1/videos/${videoId}?fields=adaptiveFormats,formatStreams`, {
-            headers: { 'Accept': 'application/json' },
-            signal: AbortSignal.timeout(5000)
-        });
-        if (!vidRes.ok) throw new Error('Failed ' + inst);
-        const data = await vidRes.json();
-        const audioFormats = (data.adaptiveFormats || []).filter(f => f.type?.includes('audio') && f.url && !f.url.includes('sabr') && !f.url.includes('companion'));
-
-        let chosenFormat = null;
-        if (audioFormats.length > 0) {
-            if (requestedFormat === 'webm') {
-                const webmFormats = audioFormats.filter(f => f.type?.includes('audio/webm') || f.container === 'webm');
-                if (webmFormats.length > 0) {
-                    webmFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-                    chosenFormat = webmFormats[0];
-                }
-            } else if (requestedFormat === 'mp4') {
-                const mp4Formats = audioFormats.filter(f => f.type?.includes('audio/mp4') || f.container === 'm4a');
-                if (mp4Formats.length > 0) {
-                    mp4Formats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-                    chosenFormat = mp4Formats[0];
-                }
-            }
-
-            if (!chosenFormat) {
-                const mp4Formats = audioFormats.filter(f => f.type?.includes('audio/mp4') || f.container === 'm4a');
-                if (mp4Formats.length > 0) {
-                    mp4Formats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-                    chosenFormat = mp4Formats[0];
-                } else {
-                    audioFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-                    chosenFormat = audioFormats[0];
-                }
-            }
-        }
-
-        // Fallback to muxed MP4 streams (formatStreams itag 18 / 22) if audio-only adaptiveFormats are SABR or empty
-        if (!chosenFormat && data.formatStreams && data.formatStreams.length > 0) {
-            const muxedFormats = data.formatStreams.filter(f => f.url && !f.url.includes('sabr') && !f.url.includes('companion'));
-            if (muxedFormats.length > 0) {
-                chosenFormat = muxedFormats.find(f => f.itag === 18 || f.itag === '18') || muxedFormats[0];
-            }
-        }
-
-        if (!chosenFormat) throw new Error('No audio ' + inst);
-
-        const rawUrl = chosenFormat.url;
-        let streamUrl = rawUrl;
+    let lastError = null;
+    for (const inst of streamInstances) {
         try {
-            const u = new URL(rawUrl);
-            if (u.hostname.includes('googlevideo.com')) {
-                streamUrl = `${inst}${u.pathname}${u.search}`;
+            const vidRes = await fetch(`${inst}/api/v1/videos/${videoId}?fields=adaptiveFormats,formatStreams`, {
+                headers: { 'Accept': 'application/json' },
+                signal: AbortSignal.timeout(4500)
+            });
+            if (!vidRes.ok) throw new Error(`HTTP ${vidRes.status} from ${inst}`);
+            const data = await vidRes.json();
+
+            const adaptive = data.adaptiveFormats || [];
+            const muxed = data.formatStreams || [];
+
+            // Tier 1: Clean audio-only adaptive formats directly hosted on googlevideo.com
+            const directAudio = adaptive.filter(f => f.type?.includes('audio') && f.url && !f.url.includes('companion') && !f.url.includes('sabr-segment'));
+            
+            let chosenFormat = null;
+            if (directAudio.length > 0) {
+                if (requestedFormat === 'webm') {
+                    chosenFormat = directAudio.find(f => f.type?.includes('webm') || f.container === 'webm');
+                } else if (requestedFormat === 'mp4') {
+                    chosenFormat = directAudio.find(f => f.type?.includes('mp4') || f.container === 'm4a');
+                }
+                if (!chosenFormat) {
+                    // Sort by bitrate descending
+                    directAudio.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+                    chosenFormat = directAudio[0];
+                }
+            }
+
+            // Tier 2: Muxed direct googlevideo streams (itag 18 / 22: full 360p video + AAC audio, bypasses SABR)
+            if (!chosenFormat && muxed.length > 0) {
+                const directMuxed = muxed.filter(f => f.url && !f.url.includes('companion') && !f.url.includes('sabr-segment'));
+                if (directMuxed.length > 0) {
+                    chosenFormat = directMuxed.find(f => f.itag === 18 || f.itag === '18') || directMuxed[0];
+                }
+            }
+
+            // Tier 3: Companion-assisted audio formats (if no direct googlevideo URLs returned)
+            if (!chosenFormat) {
+                const companionAudio = adaptive.filter(f => f.type?.includes('audio') && f.url);
+                if (companionAudio.length > 0) {
+                    if (requestedFormat === 'webm') {
+                        chosenFormat = companionAudio.find(f => f.type?.includes('webm') || f.container === 'webm');
+                    } else if (requestedFormat === 'mp4') {
+                        chosenFormat = companionAudio.find(f => f.type?.includes('mp4') || f.container === 'm4a');
+                    }
+                    if (!chosenFormat) chosenFormat = companionAudio[0];
+                }
+            }
+
+            if (!chosenFormat) throw new Error(`No usable audio streams on ${inst}`);
+
+            const rawUrl = chosenFormat.url;
+            let proxiedUrl = rawUrl;
+            try {
+                const u = new URL(rawUrl);
+                if (u.hostname.includes('googlevideo.com')) {
+                    proxiedUrl = `${inst}${u.pathname}${u.search}`;
+                }
+            } catch (_) {}
+
+            const info = {
+                directUrl: rawUrl,
+                proxiedUrl: proxiedUrl,
+                mimeType: chosenFormat.type?.split(';')[0]?.trim() || (requestedFormat === 'webm' ? 'audio/webm' : 'audio/mp4'),
+                clen: chosenFormat.clen ? parseInt(chosenFormat.clen, 10) : null,
+                itag: chosenFormat.itag
+            };
+
+            streamUrlCache.set(cacheKey, { streamInfo: info, expires: Date.now() + 25 * 60 * 1000 });
+            return info;
+        } catch (e) {
+            lastError = e;
+        }
+    }
+
+    throw lastError || new Error('All stream resolvers failed');
+}
+
+async function fetchAudioBuffer(directUrl, proxiedUrl, totalBytesHint = 0) {
+    // Try ultra-fast parallel chunk download if direct Google CDN URL and size are known
+    if (directUrl && totalBytesHint > 1024 * 512) {
+        try {
+            const chunkSize = 1.5 * 1024 * 1024;
+            const chunksCount = Math.ceil(totalBytesHint / chunkSize);
+            const promises = [];
+            for (let i = 0; i < chunksCount; i++) {
+                const start = i * chunkSize;
+                const end = Math.min(start + chunkSize - 1, totalBytesHint - 1);
+                promises.push((async () => {
+                    const res = await fetch(directUrl, {
+                        headers: { 'Range': `bytes=${start}-${end}`, 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+                        signal: AbortSignal.timeout(8000)
+                    });
+                    if (!res.ok && res.status !== 206) throw new Error(`Chunk ${i} failed ${res.status}`);
+                    const ab = await res.arrayBuffer();
+                    return { index: i, buffer: Buffer.from(ab) };
+                })());
+            }
+            const parts = await Promise.all(promises);
+            parts.sort((a, b) => a.index - b.index);
+            return Buffer.concat(parts.map(p => p.buffer));
+        } catch (_) {}
+    }
+
+    // Direct single-fetch fallback
+    if (directUrl) {
+        try {
+            const res = await fetch(directUrl, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+                signal: AbortSignal.timeout(12000)
+            });
+            if (res.ok) {
+                return Buffer.from(await res.arrayBuffer());
             }
         } catch (_) {}
-        return streamUrl;
-    });
+    }
 
-    const resolvedUrl = await Promise.any(resolvePromises);
-    streamUrlCache.set(cacheKey, { url: resolvedUrl, expires: Date.now() + 25 * 60 * 1000 });
-    return resolvedUrl;
+    // Proxied single-fetch fallback
+    if (proxiedUrl) {
+        const res = await fetch(proxiedUrl, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+            signal: AbortSignal.timeout(15000)
+        });
+        if (res.ok) {
+            return Buffer.from(await res.arrayBuffer());
+        }
+    }
+
+    throw new Error('Unable to download audio buffer from stream source');
 }
 
     if (endpoint === 'stream') {
@@ -1428,9 +1495,10 @@ async function resolveAudioStream(videoId, requestedFormat = 'auto') {
         if (!videoId) return res.status(400).json({ error: 'Could not parse video ID' });
 
         const requestedFormat = (req.query.format || 'auto').toLowerCase();
+        const cacheKey = `${videoId}:${requestedFormat}`;
 
         try {
-            const resolvedUrl = await resolveAudioStream(videoId, requestedFormat);
+            let streamInfo = await resolveAudioStream(videoId, requestedFormat);
             
             const upstreamHeaders = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -1439,18 +1507,48 @@ async function resolveAudioStream(videoId, requestedFormat = 'auto') {
                 upstreamHeaders['Range'] = req.headers.range;
             }
 
-            let audioStreamRes = await fetch(resolvedUrl, { headers: upstreamHeaders });
-            if (!audioStreamRes.ok && audioStreamRes.status !== 206) {
-                streamUrlCache.delete(`${videoId}:${requestedFormat}`);
-                const retryUrl = await resolveAudioStream(videoId, requestedFormat);
-                audioStreamRes = await fetch(retryUrl, { headers: upstreamHeaders });
+            // 1. Try direct Google CDN URL first for instantaneous native byte-range streaming
+            let audioStreamRes = null;
+            try {
+                audioStreamRes = await fetch(streamInfo.directUrl, { headers: upstreamHeaders, signal: AbortSignal.timeout(6000) });
                 if (!audioStreamRes.ok && audioStreamRes.status !== 206) {
-                    return res.status(audioStreamRes.status).json({ error: 'Audio stream unavailable' });
+                    audioStreamRes = null;
+                }
+            } catch (_) {
+                audioStreamRes = null;
+            }
+
+            // 2. Fallback to proxied URL if direct URL returned 403 or network error
+            if (!audioStreamRes && streamInfo.proxiedUrl && streamInfo.proxiedUrl !== streamInfo.directUrl) {
+                try {
+                    audioStreamRes = await fetch(streamInfo.proxiedUrl, { headers: upstreamHeaders, signal: AbortSignal.timeout(8000) });
+                    if (!audioStreamRes.ok && audioStreamRes.status !== 206) {
+                        audioStreamRes = null;
+                    }
+                } catch (_) {
+                    audioStreamRes = null;
+                }
+            }
+
+            // 3. If both failed, invalidate cache and retry once
+            if (!audioStreamRes) {
+                streamUrlCache.delete(cacheKey);
+                streamInfo = await resolveAudioStream(videoId, requestedFormat);
+                try {
+                    audioStreamRes = await fetch(streamInfo.directUrl, { headers: upstreamHeaders, signal: AbortSignal.timeout(6000) });
+                } catch (_) {}
+                if (!audioStreamRes || (!audioStreamRes.ok && audioStreamRes.status !== 206)) {
+                    if (streamInfo.proxiedUrl) {
+                        audioStreamRes = await fetch(streamInfo.proxiedUrl, { headers: upstreamHeaders, signal: AbortSignal.timeout(8000) });
+                    }
+                }
+                if (!audioStreamRes || (!audioStreamRes.ok && audioStreamRes.status !== 206)) {
+                    return res.status(audioStreamRes ? audioStreamRes.status : 502).json({ error: 'Audio stream unavailable' });
                 }
             }
 
             res.statusCode = audioStreamRes.status;
-            res.setHeader('Content-Type', audioStreamRes.headers.get('content-type') || (requestedFormat === 'webm' ? 'audio/webm' : 'audio/mp4'));
+            res.setHeader('Content-Type', audioStreamRes.headers.get('content-type') || streamInfo.mimeType || 'audio/mp4');
             res.setHeader('Accept-Ranges', 'bytes');
             res.setHeader('Access-Control-Allow-Origin', '*');
             res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type');
@@ -1480,35 +1578,30 @@ async function resolveAudioStream(videoId, requestedFormat = 'auto') {
         if (!videoId) return res.status(400).json({ error: 'Could not parse video ID' });
 
         const requestedFormat = (req.query.format || 'mp4').toLowerCase();
+        const cacheKey = `${videoId}:${requestedFormat}`;
 
         try {
-            const resolvedUrl = await resolveAudioStream(videoId, requestedFormat);
-            let audioStreamRes = await fetch(resolvedUrl, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                }
-            });
-            if (!audioStreamRes.ok && audioStreamRes.status !== 206) {
-                streamUrlCache.delete(`${videoId}:${requestedFormat}`);
-                const retryUrl = await resolveAudioStream(videoId, requestedFormat);
-                audioStreamRes = await fetch(retryUrl, {
-                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
-                });
-                if (!audioStreamRes.ok && audioStreamRes.status !== 206) {
-                    return res.status(audioStreamRes.status).json({ error: 'Failed to fetch audio stream' });
-                }
+            let streamInfo = await resolveAudioStream(videoId, requestedFormat);
+            let audioBuffer = null;
+
+            try {
+                audioBuffer = await fetchAudioBuffer(streamInfo.directUrl, streamInfo.proxiedUrl, streamInfo.clen);
+            } catch (_) {
+                // Retry once with invalidated cache
+                streamUrlCache.delete(cacheKey);
+                streamInfo = await resolveAudioStream(videoId, requestedFormat);
+                audioBuffer = await fetchAudioBuffer(streamInfo.directUrl, streamInfo.proxiedUrl, streamInfo.clen);
             }
 
-            res.statusCode = audioStreamRes.status;
-            res.setHeader('Content-Type', requestedFormat === 'webm' ? 'audio/webm' : 'audio/mp4');
+            res.statusCode = 200;
+            res.setHeader('Content-Type', streamInfo.mimeType || (requestedFormat === 'webm' ? 'audio/webm' : 'audio/mp4'));
+            res.setHeader('Content-Length', audioBuffer.length);
+            res.setHeader('Accept-Ranges', 'bytes');
             res.setHeader('Access-Control-Allow-Origin', '*');
             res.setHeader('Access-Control-Expose-Headers', 'Content-Length');
             res.setHeader('Cache-Control', 'public, max-age=86400');
-            if (audioStreamRes.headers.get('content-length')) {
-                res.setHeader('Content-Length', audioStreamRes.headers.get('content-length'));
-            }
 
-            Readable.fromWeb(audioStreamRes.body).pipe(res);
+            res.send(audioBuffer);
             return;
         } catch (err) {
             return res.status(502).json({ error: 'Audio download stream unavailable' });
