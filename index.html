@@ -73,15 +73,21 @@
             transform-origin: left center;
         }
 
-        #nav-now-playing.nav-hidden {
+        #nav-now-playing.nav-hidden,
+        #top-nav-bar #nav-now-playing.nav-hidden,
+        body.is-searching #top-nav-bar #nav-now-playing.nav-hidden {
             display: none !important;
             max-width: 0 !important;
             min-width: 0 !important;
+            width: 0 !important;
             padding-left: 0 !important;
             padding-right: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
             margin: 0 !important;
             opacity: 0 !important;
             pointer-events: none !important;
+            visibility: hidden !important;
             transform: scaleX(0.5) translateX(-8px) !important;
         }
 
@@ -90,7 +96,29 @@
             max-width: 140px !important;
             opacity: 1 !important;
             pointer-events: auto !important;
+            visibility: visible !important;
             transform: scaleX(1) translateX(0) !important;
+        }
+
+        /* Fixed Top-Right Navigation Header on All Screen Sizes */
+        #main-header {
+            position: fixed !important;
+            top: 14px !important;
+            right: 18px !important;
+            left: auto !important;
+            transform: none !important;
+            z-index: 45 !important;
+            width: auto !important;
+            max-width: fit-content !important;
+            justify-content: flex-end !important;
+            margin: 0 !important;
+        }
+
+        @media (min-width: 640px) {
+            #main-header {
+                top: 24px !important;
+                right: 32px !important;
+            }
         }
 
         @media (max-width: 639px) {
@@ -98,22 +126,15 @@
                 max-width: 95px !important;
             }
 
-            /* Initial Home Page: Do not show navbar at all on phone */
+            /* Initial Home Page: Do not show navbar at all on phone until search or library */
             body:not(.is-searching)[data-page="search"] #main-header {
                 display: none !important;
             }
 
-            /* When active: force navbar strictly to top-right corner on mobile */
             #main-header {
-                position: fixed !important;
                 top: 10px !important;
                 right: 12px !important;
-                left: auto !important;
-                transform: none !important;
-                width: auto !important;
                 max-width: calc(100vw - 110px) !important;
-                z-index: 45 !important;
-                justify-content: flex-end !important;
             }
 
             body.is-searching[data-page="search"] #main-header,
@@ -134,11 +155,11 @@
                 gap: 4px !important;
             }
 
-            body.is-searching[data-page="search"] #top-nav-bar a,
-            body[data-page="library"] #top-nav-bar a,
-            body[data-page="artist"] #top-nav-bar a,
-            body[data-page="album"] #top-nav-bar a,
-            body[data-page="now-playing"] #top-nav-bar a {
+            body.is-searching[data-page="search"] #top-nav-bar a:not(.nav-hidden),
+            body[data-page="library"] #top-nav-bar a:not(.nav-hidden),
+            body[data-page="artist"] #top-nav-bar a:not(.nav-hidden),
+            body[data-page="album"] #top-nav-bar a:not(.nav-hidden),
+            body[data-page="now-playing"] #top-nav-bar a:not(.nav-hidden) {
                 min-width: 0 !important;
                 height: 28px !important;
                 padding: 0 10px !important;
@@ -622,7 +643,7 @@
             box-shadow: 0px 4px 10px rgba(24, 24, 27, 0.15);
         }
 
-        /* Now Playing Layout */
+        /* Now Playing Layout & Ultra-Smooth Lyrics Transition */
         .now-playing-container {
             width: 100%;
             max-width: 1280px;
@@ -634,86 +655,10 @@
             align-items: center;
             justify-content: center;
             gap: 28px;
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        @media (min-width: 768px) {
-            .now-playing-container {
-                flex-direction: row;
-                align-items: center;
-                justify-content: space-between;
-                gap: 56px;
-            }
-        }
-        .now-playing-container.no-lyrics,
-        .now-playing-container.lyrics-hidden {
-            justify-content: center !important;
-            align-items: center !important;
-        }
-        .now-playing-container.no-lyrics .np-right-col,
-        .now-playing-container.lyrics-hidden .np-right-col {
-            display: none !important;
-        }
-        .now-playing-container.no-lyrics .np-left-col,
-        .now-playing-container.lyrics-hidden .np-left-col {
-            margin: 0 auto !important;
-            max-width: 440px;
-        }
-        .now-playing-container.no-lyrics #now-playing-art,
-        .now-playing-container.lyrics-hidden #now-playing-art {
-            width: 300px;
-            height: 300px;
-            transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1), height 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        @media (min-width: 640px) {
-            .now-playing-container.no-lyrics #now-playing-art,
-            .now-playing-container.lyrics-hidden #now-playing-art {
-                width: 340px;
-                height: 340px;
-            }
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
         }
 
-        /* Mobile Lyrics: Fullscreen view replacing left column with floating bottom bar */
-        @media (max-width: 767px) {
-            .now-playing-container.lyrics-active .np-left-col {
-                display: none !important;
-            }
-            .now-playing-container.lyrics-active .np-right-col {
-                display: flex !important;
-                max-width: 100% !important;
-                width: 100% !important;
-                margin: 0 auto !important;
-                height: calc(100vh - 180px) !important;
-            }
-        }
-
-        /* Desktop: Full side-by-side view with left controls and right synced lyrics */
-        @media (min-width: 768px) {
-            .now-playing-container {
-                flex-direction: row;
-                align-items: center;
-                justify-content: space-between;
-                gap: 56px;
-                padding: 0 24px;
-            }
-            .now-playing-container.lyrics-active .np-left-col {
-                display: flex !important;
-            }
-            .now-playing-container.lyrics-active .np-right-col {
-                display: flex !important;
-                flex: 1.3;
-                width: 100%;
-                max-width: 760px;
-                height: 100%;
-                max-height: calc(100vh - 110px);
-            }
-            #np-lyrics-floating-bar {
-                display: none !important;
-            }
-            #np-mobile-more-btn,
-            #np-mobile-more-popover {
-                display: none !important;
-            }
-        }
         .np-left-col {
             width: 100%;
             max-width: 380px;
@@ -721,8 +666,12 @@
             flex-direction: column;
             align-items: center;
             flex-shrink: 0;
-            transition: max-width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+                        opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                        max-width 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            will-change: transform, opacity;
         }
+
         .np-right-col {
             flex: 1.3;
             width: 100%;
@@ -736,17 +685,133 @@
             backdrop-filter: none !important;
             -webkit-backdrop-filter: none !important;
             border: none !important;
-            border-radius: 0 !important;
-            padding: 0 !important;
             box-shadow: none !important;
             box-sizing: border-box;
             overflow: hidden;
+            transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+                        opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                        max-width 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+                        flex 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            will-change: transform, opacity;
         }
+
+        /* Mobile Lyrics Sliding & Fading Transition */
         @media (max-width: 767px) {
-            .np-right-col {
-                height: 380px;
-                max-width: 100%;
+            .now-playing-container {
+                position: relative;
+                overflow: hidden;
             }
+            .now-playing-container.no-lyrics .np-right-col,
+            .now-playing-container.lyrics-hidden .np-right-col {
+                opacity: 0 !important;
+                pointer-events: none !important;
+                transform: translateY(36px) scale(0.96) !important;
+                position: absolute !important;
+                inset: 0 !important;
+                visibility: hidden !important;
+            }
+            .now-playing-container.no-lyrics .np-left-col,
+            .now-playing-container.lyrics-hidden .np-left-col {
+                opacity: 1 !important;
+                pointer-events: auto !important;
+                transform: translateY(0) scale(1) !important;
+                position: relative !important;
+                visibility: visible !important;
+            }
+
+            .now-playing-container.lyrics-active .np-left-col {
+                opacity: 0 !important;
+                pointer-events: none !important;
+                transform: translateY(36px) scale(0.96) !important;
+                position: absolute !important;
+                inset: 0 !important;
+                visibility: hidden !important;
+            }
+            .now-playing-container.lyrics-active .np-right-col {
+                opacity: 1 !important;
+                pointer-events: auto !important;
+                transform: translateY(0) scale(1) !important;
+                position: relative !important;
+                visibility: visible !important;
+                max-width: 100% !important;
+                width: 100% !important;
+                margin: 0 auto !important;
+                height: calc(100vh - 180px) !important;
+            }
+
+            #np-lyrics-floating-bar {
+                transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease !important;
+                transform: translate(-50%, 40px) !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+            }
+            .now-playing-container.lyrics-active ~ #np-lyrics-floating-bar,
+            body[data-page="now-playing"] #np-lyrics-floating-bar:not(.hidden) {
+                transform: translate(-50%, 0) !important;
+                opacity: 1 !important;
+                pointer-events: auto !important;
+            }
+        }
+
+        /* Desktop Lyrics Smooth Side-by-Side Transition */
+        @media (min-width: 768px) {
+            .now-playing-container {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: 56px;
+                padding: 0 24px;
+            }
+            .now-playing-container.no-lyrics .np-right-col,
+            .now-playing-container.lyrics-hidden .np-right-col {
+                opacity: 0 !important;
+                max-width: 0 !important;
+                transform: translateX(45px) scale(0.95) !important;
+                pointer-events: none !important;
+                overflow: hidden !important;
+                flex: 0 0 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                visibility: hidden !important;
+            }
+            .now-playing-container.no-lyrics .np-left-col,
+            .now-playing-container.lyrics-hidden .np-left-col {
+                max-width: 440px !important;
+                transform: translateX(0) !important;
+            }
+            .now-playing-container.no-lyrics #now-playing-art,
+            .now-playing-container.lyrics-hidden #now-playing-art {
+                width: 320px;
+                height: 320px;
+            }
+
+            .now-playing-container.lyrics-active {
+                justify-content: space-between !important;
+            }
+            .now-playing-container.lyrics-active .np-left-col {
+                display: flex !important;
+                transform: translateX(0) !important;
+                max-width: 380px !important;
+            }
+            .now-playing-container.lyrics-active .np-right-col {
+                display: flex !important;
+                opacity: 1 !important;
+                transform: translateX(0) scale(1) !important;
+                pointer-events: auto !important;
+                flex: 1.3 !important;
+                max-width: 760px !important;
+                height: 100% !important;
+                max-height: calc(100vh - 110px) !important;
+                visibility: visible !important;
+            }
+            #np-lyrics-floating-bar {
+                display: none !important;
+            }
+            #np-mobile-more-btn,
+            #np-mobile-more-popover {
+                display: none !important;
+            }
+        }
         }
 
         /* Lyrics Styling - Smooth Fullscreen Animations (from pinpoint-edu) */
@@ -947,7 +1012,7 @@
     </div>
 
     <!-- Top Navigation Bar -->
-    <header id="main-header" class="fixed top-12 sm:top-6 left-1/2 -translate-x-1/2 z-30 flex justify-center w-[calc(100%-1.5rem)] sm:w-[calc(100%-3rem)] max-w-fit transition-all duration-300">
+    <header id="main-header" class="fixed top-3 right-4 sm:top-6 sm:right-8 z-30 flex justify-end max-w-fit transition-all duration-300">
         <nav id="top-nav-bar" class="flex gap-1.5 items-center flex-nowrap shrink-0 bg-white/70 backdrop-blur-md p-[10px] h-[56px] rounded-full border border-zinc-200 shadow-sm transition-all duration-500">
             <a href="#search" id="nav-search" class="yolk-active min-w-[105px] whitespace-nowrap shrink-0 text-center text-sm font-medium px-5 h-8 flex items-center justify-center rounded-full sleek-transition">
                 Search
@@ -1031,13 +1096,11 @@
                         <p class="text-sm text-zinc-500 mt-1">Playlists, collections, and saved tracks</p>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button id="import-yt-playlist-btn" class="bubbly-hover flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 hover:bg-white text-zinc-800 border border-zinc-200/90 text-xs font-semibold shadow-sm hover:border-zinc-300 transition-all cursor-pointer">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" class="text-red-600"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
-                            <span>Import YT Playlist</span>
+                        <button id="import-yt-playlist-btn" class="bubbly-hover flex items-center justify-center w-10 h-10 rounded-full bg-white hover:bg-zinc-50 text-zinc-800 border border-zinc-200/90 shadow-sm hover:border-zinc-300 transition-all cursor-pointer shrink-0" title="Import YouTube Playlist">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-red-600"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
                         </button>
-                        <button id="create-playlist-btn" class="bubbly-hover flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900 text-white text-xs font-semibold shadow hover:bg-zinc-800 transition-all cursor-pointer">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                            <span>New Playlist</span>
+                        <button id="create-playlist-btn" class="bubbly-hover flex items-center justify-center w-10 h-10 rounded-full bg-zinc-900 text-white shadow hover:bg-zinc-800 transition-all cursor-pointer shrink-0" title="Create New Playlist">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                         </button>
                     </div>
                 </div>
@@ -1049,9 +1112,8 @@
 
             <!-- Fullscreen Playlist Detail View (Wide Banner Style) -->
             <div id="playlist-detail-view" class="w-full max-w-[1240px] mx-auto hidden pb-16 px-1 sm:px-3">
-                <button id="playlist-back-btn" class="bubbly-hover mb-5 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 hover:bg-white backdrop-blur-md border border-zinc-200/80 shadow-sm text-xs font-semibold text-zinc-700 hover:text-zinc-950 transition-all">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                    <span>Back to Library</span>
+                <button id="playlist-back-btn" class="bubbly-hover mb-5 flex items-center justify-center w-10 h-10 rounded-full bg-white/80 hover:bg-white backdrop-blur-md border border-zinc-200/80 shadow-sm text-zinc-700 hover:text-zinc-950 transition-all cursor-pointer" title="Back to Library">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                 </button>
 
                 <!-- Top Wide Banner: Left Cover, Right Info & Action Buttons in Bottom-Right -->
@@ -1113,23 +1175,23 @@
     </div>
 
     <!-- ==== PAGE: NOW PLAYING ==== -->
-    <div id="page-now-playing" class="page relative overflow-hidden bg-white">
+    <div id="page-now-playing" class="page relative overflow-hidden bg-transparent">
         <!-- Blurred Cover Art & Apple Music Mesh Background -->
-        <div id="now-playing-bg-wrapper" class="absolute inset-0 overflow-hidden pointer-events-none z-0 bg-white">
+        <div id="now-playing-bg-wrapper" class="absolute inset-0 overflow-hidden pointer-events-none z-0 bg-[#FCFBF8]">
             <img id="now-playing-bg-art" src="" alt="" class="absolute inset-[-60px] w-[calc(100%+120px)] h-[calc(100%+120px)] object-cover pointer-events-none transition-all duration-1000 opacity-0" style="filter: blur(75px) saturate(112%) contrast(1.02) brightness(1.06); transform: scale(1.15);">
             <div id="now-playing-mesh" class="absolute inset-[-20%] w-[140%] h-[140%] pointer-events-none transition-opacity duration-1000 opacity-0 apple-mesh-drift" style="filter: blur(60px);"></div>
         </div>
         <!-- Top Safari / iOS Status Bar Smooth Gradient Fade -->
-        <div id="now-playing-top-safari-fade" class="pointer-events-none absolute top-0 left-0 right-0 h-36 bg-gradient-to-b from-white/90 via-white/35 to-transparent z-10 transition-all duration-700"></div>
+        <div id="now-playing-top-safari-fade" class="pointer-events-none absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-white/40 via-white/10 to-transparent z-10 transition-all duration-700"></div>
         <div id="now-playing-bg-tint" class="pointer-events-none transition-all duration-700 opacity-0 absolute inset-0 z-0 hidden"></div>
 
         <div id="now-playing-container" class="now-playing-container relative z-10">
             <!-- Left Side: Cover Art, Metadata, Progress & Buttons -->
             <div class="np-left-col">
-                <div id="now-playing-art" class="w-64 h-64 sm:w-72 sm:h-72 bg-white rounded-2xl shadow-[0_24px_50px_-12px_rgba(0,0,0,0.22)] border border-black/10 flex items-center justify-center relative overflow-hidden shrink-0 transition-transform duration-500 hover:scale-[1.02]">
+                <div id="now-playing-art" class="w-64 h-64 sm:w-72 sm:h-72 bg-white/40 backdrop-blur-2xl rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.12)] border border-white/60 flex items-center justify-center relative overflow-hidden shrink-0 transition-all duration-500 hover:scale-[1.02]">
                     <img id="now-playing-img" src="" alt="Album Art" class="absolute inset-0 w-full h-full object-cover hidden z-10 transition-opacity duration-300" referrerpolicy="no-referrer">
-                    <div id="now-playing-vinyl" class="w-24 h-24 rounded-full bg-black flex items-center justify-center shadow-inner spin-slow z-0">
-                        <div class="w-8 h-8 rounded-full bg-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)]"></div>
+                    <div id="now-playing-vinyl" class="w-24 h-24 rounded-full bg-black/85 backdrop-blur-md flex items-center justify-center shadow-inner spin-slow z-0">
+                        <div class="w-8 h-8 rounded-full bg-white/80 shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)]"></div>
                     </div>
                 </div>
 
@@ -1139,8 +1201,8 @@
                 </div>
 
                 <div class="w-full max-w-[320px] flex flex-col gap-1.5 my-3 shrink-0">
-                    <div id="now-playing-progress-bar" class="w-full h-1.5 bg-black/15 hover:h-2 rounded-full overflow-hidden relative cursor-pointer transition-all">
-                        <div id="now-playing-progress-fill" class="absolute left-0 top-0 w-0 h-full bg-black rounded-full pointer-events-none"></div>
+                    <div id="now-playing-progress-bar" class="w-full h-1.5 bg-black/15 hover:h-2 rounded-full overflow-hidden relative cursor-pointer backdrop-blur-xs transition-all">
+                        <div id="now-playing-progress-fill" class="absolute left-0 top-0 w-0 h-full bg-black/90 rounded-full pointer-events-none"></div>
                     </div>
                     <div class="flex justify-between w-full">
                         <span id="now-playing-current-time" class="text-[11px] text-black/70 font-black select-none">0:00</span>
@@ -1149,38 +1211,41 @@
                 </div>
 
                 <!-- Controls Cluster (Buttons on Left) -->
-                <div class="flex items-center justify-center gap-3 sm:gap-3.5 mt-2 shrink-0 flex-nowrap relative">
+                <div class="flex items-center justify-center gap-2.5 sm:gap-3 mt-2 shrink-0 flex-nowrap relative">
                     <button id="np-queue-btn" class="hidden sm:inline-flex sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="Play Queue">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
                     </button>
                     <button id="now-playing-fav-btn" class="sleek-hover text-black transition-transform hover:scale-110 p-2 cursor-pointer shrink-0" title="Favorite">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                    </button>
+                    <button id="now-playing-download-btn" class="sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="Download Offline">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                     </button>
                     <button id="now-playing-prev" class="sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="Previous Track">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
                     </button>
-                    <button id="now-playing-play-pause" class="flex items-center justify-center w-14 h-14 rounded-full bg-black text-white shadow-xl hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0" title="Play / Pause">
+                    <button id="now-playing-play-pause" class="flex items-center justify-center w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-black/90 backdrop-blur-md text-white border border-white/20 shadow-xl hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0" title="Play / Pause">
                         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                     </button>
                     <button id="now-playing-next" class="sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="Next Track">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
                     </button>
                     <button id="now-playing-add-btn" class="hidden sm:inline-flex sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="Add to Playlist">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
                     </button>
 
-                    <!-- Integrated Lyrics Button (Glossy when available, vibrant icon) -->
-                    <button id="np-lyrics-btn" class="lyrics-glossy-btn flex items-center justify-center w-9 h-9 rounded-full bg-white/50 backdrop-blur-md border border-white/80 shadow-xs hover:bg-white/80 hover:scale-105 active:scale-95 transition-all text-black cursor-pointer shrink-0" title="Lyrics">
+                    <!-- Integrated Lyrics Button (Frosted Translucent) -->
+                    <button id="np-lyrics-btn" class="lyrics-glossy-btn flex items-center justify-center w-9 h-9 rounded-full bg-white/45 backdrop-blur-xl border border-white/70 shadow-xs hover:bg-white/75 hover:scale-105 active:scale-95 transition-all text-black cursor-pointer shrink-0" title="Lyrics">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" class="text-black"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path></svg>
                     </button>
 
                     <!-- Volume Bar (Small Button until Hovered -> Expands outside container restrictions) -->
                     <div id="np-volume-container" class="relative hidden sm:flex items-center group/npvol shrink-0">
                         <button id="np-volume-btn" class="sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="Volume">
-                            <svg id="np-volume-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+                            <svg id="np-volume-icon" xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
                         </button>
                         <div class="pointer-events-none group-hover/npvol:pointer-events-auto opacity-0 group-hover/npvol:opacity-100 scale-95 group-hover/npvol:scale-100 transition-all duration-200 ease-out absolute right-0 bottom-full pb-2.5 sm:pb-0 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 sm:left-full sm:right-auto sm:pl-2.5 z-40 flex items-center">
-                            <div class="flex items-center gap-2 bg-white/70 backdrop-blur-2xl px-4 py-2.5 rounded-full shadow-[0_12px_36px_rgba(0,0,0,0.16)] border border-white/60">
+                            <div class="flex items-center gap-2 bg-white/75 backdrop-blur-2xl px-4 py-2.5 rounded-full shadow-[0_12px_36px_rgba(0,0,0,0.16)] border border-white/70">
                                 <input id="np-volume-slider" type="range" min="0" max="100" value="100" class="yolk-volume-slider w-24 sm:w-28 cursor-pointer">
                             </div>
                         </div>
@@ -1189,9 +1254,9 @@
                     <!-- Mobile More Button & Popover (Accessible on phone format in standard Now Playing) -->
                     <div class="relative sm:hidden flex items-center shrink-0">
                         <button id="np-mobile-more-btn" class="sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="More options">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
                         </button>
-                        <div id="np-mobile-more-popover" class="hidden absolute right-0 bottom-full mb-3 w-56 bg-white/95 backdrop-blur-2xl border border-white/80 rounded-2xl p-2.5 shadow-[0_16px_40px_rgba(0,0,0,0.18)] flex flex-col gap-1 z-50">
+                        <div id="np-mobile-more-popover" class="hidden absolute right-0 bottom-full mb-3 w-56 bg-white/80 backdrop-blur-2xl border border-white/80 rounded-2xl p-2.5 shadow-[0_16px_40px_rgba(0,0,0,0.16)] flex flex-col gap-1 z-50">
                             <button id="np-mobile-more-artist-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                                 <span>View Artist</span>
@@ -1300,9 +1365,8 @@
 
         <main id="page-artist-scroll" class="relative z-10 w-full h-full overflow-y-auto">
             <div class="w-full max-w-[1680px] mx-auto pb-20 px-1 sm:px-3">
-                <button id="artist-back-btn" class="bubbly-hover mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 hover:bg-white backdrop-blur-md border border-zinc-200/80 shadow-sm text-xs font-semibold text-zinc-700 hover:text-zinc-950 transition-all cursor-pointer">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                    <span>Back</span>
+                <button id="artist-back-btn" class="bubbly-hover mb-6 flex items-center justify-center w-10 h-10 rounded-full bg-white/80 hover:bg-white backdrop-blur-md border border-zinc-200/80 shadow-sm text-zinc-700 hover:text-zinc-950 transition-all cursor-pointer" title="Back">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                 </button>
 
                 <!-- Fullscreen Hero Header like in pinpoint-edu -->
@@ -1355,9 +1419,8 @@
 
         <main id="page-album-scroll" class="relative z-10 w-full h-full overflow-y-auto">
             <div class="w-full max-w-[1680px] mx-auto pb-20 px-1 sm:px-3">
-                <button id="album-back-btn" class="bubbly-hover mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 hover:bg-white backdrop-blur-md border border-zinc-200/80 shadow-sm text-xs font-semibold text-zinc-700 hover:text-zinc-950 transition-all cursor-pointer">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                    <span>Back</span>
+                <button id="album-back-btn" class="bubbly-hover mb-6 flex items-center justify-center w-10 h-10 rounded-full bg-white/80 hover:bg-white backdrop-blur-md border border-zinc-200/80 shadow-sm text-zinc-700 hover:text-zinc-950 transition-all cursor-pointer" title="Back">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                 </button>
 
                 <!-- Fullscreen Hero Header for Album -->
@@ -1443,6 +1506,9 @@
                 </button>
                 <button id="bottom-player-add-btn" class="hidden sm:inline-flex sleek-hover text-zinc-400 hover:text-zinc-800 transition-colors p-2 rounded-full hover:bg-black/5 shrink-0" title="Add to Playlist">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+                </button>
+                <button id="bottom-player-download-btn" class="hidden sm:inline-flex sleek-hover text-zinc-400 hover:text-zinc-800 transition-colors p-2 rounded-full hover:bg-black/5 shrink-0" title="Download Offline">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                 </button>
 
                 <!-- Mobile More Button & Popover (Phone view puts all extra options into this button) -->

@@ -451,7 +451,7 @@ function showToast(msg) {
 
     toast.innerHTML = `
         ${iconSvg}
-        <span class="text-xs font-semibold text-zinc-100 tracking-tight select-none">${escapeHtml(msg)}</span>
+        <span class="text-xs font-bold text-zinc-900 tracking-tight select-none">${escapeHtml(msg)}</span>
     `;
 
     toast.style.cssText = `
@@ -460,14 +460,14 @@ function showToast(msg) {
         left: 50%;
         transform: translate(-50%, -24px) scale(0.92);
         opacity: 0;
-        background: rgba(18, 18, 20, 0.94);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        color: #f4f4f5;
+        background: rgba(255, 255, 255, 0.90);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        color: #18181b;
         padding: 9px 18px;
         border-radius: 9999px;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.35), 0 4px 12px rgba(0, 0, 0, 0.15);
+        border: 1px solid rgba(228, 228, 231, 0.85);
+        box-shadow: 0 14px 34px -4px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.04);
         z-index: 9999;
         pointer-events: none;
         display: flex;
@@ -510,14 +510,14 @@ function getSupportedAudioFormat() {
 }
 
 // ==========================================
-// Download Progress Manager
+// Download Progress Manager (White Frosted Theme)
 // ==========================================
 let downloadProgressEl = null;
 let downloadProgressDismissTimeout = null;
 
 function updateDownloadProgressUI({ title, percent, receivedBytes, totalBytes, statusText, isDone, isError, errorMessage }) {
     const isNowPlaying = document.body.dataset.page === 'now-playing' || window.location.hash === '#now-playing';
-    const bottomPos = isNowPlaying ? '16px' : '86px';
+    const bottomPos = isNowPlaying ? '20px' : '90px';
 
     if (!downloadProgressEl) {
         downloadProgressEl = document.createElement('div');
@@ -525,18 +525,18 @@ function updateDownloadProgressUI({ title, percent, receivedBytes, totalBytes, s
         downloadProgressEl.style.cssText = `
             position: fixed;
             bottom: ${bottomPos};
-            right: 16px;
+            right: 20px;
             left: auto;
             z-index: 9999;
-            background: rgba(18, 18, 22, 0.94);
+            background: rgba(255, 255, 255, 0.92);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.14);
+            border: 1px solid rgba(228, 228, 231, 0.9);
             border-radius: 9999px;
             padding: 8px 14px;
-            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04);
             max-width: calc(100vw - 32px);
-            color: #f4f4f5;
+            color: #18181b;
             display: inline-flex;
             align-items: center;
             gap: 8px;
@@ -556,7 +556,7 @@ function updateDownloadProgressUI({ title, percent, receivedBytes, totalBytes, s
         });
     } else {
         downloadProgressEl.style.bottom = bottomPos;
-        downloadProgressEl.style.right = '16px';
+        downloadProgressEl.style.right = '20px';
         downloadProgressEl.style.left = 'auto';
     }
 
@@ -570,7 +570,7 @@ function updateDownloadProgressUI({ title, percent, receivedBytes, totalBytes, s
             <svg style="width: 15px; height: 15px; color: #ef4444; flex-shrink: 0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>
             </svg>
-            <span style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #fca5a5;">${escapeHtml(errorMessage || 'Download failed')}</span>
+            <span style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #dc2626; font-weight: 700;">${escapeHtml(errorMessage || 'Download failed')}</span>
         `;
         downloadProgressDismissTimeout = setTimeout(() => {
             dismissDownloadProgressUI();
@@ -583,8 +583,8 @@ function updateDownloadProgressUI({ title, percent, receivedBytes, totalBytes, s
             <svg style="width: 15px; height: 15px; color: #10b981; flex-shrink: 0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>
             </svg>
-            <span style="max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #f4f4f5;">${escapeHtml(title)}</span>
-            <span style="font-size: 11px; font-weight: 700; color: #10b981; flex-shrink: 0;">✓ Saved</span>
+            <span style="max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #18181b;">${escapeHtml(title)}</span>
+            <span style="font-size: 11px; font-weight: 700; color: #059669; flex-shrink: 0;">✓ Saved</span>
         `;
         downloadProgressDismissTimeout = setTimeout(() => {
             dismissDownloadProgressUI();
@@ -597,16 +597,16 @@ function updateDownloadProgressUI({ title, percent, receivedBytes, totalBytes, s
     const barWidth = pct !== null ? `${pct}%` : '50%';
 
     downloadProgressEl.innerHTML = `
-        <svg style="width: 14px; height: 14px; color: #38bdf8; flex-shrink: 0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <svg style="width: 14px; height: 14px; color: #0284c7; flex-shrink: 0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
             <line x1="12" y1="15" x2="12" y2="3"></line>
         </svg>
-        <span style="max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #f4f4f5;">${escapeHtml(title)}</span>
-        <div style="width: 34px; background: rgba(255, 255, 255, 0.15); border-radius: 9999px; height: 4px; overflow: hidden; flex-shrink: 0;">
-            <div style="background: linear-gradient(90deg, #0ea5e9, #38bdf8); height: 100%; border-radius: 9999px; width: ${barWidth}; transition: width 0.15s ease;"></div>
+        <span style="max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #18181b;">${escapeHtml(title)}</span>
+        <div style="width: 36px; background: rgba(0, 0, 0, 0.08); border-radius: 9999px; height: 4px; overflow: hidden; flex-shrink: 0;">
+            <div style="background: linear-gradient(90deg, #0284c7, #38bdf8); height: 100%; border-radius: 9999px; width: ${barWidth}; transition: width 0.15s ease;"></div>
         </div>
-        <span style="font-family: monospace; font-size: 11px; font-weight: 700; color: #38bdf8; flex-shrink: 0;">${pctLabel}</span>
+        <span style="font-family: monospace; font-size: 11px; font-weight: 700; color: #0284c7; flex-shrink: 0;">${pctLabel}</span>
     `;
 }
 
@@ -1190,6 +1190,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (bpMoreDownloadBtn) {
         bpMoreDownloadBtn.onclick = () => {
             if (bpMobileMorePopover) bpMobileMorePopover.classList.add('hidden');
+            if (currentTrack) YolkOfflineDB.downloadTrack(currentTrack);
+        };
+    }
+    const npDownloadBtn = document.getElementById('now-playing-download-btn');
+    if (npDownloadBtn) {
+        npDownloadBtn.onclick = () => {
+            if (currentTrack) YolkOfflineDB.downloadTrack(currentTrack);
+        };
+    }
+    const bpDownloadBtn = document.getElementById('bottom-player-download-btn');
+    if (bpDownloadBtn) {
+        bpDownloadBtn.onclick = () => {
             if (currentTrack) YolkOfflineDB.downloadTrack(currentTrack);
         };
     }
@@ -2437,14 +2449,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateNowPlayingNavVisibility(isVisible) {
         const npNav = document.getElementById('nav-now-playing');
         if (!npNav) return;
-        if (isVisible) {
+        const shouldShow = Boolean(isVisible && currentTrack);
+        if (shouldShow) {
             npNav.classList.remove('nav-hidden');
             npNav.classList.add('nav-visible');
         } else {
-            if (document.body.getAttribute('data-page') !== 'now-playing') {
-                npNav.classList.add('nav-hidden');
-                npNav.classList.remove('nav-visible');
-            }
+            npNav.classList.add('nav-hidden');
+            npNav.classList.remove('nav-visible');
         }
     }
     window.updateNowPlayingNavVisibility = updateNowPlayingNavVisibility;

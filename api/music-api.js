@@ -1582,26 +1582,73 @@ async function fetchAudioBuffer(directUrl, proxiedUrl, totalBytesHint = 0) {
 
         try {
             let streamInfo = await resolveAudioStream(videoId, requestedFormat);
-            let audioBuffer = null;
+            const upstreamHeaders = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Range': 'bytes=0-'
+            };
 
+            let audioStreamRes = null;
+            // 1. Try direct Google CDN URL
             try {
-                audioBuffer = await fetchAudioBuffer(streamInfo.directUrl, streamInfo.proxiedUrl, streamInfo.clen);
+                audioStreamRes = await fetch(streamInfo.directUrl, { headers: upstreamHeaders, signal: AbortSignal.timeout(6000) });
+                if (!audioStreamRes.ok && audioStreamRes.status !== 206) {
+                    audioStreamRes = null;
+                }
             } catch (_) {
-                // Retry once with invalidated cache
+                audioStreamRes = null;
+            }
+
+            // 2. Fallback to proxied URL if direct failed
+            if (!audioStreamRes && streamInfo.proxiedUrl && streamInfo.proxiedUrl !== streamInfo.directUrl) {
+                try {
+                    audioStreamRes = await fetch(streamInfo.proxiedUrl, { headers: upstreamHeaders, signal: AbortSignal.timeout(8000) });
+                    if (!audioStreamRes.ok && audioStreamRes.status !== 206) {
+                        audioStreamRes = null;
+                    }
+                } catch (_) {
+                    audioStreamRes = null;
+                }
+            }
+
+            // 3. Retry once with fresh stream resolution
+            if (!audioStreamRes) {
                 streamUrlCache.delete(cacheKey);
                 streamInfo = await resolveAudioStream(videoId, requestedFormat);
-                audioBuffer = await fetchAudioBuffer(streamInfo.directUrl, streamInfo.proxiedUrl, streamInfo.clen);
+                try {
+                    audioStreamRes = await fetch(streamInfo.directUrl, { headers: upstreamHeaders, signal: AbortSignal.timeout(6000) });
+                } catch (_) {}
+                if (!audioStreamRes || (!audioStreamRes.ok && audioStreamRes.status !== 206)) {
+                    if (streamInfo.proxiedUrl) {
+                        audioStreamRes = await fetch(streamInfo.proxiedUrl, { headers: upstreamHeaders, signal: AbortSignal.timeout(8000) });
+                    }
+                }
+            }
+
+            if (!audioStreamRes || (!audioStreamRes.ok && audioStreamRes.status !== 206)) {
+                return res.status(audioStreamRes ? audioStreamRes.status : 502).json({ error: 'Audio download stream unavailable' });
+            }
+
+            // Parse total length for live client progress tracking
+            let totalLength = audioStreamRes.headers.get('content-length');
+            const contentRange = audioStreamRes.headers.get('content-range');
+            if (contentRange) {
+                const match = contentRange.match(/\/(\d+)/);
+                if (match && match[1]) totalLength = match[1];
+            } else if (streamInfo.clen) {
+                totalLength = String(streamInfo.clen);
             }
 
             res.statusCode = 200;
             res.setHeader('Content-Type', streamInfo.mimeType || (requestedFormat === 'webm' ? 'audio/webm' : 'audio/mp4'));
-            res.setHeader('Content-Length', audioBuffer.length);
+            if (totalLength) {
+                res.setHeader('Content-Length', totalLength);
+            }
             res.setHeader('Accept-Ranges', 'bytes');
             res.setHeader('Access-Control-Allow-Origin', '*');
-            res.setHeader('Access-Control-Expose-Headers', 'Content-Length');
+            res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');
             res.setHeader('Cache-Control', 'public, max-age=86400');
 
-            res.send(audioBuffer);
+            Readable.fromWeb(audioStreamRes.body).pipe(res);
             return;
         } catch (err) {
             return res.status(502).json({ error: 'Audio download stream unavailable' });
