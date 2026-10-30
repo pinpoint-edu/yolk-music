@@ -762,7 +762,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 nowPlayingContainer.classList.add('lyrics-active');
                 nowPlayingContainer.classList.remove('lyrics-hidden');
                 if (page === 'now-playing' && npLyricsFloatingBar) {
-                    npLyricsFloatingBar.classList.remove('hidden');
+                    if (window.innerWidth < 768) {
+                        npLyricsFloatingBar.classList.remove('hidden');
+                    } else {
+                        npLyricsFloatingBar.classList.add('hidden');
+                    }
                 }
                 if (npLyricsBtn) {
                     npLyricsBtn.className = 'flex items-center justify-center w-9 h-9 rounded-full bg-black text-white shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0';
@@ -778,6 +782,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     window.updateLyricsVisibilityUI = updateLyricsVisibilityUI;
+    window.addEventListener('resize', () => {
+        if (document.body.getAttribute('data-page') === 'now-playing') {
+            updateLyricsVisibilityUI();
+        }
+    });
 
     const toggleLyricsMode = () => {
         if (!isLyricsAvailable) return;

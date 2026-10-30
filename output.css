@@ -2309,6 +2309,9 @@
     }
   }
   @media (width >= 48rem) {
+    .md\:\!hidden {
+      display: none !important;
+    }
     .md\:inline {
       display: inline;
     }
