@@ -516,31 +516,34 @@ let downloadProgressEl = null;
 let downloadProgressDismissTimeout = null;
 
 function updateDownloadProgressUI({ title, percent, receivedBytes, totalBytes, statusText, isDone, isError, errorMessage }) {
+    const isNowPlaying = document.body.dataset.page === 'now-playing' || window.location.hash === '#now-playing';
+    const bottomPos = isNowPlaying ? '16px' : '86px';
+
     if (!downloadProgressEl) {
         downloadProgressEl = document.createElement('div');
         downloadProgressEl.id = 'yolk-download-progress';
-        const isMobile = window.innerWidth < 640;
         downloadProgressEl.style.cssText = `
             position: fixed;
-            bottom: ${isMobile ? '88px' : '96px'};
-            right: ${isMobile ? '16px' : '24px'};
-            left: ${isMobile ? '16px' : 'auto'};
+            bottom: ${bottomPos};
+            right: 16px;
+            left: auto;
             z-index: 9999;
-            background: rgba(18, 18, 22, 0.95);
+            background: rgba(18, 18, 22, 0.94);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 16px;
-            padding: 14px 18px;
-            box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.6), 0 4px 16px rgba(0, 0, 0, 0.4);
-            width: ${isMobile ? 'auto' : '320px'};
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 9999px;
+            padding: 8px 14px;
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
             max-width: calc(100vw - 32px);
             color: #f4f4f5;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            transform: translateY(20px) scale(0.96);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            transform: translateY(16px) scale(0.95);
             opacity: 0;
             pointer-events: auto;
         `;
@@ -551,6 +554,10 @@ function updateDownloadProgressUI({ title, percent, receivedBytes, totalBytes, s
                 downloadProgressEl.style.opacity = '1';
             }
         });
+    } else {
+        downloadProgressEl.style.bottom = bottomPos;
+        downloadProgressEl.style.right = '16px';
+        downloadProgressEl.style.left = 'auto';
     }
 
     if (downloadProgressDismissTimeout) {
@@ -560,75 +567,52 @@ function updateDownloadProgressUI({ title, percent, receivedBytes, totalBytes, s
 
     if (isError) {
         downloadProgressEl.innerHTML = `
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
-                    <svg style="width: 18px; height: 18px; color: #ef4444; flex-shrink: 0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
-                    <span style="font-weight: 600; font-size: 13px; color: #f4f4f5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Download Failed</span>
-                </div>
-            </div>
-            <p style="font-size: 11px; color: #f87171; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(errorMessage || 'Stream unavailable')}</p>
+            <svg style="width: 15px; height: 15px; color: #ef4444; flex-shrink: 0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #fca5a5;">${escapeHtml(errorMessage || 'Download failed')}</span>
         `;
         downloadProgressDismissTimeout = setTimeout(() => {
             dismissDownloadProgressUI();
-        }, 3500);
+        }, 3000);
         return;
     }
 
     if (isDone) {
         downloadProgressEl.innerHTML = `
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
-                    <svg style="width: 18px; height: 18px; color: #10b981; flex-shrink: 0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>
-                    </svg>
-                    <span style="font-weight: 600; font-size: 13px; color: #f4f4f5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Downloaded</span>
-                </div>
-                <span style="font-family: monospace; font-size: 12px; font-weight: 700; color: #10b981;">100%</span>
-            </div>
-            <div style="width: 100%; background: rgba(255, 255, 255, 0.1); border-radius: 9999px; height: 6px; overflow: hidden;">
-                <div style="background: linear-gradient(90deg, #10b981, #34d399); height: 100%; border-radius: 9999px; width: 100%;"></div>
-            </div>
-            <p style="font-size: 11px; color: #a1a1aa; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">"${escapeHtml(title)}" saved for offline playback</p>
+            <svg style="width: 15px; height: 15px; color: #10b981; flex-shrink: 0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+            <span style="max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #f4f4f5;">${escapeHtml(title)}</span>
+            <span style="font-size: 11px; font-weight: 700; color: #10b981; flex-shrink: 0;">✓ Saved</span>
         `;
         downloadProgressDismissTimeout = setTimeout(() => {
             dismissDownloadProgressUI();
-        }, 2500);
+        }, 2200);
         return;
     }
 
     const pct = typeof percent === 'number' ? Math.max(0, Math.min(100, Math.round(percent))) : null;
-    const mbReceived = (receivedBytes / (1024 * 1024)).toFixed(1);
-    const mbTotal = totalBytes > 0 ? (totalBytes / (1024 * 1024)).toFixed(1) + ' MB' : 'Calculating…';
-    const pctLabel = pct !== null ? `${pct}%` : `${mbReceived} MB`;
-    const barWidth = pct !== null ? `${pct}%` : '60%';
+    const pctLabel = pct !== null ? `${pct}%` : '…';
+    const barWidth = pct !== null ? `${pct}%` : '50%';
 
     downloadProgressEl.innerHTML = `
-        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-            <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
-                <svg style="width: 18px; height: 18px; color: #38bdf8; flex-shrink: 0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="7 10 12 15 17 10"></polyline>
-                    <line x1="12" y1="15" x2="12" y2="3"></line>
-                </svg>
-                <span style="font-weight: 600; font-size: 13px; color: #f4f4f5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(title)}</span>
-            </div>
-            <span style="font-family: monospace; font-size: 12px; font-weight: 700; color: #38bdf8; margin-left: 6px;">${pctLabel}</span>
-        </div>
-        <div style="width: 100%; background: rgba(255, 255, 255, 0.1); border-radius: 9999px; height: 6px; overflow: hidden;">
+        <svg style="width: 14px; height: 14px; color: #38bdf8; flex-shrink: 0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        <span style="max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #f4f4f5;">${escapeHtml(title)}</span>
+        <div style="width: 34px; background: rgba(255, 255, 255, 0.15); border-radius: 9999px; height: 4px; overflow: hidden; flex-shrink: 0;">
             <div style="background: linear-gradient(90deg, #0ea5e9, #38bdf8); height: 100%; border-radius: 9999px; width: ${barWidth}; transition: width 0.15s ease;"></div>
         </div>
-        <div style="display: flex; justify-content: space-between; font-size: 11px; color: #a1a1aa;">
-            <span>${mbReceived} MB / ${mbTotal}</span>
-            <span>${escapeHtml(statusText || 'Downloading…')}</span>
-        </div>
+        <span style="font-family: monospace; font-size: 11px; font-weight: 700; color: #38bdf8; flex-shrink: 0;">${pctLabel}</span>
     `;
 }
 
 function dismissDownloadProgressUI() {
     if (!downloadProgressEl) return;
-    downloadProgressEl.style.transform = 'translateY(20px) scale(0.96)';
+    downloadProgressEl.style.transform = 'translateY(16px) scale(0.95)';
     downloadProgressEl.style.opacity = '0';
     setTimeout(() => {
         if (downloadProgressEl) {
@@ -671,7 +655,7 @@ const YolkOfflineDB = {
         });
     },
 
-    async saveTrack(track, audioBlob, artworkBlob) {
+    async saveTrack(track, audioBlob, artworkBlob, lyrics = null) {
         const db = await this.getDB();
         const uid = getTrackUid(track);
         return new Promise((resolve, reject) => {
@@ -687,6 +671,7 @@ const YolkOfflineDB = {
                 duration: track.duration || 0,
                 audioBlob: audioBlob,
                 artworkBlob: artworkBlob || null,
+                lyrics: lyrics || null,
                 downloadedAt: Date.now(),
                 size: audioBlob ? audioBlob.size : 0
             };
@@ -809,10 +794,10 @@ const YolkOfflineDB = {
 
             updateDownloadProgressUI({
                 title,
-                percent: 98,
+                percent: 94,
                 receivedBytes: receivedLength,
                 totalBytes: contentLength,
-                statusText: 'Caching artwork…'
+                statusText: 'Caching artwork & lyrics…'
             });
 
             // Fetch artwork blob
@@ -825,7 +810,23 @@ const YolkOfflineDB = {
                 } catch (_) {}
             }
 
-            await this.saveTrack(track, audioBlob, artworkBlob);
+            // Fetch lyrics so offline tracks have full synced/plain lyrics in Now Playing
+            let lyricsText = null;
+            try {
+                const trackName = track.title || track.name || '';
+                const artistName = track.artist_name || track.artist || '';
+                const durSec = track.duration ? (track.duration > 1000 ? track.duration / 1000 : track.duration) : 0;
+                const lyrUrl = `/api/music-api?endpoint=lyrics&id=${encodeURIComponent(videoId)}&title=${encodeURIComponent(trackName)}&artist=${encodeURIComponent(artistName)}&duration=${Math.round(durSec)}`;
+                const lyrRes = await fetch(lyrUrl);
+                if (lyrRes.ok) {
+                    const lyrData = await lyrRes.json();
+                    if (lyrData && lyrData.lyrics && lyrData.lyrics.trim()) {
+                        lyricsText = lyrData.lyrics;
+                    }
+                }
+            } catch (_) {}
+
+            await this.saveTrack(track, audioBlob, artworkBlob, lyricsText);
             updateDownloadProgressUI({
                 title,
                 percent: 100,
@@ -853,6 +854,44 @@ const YolkOfflineDB = {
     }
 };
 window.YolkOfflineDB = YolkOfflineDB;
+
+function wireTrackDownloadBtn(dlBtn, track) {
+    if (!dlBtn || !track) return;
+    const uid = getTrackUid(track);
+    const title = track.title || track.name || 'Track';
+    const renderDownloadState = (isDownloaded) => {
+        if (isDownloaded) {
+            dlBtn.classList.add('text-emerald-600', 'bg-emerald-50');
+            dlBtn.classList.remove('text-zinc-400');
+            dlBtn.title = 'Downloaded offline (click to undownload)';
+            dlBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+        } else {
+            dlBtn.classList.remove('text-emerald-600', 'bg-emerald-50');
+            dlBtn.classList.add('text-zinc-400');
+            dlBtn.title = 'Download offline';
+            dlBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
+        }
+    };
+
+    YolkOfflineDB.isDownloaded(uid).then(renderDownloadState);
+
+    dlBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const already = await YolkOfflineDB.isDownloaded(uid);
+        if (already) {
+            await YolkOfflineDB.deleteTrack(uid);
+            renderDownloadState(false);
+            showToast(`Removed "${title}" from offline downloads`);
+            if (currentPlaylistContextId === 'downloaded' && typeof openPlaylistDetail === 'function') {
+                openPlaylistDetail('downloaded');
+            }
+        } else {
+            await YolkOfflineDB.downloadTrack(track);
+            const nowDownloaded = await YolkOfflineDB.isDownloaded(uid);
+            renderDownloadState(nowDownloaded);
+        }
+    });
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     // DOM Elements
@@ -899,7 +938,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const npMobileMoreBtn = document.getElementById('np-mobile-more-btn');
     const npMobileMorePopover = document.getElementById('np-mobile-more-popover');
     const npMobileMoreArtistBtn = document.getElementById('np-mobile-more-artist-btn');
-    const npMobileMoreAlbumBtn = document.getElementById('np-mobile-more-album-btn');
     const npMobileMoreAddBtn = document.getElementById('np-mobile-more-add-btn');
     const npMobileMoreQueueBtn = document.getElementById('np-mobile-more-queue-btn');
     const npMobileMoreDownloadBtn = document.getElementById('np-mobile-more-download-btn');
@@ -908,7 +946,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const bpMobileMoreBtn = document.getElementById('bp-mobile-more-btn');
     const bpMobileMorePopover = document.getElementById('bp-mobile-more-popover');
     const bpMoreArtistBtn = document.getElementById('bp-more-artist-btn');
-    const bpMoreAlbumBtn = document.getElementById('bp-more-album-btn');
     const bpMoreFavBtn = document.getElementById('bp-more-fav-btn');
     const bpMoreAddBtn = document.getElementById('bp-more-add-btn');
     const bpMoreQueueBtn = document.getElementById('bp-more-queue-btn');
@@ -916,7 +953,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const bpMoreVolumeSlider = document.getElementById('bp-more-volume-slider');
 
     const lyricsMoreArtistBtn = document.getElementById('lyrics-more-artist-btn');
-    const lyricsMoreAlbumBtn = document.getElementById('lyrics-more-album-btn');
 
     const nowPlayingContainer = document.getElementById('now-playing-container');
     let isLyricsAvailable = false;
@@ -1093,12 +1129,6 @@ document.addEventListener('DOMContentLoaded', () => {
             navigateToTrackArtist();
         };
     }
-    if (lyricsMoreAlbumBtn) {
-        lyricsMoreAlbumBtn.onclick = () => {
-            if (lyricsBarMorePopover) lyricsBarMorePopover.classList.add('hidden');
-            navigateToTrackAlbum();
-        };
-    }
     if (lyricsMoreDownloadBtn) {
         lyricsMoreDownloadBtn.onclick = () => {
             if (lyricsBarMorePopover) lyricsBarMorePopover.classList.add('hidden');
@@ -1109,12 +1139,6 @@ document.addEventListener('DOMContentLoaded', () => {
         npMobileMoreArtistBtn.onclick = () => {
             if (npMobileMorePopover) npMobileMorePopover.classList.add('hidden');
             navigateToTrackArtist();
-        };
-    }
-    if (npMobileMoreAlbumBtn) {
-        npMobileMoreAlbumBtn.onclick = () => {
-            if (npMobileMorePopover) npMobileMorePopover.classList.add('hidden');
-            navigateToTrackAlbum();
         };
     }
     if (npMobileMoreAddBtn) {
@@ -1139,12 +1163,6 @@ document.addEventListener('DOMContentLoaded', () => {
         bpMoreArtistBtn.onclick = () => {
             if (bpMobileMorePopover) bpMobileMorePopover.classList.add('hidden');
             navigateToTrackArtist();
-        };
-    }
-    if (bpMoreAlbumBtn) {
-        bpMoreAlbumBtn.onclick = () => {
-            if (bpMobileMorePopover) bpMobileMorePopover.classList.add('hidden');
-            navigateToTrackAlbum();
         };
     }
     if (bpMoreFavBtn) {
@@ -2200,10 +2218,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const dlBtn = div.querySelector('.download-track-btn');
         if (dlBtn) {
-            dlBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                YolkOfflineDB.downloadTrack(track);
-            });
+            wireTrackDownloadBtn(dlBtn, track);
         }
 
         const addQueueBtn = div.querySelector('.add-to-queue-btn');
@@ -2581,6 +2596,35 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const offlineItem = await YolkOfflineDB.getTrack(uid);
             if (offlineItem && offlineItem.audioBlob) {
+                if (offlineItem.artworkBlob) {
+                    const localCoverUrl = URL.createObjectURL(offlineItem.artworkBlob);
+                    const npImgEl = document.getElementById('now-playing-img');
+                    const bpImgEl = document.getElementById('bottom-player-img');
+                    const bgArtEl = document.getElementById('now-playing-bg-art');
+                    const bpPlEl = document.getElementById('bottom-player-placeholder');
+                    if (npImgEl) {
+                        npImgEl.src = localCoverUrl;
+                        npImgEl.classList.remove('hidden');
+                    }
+                    if (bpImgEl) {
+                        bpImgEl.src = localCoverUrl;
+                        bpImgEl.classList.remove('hidden');
+                    }
+                    if (bpPlEl) bpPlEl.classList.add('hidden');
+                    if (bgArtEl) {
+                        bgArtEl.src = localCoverUrl;
+                        bgArtEl.style.opacity = '1';
+                    }
+                    if (typeof extractDominantColor === 'function') {
+                        extractDominantColor(localCoverUrl, (rgb) => {
+                            if (rgb) applyNowPlayingTint(rgb.r, rgb.g, rgb.b);
+                        });
+                    }
+                }
+                if (offlineItem.lyrics) {
+                    currentLyricsTrackId = uid;
+                    renderLyricsToUI(offlineItem.lyrics, uid);
+                }
                 const objectUrl = URL.createObjectURL(offlineItem.audioBlob);
                 loadDirectAudioPlayer(objectUrl);
                 preloadNextQueueTrack();
@@ -4066,11 +4110,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const [c1, c2, c3, c4] = colors;
         meshEl.style.background = `
-            radial-gradient(circle at 18% 20%, rgba(${c1.r}, ${c1.g}, ${c1.b}, 0.92) 0%, transparent 58%),
-            radial-gradient(circle at 82% 16%, rgba(${c2.r}, ${c2.g}, ${c2.b}, 0.88) 0%, transparent 54%),
-            radial-gradient(circle at 78% 82%, rgba(${c3.r}, ${c3.g}, ${c3.b}, 0.85) 0%, transparent 56%),
-            radial-gradient(circle at 20% 82%, rgba(${c4.r}, ${c4.g}, ${c4.b}, 0.82) 0%, transparent 54%),
-            radial-gradient(circle at 50% 50%, rgba(${c1.r}, ${c1.g}, ${c1.b}, 0.55) 0%, transparent 62%)
+            radial-gradient(circle at 18% 20%, rgba(${c1.r}, ${c1.g}, ${c1.b}, 0.50) 0%, transparent 60%),
+            radial-gradient(circle at 82% 16%, rgba(${c2.r}, ${c2.g}, ${c2.b}, 0.46) 0%, transparent 56%),
+            radial-gradient(circle at 78% 82%, rgba(${c3.r}, ${c3.g}, ${c3.b}, 0.42) 0%, transparent 58%),
+            radial-gradient(circle at 20% 82%, rgba(${c4.r}, ${c4.g}, ${c4.b}, 0.40) 0%, transparent 56%),
+            radial-gradient(circle at 50% 50%, rgba(${c1.r}, ${c1.g}, ${c1.b}, 0.25) 0%, transparent 64%)
         `;
         meshEl.style.opacity = '1';
 
@@ -4080,7 +4124,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const topB = colors.topRowColor ? colors.topRowColor.b : Math.round(c1.b * 0.55 + c2.b * 0.45);
 
         if (fadeEl) {
-            fadeEl.style.background = `linear-gradient(180deg, rgba(${topR}, ${topG}, ${topB}, 0.95) 0%, rgba(${topR}, ${topG}, ${topB}, 0.45) 50%, transparent 100%)`;
+            fadeEl.style.background = `linear-gradient(180deg, rgba(${topR}, ${topG}, ${topB}, 0.75) 0%, rgba(${topR}, ${topG}, ${topB}, 0.25) 50%, transparent 100%)`;
             fadeEl.style.opacity = '1';
         }
 
@@ -4344,6 +4388,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const tracksCountEl = document.getElementById('playlist-tracks-count');
         if (tracksCountEl) tracksCountEl.textContent = `${trackList.length} ${trackList.length === 1 ? 'track' : 'tracks'}`;
 
+        const tracksCard = document.getElementById('playlist-tracks-card');
+        if (tracksCard) {
+            if (trackList.length === 0) {
+                tracksCard.classList.add('min-h-[260px]');
+            } else {
+                tracksCard.classList.remove('min-h-[260px]', 'min-h-[460px]');
+            }
+        }
+
         playAllBtn.onclick = () => {
             if (trackList.length > 0) {
                 currentQueue = [...trackList];
@@ -4354,6 +4407,52 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast('Playlist is empty. Add some tracks first!');
             }
         };
+
+        const downloadAllBtn = document.getElementById('playlist-download-all-btn');
+        if (downloadAllBtn) {
+            if (trackList.length === 0 || playlistId === 'downloaded') {
+                downloadAllBtn.classList.add('hidden');
+            } else {
+                downloadAllBtn.classList.remove('hidden');
+                const updateDownloadAllStatus = async () => {
+                    const checks = await Promise.all(trackList.map(t => YolkOfflineDB.isDownloaded(getTrackUid(t))));
+                    const allDownloaded = checks.every(Boolean);
+                    if (allDownloaded) {
+                        downloadAllBtn.title = 'Undownload All Playlist Songs';
+                        downloadAllBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+                    } else {
+                        downloadAllBtn.title = 'Download Entire Playlist';
+                        downloadAllBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
+                    }
+                    return allDownloaded;
+                };
+                updateDownloadAllStatus();
+
+                downloadAllBtn.onclick = async () => {
+                    const isAll = await updateDownloadAllStatus();
+                    if (isAll) {
+                        if (confirm(`Remove all downloaded songs in "${playlistName}" from offline storage?`)) {
+                            for (const t of trackList) {
+                                await YolkOfflineDB.deleteTrack(getTrackUid(t));
+                            }
+                            showToast(`Undownloaded ${trackList.length} songs`);
+                            openPlaylistDetail(playlistId);
+                        }
+                    } else {
+                        showToast(`Starting download of ${trackList.length} songs…`);
+                        for (let i = 0; i < trackList.length; i++) {
+                            const t = trackList[i];
+                            const uid = getTrackUid(t);
+                            if (!(await YolkOfflineDB.isDownloaded(uid))) {
+                                await YolkOfflineDB.downloadTrack(t);
+                            }
+                        }
+                        showToast(`✓ All songs in "${playlistName}" downloaded!`);
+                        openPlaylistDetail(playlistId);
+                    }
+                };
+            }
+        }
 
         trackListContainer.innerHTML = '';
         if (trackList.length === 0) {
@@ -5260,10 +5359,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const dlBtn = div.querySelector('.download-track-btn');
         if (dlBtn) {
-            dlBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                YolkOfflineDB.downloadTrack(track);
-            });
+            wireTrackDownloadBtn(dlBtn, track);
         }
 
         const addQueueBtn = div.querySelector('.add-to-queue-btn');
