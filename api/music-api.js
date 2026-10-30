@@ -1349,48 +1349,59 @@ async function resolveAudioStream(videoId, requestedFormat = 'auto') {
 
     // 2. High-health stream instances with fallback
     const streamInstances = [
-        'https://echostreamz.com',
         'https://yt.chocolatemoo53.com',
+        'https://echostreamz.com',
         'https://invidious.jing.rocks',
         'https://invidious.nerdvpn.de',
         'https://inv.nadeko.net'
     ];
 
     const resolvePromises = streamInstances.map(async (inst) => {
-        const vidRes = await fetch(`${inst}/api/v1/videos/${videoId}?fields=adaptiveFormats`, {
+        const vidRes = await fetch(`${inst}/api/v1/videos/${videoId}?fields=adaptiveFormats,formatStreams`, {
             headers: { 'Accept': 'application/json' },
-            signal: AbortSignal.timeout(4000)
+            signal: AbortSignal.timeout(5000)
         });
         if (!vidRes.ok) throw new Error('Failed ' + inst);
         const data = await vidRes.json();
-        const audioFormats = (data.adaptiveFormats || []).filter(f => f.type?.includes('audio') && f.url);
-        if (!audioFormats.length) throw new Error('No audio ' + inst);
+        const audioFormats = (data.adaptiveFormats || []).filter(f => f.type?.includes('audio') && f.url && !f.url.includes('sabr') && !f.url.includes('companion'));
 
         let chosenFormat = null;
-        if (requestedFormat === 'webm') {
-            const webmFormats = audioFormats.filter(f => f.type?.includes('audio/webm') || f.container === 'webm');
-            if (webmFormats.length > 0) {
-                webmFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-                chosenFormat = webmFormats[0];
+        if (audioFormats.length > 0) {
+            if (requestedFormat === 'webm') {
+                const webmFormats = audioFormats.filter(f => f.type?.includes('audio/webm') || f.container === 'webm');
+                if (webmFormats.length > 0) {
+                    webmFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+                    chosenFormat = webmFormats[0];
+                }
+            } else if (requestedFormat === 'mp4') {
+                const mp4Formats = audioFormats.filter(f => f.type?.includes('audio/mp4') || f.container === 'm4a');
+                if (mp4Formats.length > 0) {
+                    mp4Formats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+                    chosenFormat = mp4Formats[0];
+                }
             }
-        } else if (requestedFormat === 'mp4') {
-            const mp4Formats = audioFormats.filter(f => f.type?.includes('audio/mp4') || f.container === 'm4a');
-            if (mp4Formats.length > 0) {
-                mp4Formats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-                chosenFormat = mp4Formats[0];
+
+            if (!chosenFormat) {
+                const mp4Formats = audioFormats.filter(f => f.type?.includes('audio/mp4') || f.container === 'm4a');
+                if (mp4Formats.length > 0) {
+                    mp4Formats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+                    chosenFormat = mp4Formats[0];
+                } else {
+                    audioFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+                    chosenFormat = audioFormats[0];
+                }
             }
         }
 
-        if (!chosenFormat) {
-            const mp4Formats = audioFormats.filter(f => f.type?.includes('audio/mp4') || f.container === 'm4a');
-            if (mp4Formats.length > 0) {
-                mp4Formats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-                chosenFormat = mp4Formats[0];
-            } else {
-                audioFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-                chosenFormat = audioFormats[0];
+        // Fallback to muxed MP4 streams (formatStreams itag 18 / 22) if audio-only adaptiveFormats are SABR or empty
+        if (!chosenFormat && data.formatStreams && data.formatStreams.length > 0) {
+            const muxedFormats = data.formatStreams.filter(f => f.url && !f.url.includes('sabr') && !f.url.includes('companion'));
+            if (muxedFormats.length > 0) {
+                chosenFormat = muxedFormats.find(f => f.itag === 18 || f.itag === '18') || muxedFormats[0];
             }
         }
+
+        if (!chosenFormat) throw new Error('No audio ' + inst);
 
         const rawUrl = chosenFormat.url;
         let streamUrl = rawUrl;
@@ -1420,9 +1431,41 @@ async function resolveAudioStream(videoId, requestedFormat = 'auto') {
 
         try {
             const resolvedUrl = await resolveAudioStream(videoId, requestedFormat);
-            res.setHeader('Cache-Control', 'public, max-age=3600');
+            
+            const upstreamHeaders = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            };
+            if (req.headers && req.headers.range) {
+                upstreamHeaders['Range'] = req.headers.range;
+            }
+
+            let audioStreamRes = await fetch(resolvedUrl, { headers: upstreamHeaders });
+            if (!audioStreamRes.ok && audioStreamRes.status !== 206) {
+                streamUrlCache.delete(`${videoId}:${requestedFormat}`);
+                const retryUrl = await resolveAudioStream(videoId, requestedFormat);
+                audioStreamRes = await fetch(retryUrl, { headers: upstreamHeaders });
+                if (!audioStreamRes.ok && audioStreamRes.status !== 206) {
+                    return res.status(audioStreamRes.status).json({ error: 'Audio stream unavailable' });
+                }
+            }
+
+            res.statusCode = audioStreamRes.status;
+            res.setHeader('Content-Type', audioStreamRes.headers.get('content-type') || (requestedFormat === 'webm' ? 'audio/webm' : 'audio/mp4'));
+            res.setHeader('Accept-Ranges', 'bytes');
             res.setHeader('Access-Control-Allow-Origin', '*');
-            return res.redirect(302, resolvedUrl);
+            res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type');
+            res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
+            res.setHeader('Cache-Control', 'public, max-age=3600');
+
+            if (audioStreamRes.headers.get('content-range')) {
+                res.setHeader('Content-Range', audioStreamRes.headers.get('content-range'));
+            }
+            if (audioStreamRes.headers.get('content-length')) {
+                res.setHeader('Content-Length', audioStreamRes.headers.get('content-length'));
+            }
+
+            Readable.fromWeb(audioStreamRes.body).pipe(res);
+            return;
         } catch (err) {
             return res.status(502).json({ error: 'Audio stream temporarily unavailable' });
         }
@@ -1440,17 +1483,26 @@ async function resolveAudioStream(videoId, requestedFormat = 'auto') {
 
         try {
             const resolvedUrl = await resolveAudioStream(videoId, requestedFormat);
-            const audioStreamRes = await fetch(resolvedUrl, {
+            let audioStreamRes = await fetch(resolvedUrl, {
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                 }
             });
-            if (!audioStreamRes.ok) {
-                return res.status(audioStreamRes.status).json({ error: 'Failed to fetch audio stream' });
+            if (!audioStreamRes.ok && audioStreamRes.status !== 206) {
+                streamUrlCache.delete(`${videoId}:${requestedFormat}`);
+                const retryUrl = await resolveAudioStream(videoId, requestedFormat);
+                audioStreamRes = await fetch(retryUrl, {
+                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+                });
+                if (!audioStreamRes.ok && audioStreamRes.status !== 206) {
+                    return res.status(audioStreamRes.status).json({ error: 'Failed to fetch audio stream' });
+                }
             }
 
+            res.statusCode = audioStreamRes.status;
             res.setHeader('Content-Type', requestedFormat === 'webm' ? 'audio/webm' : 'audio/mp4');
             res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('Access-Control-Expose-Headers', 'Content-Length');
             res.setHeader('Cache-Control', 'public, max-age=86400');
             if (audioStreamRes.headers.get('content-length')) {
                 res.setHeader('Content-Length', audioStreamRes.headers.get('content-length'));

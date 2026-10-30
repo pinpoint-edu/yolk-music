@@ -510,6 +510,135 @@ function getSupportedAudioFormat() {
 }
 
 // ==========================================
+// Download Progress Manager
+// ==========================================
+let downloadProgressEl = null;
+let downloadProgressDismissTimeout = null;
+
+function updateDownloadProgressUI({ title, percent, receivedBytes, totalBytes, statusText, isDone, isError, errorMessage }) {
+    if (!downloadProgressEl) {
+        downloadProgressEl = document.createElement('div');
+        downloadProgressEl.id = 'yolk-download-progress';
+        const isMobile = window.innerWidth < 640;
+        downloadProgressEl.style.cssText = `
+            position: fixed;
+            bottom: ${isMobile ? '88px' : '96px'};
+            right: ${isMobile ? '16px' : '24px'};
+            left: ${isMobile ? '16px' : 'auto'};
+            z-index: 9999;
+            background: rgba(18, 18, 22, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            padding: 14px 18px;
+            box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.6), 0 4px 16px rgba(0, 0, 0, 0.4);
+            width: ${isMobile ? 'auto' : '320px'};
+            max-width: calc(100vw - 32px);
+            color: #f4f4f5;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            transform: translateY(20px) scale(0.96);
+            opacity: 0;
+            pointer-events: auto;
+        `;
+        document.body.appendChild(downloadProgressEl);
+        requestAnimationFrame(() => {
+            if (downloadProgressEl) {
+                downloadProgressEl.style.transform = 'translateY(0) scale(1)';
+                downloadProgressEl.style.opacity = '1';
+            }
+        });
+    }
+
+    if (downloadProgressDismissTimeout) {
+        clearTimeout(downloadProgressDismissTimeout);
+        downloadProgressDismissTimeout = null;
+    }
+
+    if (isError) {
+        downloadProgressEl.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+                    <svg style="width: 18px; height: 18px; color: #ef4444; flex-shrink: 0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <span style="font-weight: 600; font-size: 13px; color: #f4f4f5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Download Failed</span>
+                </div>
+            </div>
+            <p style="font-size: 11px; color: #f87171; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(errorMessage || 'Stream unavailable')}</p>
+        `;
+        downloadProgressDismissTimeout = setTimeout(() => {
+            dismissDownloadProgressUI();
+        }, 3500);
+        return;
+    }
+
+    if (isDone) {
+        downloadProgressEl.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+                    <svg style="width: 18px; height: 18px; color: #10b981; flex-shrink: 0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                    <span style="font-weight: 600; font-size: 13px; color: #f4f4f5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Downloaded</span>
+                </div>
+                <span style="font-family: monospace; font-size: 12px; font-weight: 700; color: #10b981;">100%</span>
+            </div>
+            <div style="width: 100%; background: rgba(255, 255, 255, 0.1); border-radius: 9999px; height: 6px; overflow: hidden;">
+                <div style="background: linear-gradient(90deg, #10b981, #34d399); height: 100%; border-radius: 9999px; width: 100%;"></div>
+            </div>
+            <p style="font-size: 11px; color: #a1a1aa; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">"${escapeHtml(title)}" saved for offline playback</p>
+        `;
+        downloadProgressDismissTimeout = setTimeout(() => {
+            dismissDownloadProgressUI();
+        }, 2500);
+        return;
+    }
+
+    const pct = typeof percent === 'number' ? Math.max(0, Math.min(100, Math.round(percent))) : null;
+    const mbReceived = (receivedBytes / (1024 * 1024)).toFixed(1);
+    const mbTotal = totalBytes > 0 ? (totalBytes / (1024 * 1024)).toFixed(1) + ' MB' : 'Calculating…';
+    const pctLabel = pct !== null ? `${pct}%` : `${mbReceived} MB`;
+    const barWidth = pct !== null ? `${pct}%` : '60%';
+
+    downloadProgressEl.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+                <svg style="width: 18px; height: 18px; color: #38bdf8; flex-shrink: 0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span style="font-weight: 600; font-size: 13px; color: #f4f4f5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(title)}</span>
+            </div>
+            <span style="font-family: monospace; font-size: 12px; font-weight: 700; color: #38bdf8; margin-left: 6px;">${pctLabel}</span>
+        </div>
+        <div style="width: 100%; background: rgba(255, 255, 255, 0.1); border-radius: 9999px; height: 6px; overflow: hidden;">
+            <div style="background: linear-gradient(90deg, #0ea5e9, #38bdf8); height: 100%; border-radius: 9999px; width: ${barWidth}; transition: width 0.15s ease;"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 11px; color: #a1a1aa;">
+            <span>${mbReceived} MB / ${mbTotal}</span>
+            <span>${escapeHtml(statusText || 'Downloading…')}</span>
+        </div>
+    `;
+}
+
+function dismissDownloadProgressUI() {
+    if (!downloadProgressEl) return;
+    downloadProgressEl.style.transform = 'translateY(20px) scale(0.96)';
+    downloadProgressEl.style.opacity = '0';
+    setTimeout(() => {
+        if (downloadProgressEl) {
+            downloadProgressEl.remove();
+            downloadProgressEl = null;
+        }
+    }, 300);
+}
+
+// ==========================================
 // IndexedDB Offline Storage Manager
 // Enables 100% offline playback on iOS & browsers as an installable PWA
 // ==========================================
@@ -624,7 +753,13 @@ const YolkOfflineDB = {
         }
 
         const title = track.title || track.name || 'Track';
-        showToast(`Downloading "${title}" for offline playback…`);
+        updateDownloadProgressUI({
+            title,
+            percent: 0,
+            receivedBytes: 0,
+            totalBytes: 0,
+            statusText: 'Connecting to stream…'
+        });
 
         try {
             let videoId = getYoutubeIdSync(track);
@@ -638,10 +773,47 @@ const YolkOfflineDB = {
             const prefFormat = getSupportedAudioFormat();
             const downloadUrl = `/api/music-api?endpoint=download&id=${encodeURIComponent(videoId)}&format=${prefFormat}`;
 
-            // Fetch binary audio blob directly from server stream proxy (bypasses cross-origin redirect CORS limitations)
+            // Fetch binary audio blob directly from server stream proxy
             const audioRes = await fetch(downloadUrl);
             if (!audioRes.ok) throw new Error(`Audio download failed: HTTP ${audioRes.status}`);
-            const audioBlob = await audioRes.blob();
+
+            const contentLength = +audioRes.headers.get('content-length') || 0;
+            const contentType = audioRes.headers.get('content-type') || (prefFormat === 'webm' ? 'audio/webm' : 'audio/mp4');
+
+            let receivedLength = 0;
+            const chunks = [];
+
+            if (audioRes.body && typeof audioRes.body.getReader === 'function') {
+                const reader = audioRes.body.getReader();
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    chunks.push(value);
+                    receivedLength += value.length;
+                    const percent = contentLength > 0 ? (receivedLength / contentLength) * 100 : null;
+                    updateDownloadProgressUI({
+                        title,
+                        percent,
+                        receivedBytes: receivedLength,
+                        totalBytes: contentLength,
+                        statusText: 'Downloading stream…'
+                    });
+                }
+            } else {
+                const arrayBuf = await audioRes.arrayBuffer();
+                chunks.push(new Uint8Array(arrayBuf));
+                receivedLength = arrayBuf.byteLength;
+            }
+
+            const audioBlob = new Blob(chunks, { type: contentType });
+
+            updateDownloadProgressUI({
+                title,
+                percent: 98,
+                receivedBytes: receivedLength,
+                totalBytes: contentLength,
+                statusText: 'Caching artwork…'
+            });
 
             // Fetch artwork blob
             let artworkBlob = null;
@@ -654,6 +826,13 @@ const YolkOfflineDB = {
             }
 
             await this.saveTrack(track, audioBlob, artworkBlob);
+            updateDownloadProgressUI({
+                title,
+                percent: 100,
+                receivedBytes: receivedLength,
+                totalBytes: contentLength,
+                isDone: true
+            });
             showToast(`✓ Downloaded "${title}" for offline play!`);
 
             if (currentPlaylistContextId === 'downloaded' && typeof openPlaylistDetail === 'function') {
@@ -664,6 +843,11 @@ const YolkOfflineDB = {
             }
         } catch (err) {
             console.error('Download offline track error:', err);
+            updateDownloadProgressUI({
+                title,
+                isError: true,
+                errorMessage: err.message || 'Stream unavailable'
+            });
             showToast(`Download failed: ${err.message || 'Stream unavailable'}`);
         }
     }
@@ -2310,7 +2494,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentAudio.removeAttribute('src');
                 currentAudio.src = retryUrl;
                 currentAudio.load();
-                currentAudio.play().catch(() => {
+                currentAudio.play().catch(async () => {
+                    // Try alternative video ID if available
+                    try {
+                        const searchQ = `${currentTrack.title || ''} ${currentTrack.artist_name || ''}`.trim();
+                        if (searchQ) {
+                            const searchRes = await fetch(`/api/music-api?endpoint=search&q=${encodeURIComponent(searchQ)}&limit=5`);
+                            if (searchRes.ok) {
+                                const searchData = await searchRes.json();
+                                const items = Array.isArray(searchData) ? searchData : (searchData.tracks || []);
+                                const altItem = items.find(i => {
+                                    const vid = i.youtube_id || i.videoId;
+                                    return vid && vid !== videoId;
+                                });
+                                if (altItem) {
+                                    const altId = altItem.youtube_id || altItem.videoId;
+                                    currentTrack.youtube_id = altId;
+                                    currentAudio._activeVideoId = altId;
+                                    const altStreamUrl = `/api/music-api?endpoint=stream&id=${encodeURIComponent(altId)}&format=${altFmt}&_t=${Date.now()}`;
+                                    currentAudio.removeAttribute('src');
+                                    currentAudio.src = altStreamUrl;
+                                    currentAudio.load();
+                                    currentAudio.play().catch(() => {
+                                        showToast('Playback error: Stream unavailable.');
+                                    });
+                                    return;
+                                }
+                            }
+                        }
+                    } catch (_) {}
                     showToast('Playback error: Stream unavailable.');
                 });
                 return;

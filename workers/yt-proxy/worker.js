@@ -52,7 +52,6 @@ export default {
 };
 
 const INVIDIOUS_INSTANCES = [
-  'https://echostreamz.com',
   'https://yt.chocolatemoo53.com',
   'https://invidious.schenkel.eti.br',
   'https://inv.nadeko.net',
@@ -64,17 +63,31 @@ const INVIDIOUS_INSTANCES = [
 async function getVideoAudioCandidates(videoId) {
   const fetchPromises = INVIDIOUS_INSTANCES.map(async (inst) => {
     try {
-      const res = await fetch(`${inst}/api/v1/videos/${videoId}?fields=adaptiveFormats,title,author`, {
+      const res = await fetch(`${inst}/api/v1/videos/${videoId}?fields=adaptiveFormats,formatStreams,title,author`, {
         headers: { 'Accept': 'application/json' },
         signal: AbortSignal.timeout(5000),
       });
       if (!res.ok) return null;
       const data = await res.json();
-      const audioFormats = (data.adaptiveFormats || []).filter(f => f.type?.includes('audio') && f.url);
-      if (!audioFormats.length) return null;
-      audioFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+      const audioFormats = (data.adaptiveFormats || []).filter(f => f.type?.includes('audio') && f.url && !f.url.includes('sabr') && !f.url.includes('companion'));
+      
+      let chosen = null;
+      if (audioFormats.length > 0) {
+        audioFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+        chosen = audioFormats[0];
+      }
 
-      const rawUrl = audioFormats[0].url;
+      // Fallback to muxed MP4 formats (itag 18 / 22) if audio-only formats are SABR or missing
+      if (!chosen && data.formatStreams && data.formatStreams.length > 0) {
+        const muxedFormats = data.formatStreams.filter(f => f.url && !f.url.includes('sabr') && !f.url.includes('companion'));
+        if (muxedFormats.length > 0) {
+          chosen = muxedFormats.find(f => f.itag === 18 || f.itag === '18') || muxedFormats[0];
+        }
+      }
+
+      if (!chosen) return null;
+
+      const rawUrl = chosen.url;
       let streamUrl = rawUrl;
       try {
         const u = new URL(rawUrl);
@@ -87,7 +100,7 @@ async function getVideoAudioCandidates(videoId) {
         streamUrl,
         rawUrl,
         instance: inst,
-        mimeType: audioFormats[0].type || 'audio/mp4',
+        mimeType: chosen.type || 'audio/mp4',
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         client: 'InvidiousProxy',
         title: data.title || '',
