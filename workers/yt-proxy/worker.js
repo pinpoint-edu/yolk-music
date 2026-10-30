@@ -52,8 +52,9 @@ export default {
 };
 
 const INVIDIOUS_INSTANCES = [
-  'https://invidious.schenkel.eti.br',
   'https://echostreamz.com',
+  'https://yt.chocolatemoo53.com',
+  'https://invidious.schenkel.eti.br',
   'https://inv.nadeko.net',
   'https://inv.tux.pizza',
   'https://invidious.nerdvpn.de',

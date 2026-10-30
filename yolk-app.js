@@ -636,10 +636,10 @@ const YolkOfflineDB = {
             }
 
             const prefFormat = getSupportedAudioFormat();
-            const streamUrl = `/api/music-api?endpoint=stream&id=${encodeURIComponent(videoId)}&format=${prefFormat}`;
+            const downloadUrl = `/api/music-api?endpoint=download&id=${encodeURIComponent(videoId)}&format=${prefFormat}`;
 
-            // Fetch binary audio blob
-            const audioRes = await fetch(streamUrl);
+            // Fetch binary audio blob directly from server stream proxy (bypasses cross-origin redirect CORS limitations)
+            const audioRes = await fetch(downloadUrl);
             if (!audioRes.ok) throw new Error(`Audio download failed: HTTP ${audioRes.status}`);
             const audioBlob = await audioRes.blob();
 
@@ -714,6 +714,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const npMobileMoreBtn = document.getElementById('np-mobile-more-btn');
     const npMobileMorePopover = document.getElementById('np-mobile-more-popover');
+    const npMobileMoreArtistBtn = document.getElementById('np-mobile-more-artist-btn');
+    const npMobileMoreAlbumBtn = document.getElementById('np-mobile-more-album-btn');
     const npMobileMoreAddBtn = document.getElementById('np-mobile-more-add-btn');
     const npMobileMoreQueueBtn = document.getElementById('np-mobile-more-queue-btn');
     const npMobileMoreDownloadBtn = document.getElementById('np-mobile-more-download-btn');
@@ -721,11 +723,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const bpMobileMoreBtn = document.getElementById('bp-mobile-more-btn');
     const bpMobileMorePopover = document.getElementById('bp-mobile-more-popover');
+    const bpMoreArtistBtn = document.getElementById('bp-more-artist-btn');
+    const bpMoreAlbumBtn = document.getElementById('bp-more-album-btn');
     const bpMoreFavBtn = document.getElementById('bp-more-fav-btn');
     const bpMoreAddBtn = document.getElementById('bp-more-add-btn');
     const bpMoreQueueBtn = document.getElementById('bp-more-queue-btn');
     const bpMoreDownloadBtn = document.getElementById('bp-more-download-btn');
     const bpMoreVolumeSlider = document.getElementById('bp-more-volume-slider');
+
+    const lyricsMoreArtistBtn = document.getElementById('lyrics-more-artist-btn');
+    const lyricsMoreAlbumBtn = document.getElementById('lyrics-more-album-btn');
 
     const nowPlayingContainer = document.getElementById('now-playing-container');
     let isLyricsAvailable = false;
@@ -858,10 +865,63 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof openQueueModal === 'function') openQueueModal();
         };
     }
+    function navigateToTrackArtist() {
+        if (!currentTrack) return;
+        const artist = currentTrack.artist_name || currentTrack.artist;
+        if (artist && typeof window.loadArtistView === 'function') {
+            window.loadArtistView(artist);
+        }
+    }
+
+    function navigateToTrackAlbum() {
+        if (!currentTrack) return;
+        if (currentTrack.album_id && typeof window.loadAlbumView === 'function') {
+            window.loadAlbumView(currentTrack.album_id);
+            return;
+        }
+        const albumName = currentTrack.album_name || currentTrack.album;
+        if (albumName) {
+            window.location.hash = '#search';
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.value = albumName;
+                if (typeof handleSearch === 'function') handleSearch(albumName);
+                setTimeout(() => {
+                    const albumsTab = document.querySelector('.search-tab-pill[data-tab="albums"]');
+                    if (albumsTab) albumsTab.click();
+                }, 350);
+            }
+        }
+    }
+
+    if (lyricsMoreArtistBtn) {
+        lyricsMoreArtistBtn.onclick = () => {
+            if (lyricsBarMorePopover) lyricsBarMorePopover.classList.add('hidden');
+            navigateToTrackArtist();
+        };
+    }
+    if (lyricsMoreAlbumBtn) {
+        lyricsMoreAlbumBtn.onclick = () => {
+            if (lyricsBarMorePopover) lyricsBarMorePopover.classList.add('hidden');
+            navigateToTrackAlbum();
+        };
+    }
     if (lyricsMoreDownloadBtn) {
         lyricsMoreDownloadBtn.onclick = () => {
             if (lyricsBarMorePopover) lyricsBarMorePopover.classList.add('hidden');
             if (currentTrack) YolkOfflineDB.downloadTrack(currentTrack);
+        };
+    }
+    if (npMobileMoreArtistBtn) {
+        npMobileMoreArtistBtn.onclick = () => {
+            if (npMobileMorePopover) npMobileMorePopover.classList.add('hidden');
+            navigateToTrackArtist();
+        };
+    }
+    if (npMobileMoreAlbumBtn) {
+        npMobileMoreAlbumBtn.onclick = () => {
+            if (npMobileMorePopover) npMobileMorePopover.classList.add('hidden');
+            navigateToTrackAlbum();
         };
     }
     if (npMobileMoreAddBtn) {
@@ -880,6 +940,18 @@ document.addEventListener('DOMContentLoaded', () => {
         npMobileMoreDownloadBtn.onclick = () => {
             if (npMobileMorePopover) npMobileMorePopover.classList.add('hidden');
             if (currentTrack) YolkOfflineDB.downloadTrack(currentTrack);
+        };
+    }
+    if (bpMoreArtistBtn) {
+        bpMoreArtistBtn.onclick = () => {
+            if (bpMobileMorePopover) bpMobileMorePopover.classList.add('hidden');
+            navigateToTrackArtist();
+        };
+    }
+    if (bpMoreAlbumBtn) {
+        bpMoreAlbumBtn.onclick = () => {
+            if (bpMobileMorePopover) bpMobileMorePopover.classList.add('hidden');
+            navigateToTrackAlbum();
         };
     }
     if (bpMoreFavBtn) {
@@ -1069,17 +1141,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Bottom Player Routing
     if (bottomPlayerInfo) {
-        bottomPlayerInfo.addEventListener('click', (e) => {
-            if (e.target.closest('#bottom-player-artist')) {
-                e.stopPropagation();
-                if (currentTrack) {
-                    const a = currentTrack.artist_name || currentTrack.artist;
-                    if (a && typeof window.loadArtistView === 'function') {
-                        window.loadArtistView(a);
-                    }
-                }
-                return;
-            }
+        bottomPlayerInfo.addEventListener('click', () => {
             window.location.hash = '#now-playing';
         });
     }
@@ -2056,16 +2118,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateMediaSessionPosition();
                 }
             });
-            navigator.mediaSession.setActionHandler('seekforward', (details) => {
-                const skipTime = details.seekOffset || 10;
-                currentAudio.currentTime = Math.min(currentAudio.currentTime + skipTime, currentAudio.duration || Infinity);
-                updateMediaSessionPosition();
-            });
-            navigator.mediaSession.setActionHandler('seekbackward', (details) => {
-                const skipTime = details.seekOffset || 10;
-                currentAudio.currentTime = Math.max(currentAudio.currentTime - skipTime, 0);
-                updateMediaSessionPosition();
-            });
+            navigator.mediaSession.setActionHandler('seekforward', null);
+            navigator.mediaSession.setActionHandler('seekbackward', null);
         } catch (err) {}
     }
 
@@ -2639,10 +2693,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         currentActivePageTint = { r, g, b, alpha };
-        const topR = Math.round(r * alpha + 252 * (1 - alpha));
-        const topG = Math.round(g * alpha + 251 * (1 - alpha));
-        const topB = Math.round(b * alpha + 248 * (1 - alpha));
-        const hex = `#${topR.toString(16).padStart(2, '0')}${topG.toString(16).padStart(2, '0')}${topB.toString(16).padStart(2, '0')}`;
+        let hex;
+        if (alpha >= 0.95) {
+            // Match true color directly for Safari top row status bar blend
+            const clR = Math.max(0, Math.min(255, Math.round(r)));
+            const clG = Math.max(0, Math.min(255, Math.round(g)));
+            const clB = Math.max(0, Math.min(255, Math.round(b)));
+            hex = `#${clR.toString(16).padStart(2, '0')}${clG.toString(16).padStart(2, '0')}${clB.toString(16).padStart(2, '0')}`;
+        } else {
+            const topR = Math.round(r * alpha + 252 * (1 - alpha));
+            const topG = Math.round(g * alpha + 251 * (1 - alpha));
+            const topB = Math.round(b * alpha + 248 * (1 - alpha));
+            hex = `#${topR.toString(16).padStart(2, '0')}${topG.toString(16).padStart(2, '0')}${topB.toString(16).padStart(2, '0')}`;
+        }
 
         const page = document.body.getAttribute('data-page');
         if (metaTheme) metaTheme.setAttribute('content', hex);
@@ -2672,26 +2735,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 topNav.style.borderColor = `rgba(${r}, ${g}, ${b}, 0.35)`;
                 topNav.style.boxShadow = `0 8px 25px rgba(${r}, ${g}, ${b}, 0.12)`;
             }
-            updateSafariThemeTint(r, g, b, 0.90);
+            updateSafariThemeTint(r, g, b, 1.0);
 
             // Adaptive contrast for Search & Library buttons on dynamic background
             const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
             const textColor = lum < 0.45 ? '#FFFFFF' : '#18181b';
             if (navSearch) {
-                if (navSearch.classList.contains('yolk-active')) navSearch.style.color = '';
+                if (navSearch.classList.contains('yolk-active')) navSearch.style.color = '#ffffff';
                 else navSearch.style.color = textColor;
             }
             if (navLibrary) {
-                if (navLibrary.classList.contains('yolk-active')) navLibrary.style.color = '';
+                if (navLibrary.classList.contains('yolk-active')) navLibrary.style.color = '#ffffff';
                 else navLibrary.style.color = textColor;
             }
             if (navNowPlaying && navNowPlaying.classList.contains('yolk-active')) {
-                navNowPlaying.style.color = '';
+                navNowPlaying.style.color = '#ffffff';
             }
         } else {
-            if (navSearch) navSearch.style.color = '';
-            if (navLibrary) navLibrary.style.color = '';
-            if (navNowPlaying) navNowPlaying.style.color = '';
+            if (navSearch) navSearch.style.color = navSearch.classList.contains('yolk-active') ? '#ffffff' : '';
+            if (navLibrary) navLibrary.style.color = navLibrary.classList.contains('yolk-active') ? '#ffffff' : '';
+            if (navNowPlaying) navNowPlaying.style.color = navNowPlaying.classList.contains('yolk-active') ? '#ffffff' : '';
             if (topNav) {
                 topNav.style.backgroundColor = '';
                 topNav.style.borderColor = '';
@@ -3100,7 +3163,9 @@ document.addEventListener('DOMContentLoaded', () => {
         currentPlaylistTintRgb = { r, g, b };
         const tintEl = document.getElementById('playlist-bg-tint');
         if (!tintEl) return;
-        tintEl.style.background = `linear-gradient(180deg, rgba(${r}, ${g}, ${b}, 0.38) 0%, rgba(${r}, ${g}, ${b}, 0.22) 25%, rgba(${r}, ${g}, ${b}, 0.08) 50%, rgba(252, 251, 248, 0.8) 75%, #FCFBF8 100%)`;
+        tintEl.style.background = `linear-gradient(180deg, rgba(${r}, ${g}, ${b}, 0.38) 0%, rgba(${r}, ${g}, ${b}, 0.22) 30%, rgba(${r}, ${g}, ${b}, 0.08) 60%, transparent 100%)`;
+        tintEl.style.maskImage = 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)';
+        tintEl.style.webkitMaskImage = 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)';
         tintEl.style.opacity = '1';
         updateSafariThemeTint(r, g, b, 0.38);
     }
@@ -3468,6 +3533,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.drawImage(img, 0, 0, 48, 48);
                 const data = ctx.getImageData(0, 0, 48, 48).data;
 
+                // Extract average color of the top row of pixels (y = 0) for seamless Safari status bar tinting
+                let topRowR = 0, topRowG = 0, topRowB = 0, topRowCount = 0;
+                for (let x = 0; x < 48; x++) {
+                    const idx = x * 4;
+                    if (data[idx + 3] >= 120) {
+                        topRowR += data[idx];
+                        topRowG += data[idx + 1];
+                        topRowB += data[idx + 2];
+                        topRowCount++;
+                    }
+                }
+                const topRowColor = topRowCount > 0 ? {
+                    r: Math.round(topRowR / topRowCount),
+                    g: Math.round(topRowG / topRowCount),
+                    b: Math.round(topRowB / topRowCount)
+                } : null;
+
                 // Bin colors by quantizing (round to 16) to merge nearby pixels & compute accurate representation
                 const colorMap = new Map();
                 for (let i = 0; i < data.length; i += 4) {
@@ -3550,6 +3632,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Apply ensureVibrantColor: keeps saturation high, prevents washed-out salmon
                 const vibrantColors = picked.map(c => ensureVibrantColor(c));
+                vibrantColors.topRowColor = topRowColor;
                 callback(vibrantColors);
             } catch (_) {
                 callback(null);
@@ -3580,15 +3663,17 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         meshEl.style.opacity = '1';
 
-        // Calculate top bar blend color between top-left (c1) and top-right (c2)
-        const topR = Math.round(c1.r * 0.55 + c2.r * 0.45);
-        const topG = Math.round(c1.g * 0.55 + c2.g * 0.45);
-        const topB = Math.round(c1.b * 0.55 + c2.b * 0.45);
+        // Calculate top bar color: prefer exact sampled top-row color if available, or blend c1 and c2
+        const topR = colors.topRowColor ? colors.topRowColor.r : Math.round(c1.r * 0.55 + c2.r * 0.45);
+        const topG = colors.topRowColor ? colors.topRowColor.g : Math.round(c1.g * 0.55 + c2.g * 0.45);
+        const topB = colors.topRowColor ? colors.topRowColor.b : Math.round(c1.b * 0.55 + c2.b * 0.45);
 
         if (fadeEl) {
             fadeEl.style.background = `linear-gradient(180deg, rgba(${topR}, ${topG}, ${topB}, 0.95) 0%, rgba(${topR}, ${topG}, ${topB}, 0.45) 50%, transparent 100%)`;
             fadeEl.style.opacity = '1';
         }
+
+        updateSafariThemeTint(topR, topG, topB, 1.0);
 
         if (typeof updateTopNavTint === 'function') {
             currentCoverColor = { r: topR, g: topG, b: topB };
@@ -3612,8 +3697,10 @@ document.addEventListener('DOMContentLoaded', () => {
             radial-gradient(ellipse at 82% 16%, rgba(${c2.r}, ${c2.g}, ${c2.b}, 0.48) 0%, transparent 55%),
             radial-gradient(ellipse at 50% 36%, rgba(${c3.r}, ${c3.g}, ${c3.b}, 0.40) 0%, transparent 60%),
             radial-gradient(ellipse at 75% 58%, rgba(${c4.r}, ${c4.g}, ${c4.b}, 0.32) 0%, transparent 55%),
-            linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(252, 251, 248, 0.8) 60%, #FCFBF8 100%)
+            linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, transparent 100%)
         `;
+        tintEl.style.maskImage = 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)';
+        tintEl.style.webkitMaskImage = 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)';
         tintEl.style.opacity = '1';
         updateSafariThemeTint(c1.r, c1.g, c1.b, 0.45);
     }
@@ -4596,7 +4683,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (heroPlaceholder) heroPlaceholder.classList.add('hidden');
             extractDominantColor(proxiedArt, (rgb) => {
                 if (rgb && tintEl) {
-                    tintEl.style.background = `linear-gradient(180deg, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.38) 0%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.22) 25%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.08) 50%, rgba(252, 251, 248, 0.8) 75%, #FCFBF8 100%)`;
+                    tintEl.style.background = `linear-gradient(180deg, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.38) 0%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.22) 30%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.08) 60%, transparent 100%)`;
+                    tintEl.style.maskImage = 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)';
+                    tintEl.style.webkitMaskImage = 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)';
                     tintEl.style.opacity = '1';
                     updateSafariThemeTint(rgb.r, rgb.g, rgb.b, 0.38);
                 }
@@ -4673,14 +4762,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (heroPlaceholder) heroPlaceholder.classList.add('hidden');
                 extractDominantColor(proxiedArt, (rgb) => {
                     if (rgb && tintEl) {
-                        tintEl.style.background = `linear-gradient(180deg, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.38) 0%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.22) 25%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.08) 50%, rgba(252, 251, 248, 0.8) 75%, #FCFBF8 100%)`;
+                        tintEl.style.background = `linear-gradient(180deg, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.38) 0%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.22) 30%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.08) 60%, transparent 100%)`;
+                        tintEl.style.maskImage = 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)';
+                        tintEl.style.webkitMaskImage = 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)';
                         tintEl.style.opacity = '1';
                         updateSafariThemeTint(rgb.r, rgb.g, rgb.b, 0.38);
                     }
                 });
             } else {
                 if (tintEl) {
-                    tintEl.style.background = `linear-gradient(180deg, rgba(200, 200, 210, 0.3) 0%, rgba(252, 251, 248, 0.8) 75%, #FCFBF8 100%)`;
+                    tintEl.style.background = `linear-gradient(180deg, rgba(200, 200, 210, 0.3) 0%, transparent 100%)`;
+                    tintEl.style.maskImage = 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)';
+                    tintEl.style.webkitMaskImage = 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)';
                     tintEl.style.opacity = '1';
                 }
             }
@@ -4891,14 +4984,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (heroPlaceholder) heroPlaceholder.classList.add('hidden');
                 extractDominantColor(proxiedArt, (rgb) => {
                     if (rgb && tintEl) {
-                        tintEl.style.background = `linear-gradient(180deg, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.38) 0%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.22) 25%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.08) 50%, rgba(252, 251, 248, 0.8) 75%, #FCFBF8 100%)`;
+                        tintEl.style.background = `linear-gradient(180deg, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.38) 0%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.22) 30%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.08) 60%, transparent 100%)`;
+                        tintEl.style.maskImage = 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)';
+                        tintEl.style.webkitMaskImage = 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)';
                         tintEl.style.opacity = '1';
                         updateSafariThemeTint(rgb.r, rgb.g, rgb.b, 0.38);
                     }
                 });
             } else {
                 if (tintEl) {
-                    tintEl.style.background = `linear-gradient(180deg, rgba(200, 200, 210, 0.3) 0%, rgba(252, 251, 248, 0.8) 75%, #FCFBF8 100%)`;
+                    tintEl.style.background = `linear-gradient(180deg, rgba(200, 200, 210, 0.3) 0%, transparent 100%)`;
+                    tintEl.style.maskImage = 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)';
+                    tintEl.style.webkitMaskImage = 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)';
                     tintEl.style.opacity = '1';
                 }
             }

@@ -1325,6 +1325,89 @@ export default async function handler(req, res) {
         return res.status(404).json({ error: 'Media URL or ID could not be resolved via Cobalt' });
     }
 
+async function resolveAudioStream(videoId, requestedFormat = 'auto') {
+    const cacheKey = `${videoId}:${requestedFormat}`;
+    const cached = streamUrlCache.get(cacheKey);
+    if (cached && cached.expires > Date.now()) {
+        return cached.url;
+    }
+
+    // 1. Try Cloudflare Worker stream check ONLY if CF_WORKER_URL environment variable is set
+    if (process.env.CF_WORKER_URL) {
+        try {
+            const checkRes = await fetch(`${process.env.CF_WORKER_URL}?id=${videoId}&mode=stream`, {
+                method: 'HEAD',
+                signal: AbortSignal.timeout(1500)
+            });
+            if (checkRes.status === 200 || checkRes.status === 206) {
+                const cfUrl = `${process.env.CF_WORKER_URL}?id=${videoId}&mode=stream`;
+                streamUrlCache.set(cacheKey, { url: cfUrl, expires: Date.now() + 25 * 60 * 1000 });
+                return cfUrl;
+            }
+        } catch (_) {}
+    }
+
+    // 2. High-health stream instances with fallback
+    const streamInstances = [
+        'https://echostreamz.com',
+        'https://yt.chocolatemoo53.com',
+        'https://invidious.jing.rocks',
+        'https://invidious.nerdvpn.de',
+        'https://inv.nadeko.net'
+    ];
+
+    const resolvePromises = streamInstances.map(async (inst) => {
+        const vidRes = await fetch(`${inst}/api/v1/videos/${videoId}?fields=adaptiveFormats`, {
+            headers: { 'Accept': 'application/json' },
+            signal: AbortSignal.timeout(4000)
+        });
+        if (!vidRes.ok) throw new Error('Failed ' + inst);
+        const data = await vidRes.json();
+        const audioFormats = (data.adaptiveFormats || []).filter(f => f.type?.includes('audio') && f.url);
+        if (!audioFormats.length) throw new Error('No audio ' + inst);
+
+        let chosenFormat = null;
+        if (requestedFormat === 'webm') {
+            const webmFormats = audioFormats.filter(f => f.type?.includes('audio/webm') || f.container === 'webm');
+            if (webmFormats.length > 0) {
+                webmFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+                chosenFormat = webmFormats[0];
+            }
+        } else if (requestedFormat === 'mp4') {
+            const mp4Formats = audioFormats.filter(f => f.type?.includes('audio/mp4') || f.container === 'm4a');
+            if (mp4Formats.length > 0) {
+                mp4Formats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+                chosenFormat = mp4Formats[0];
+            }
+        }
+
+        if (!chosenFormat) {
+            const mp4Formats = audioFormats.filter(f => f.type?.includes('audio/mp4') || f.container === 'm4a');
+            if (mp4Formats.length > 0) {
+                mp4Formats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+                chosenFormat = mp4Formats[0];
+            } else {
+                audioFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+                chosenFormat = audioFormats[0];
+            }
+        }
+
+        const rawUrl = chosenFormat.url;
+        let streamUrl = rawUrl;
+        try {
+            const u = new URL(rawUrl);
+            if (u.hostname.includes('googlevideo.com')) {
+                streamUrl = `${inst}${u.pathname}${u.search}`;
+            }
+        } catch (_) {}
+        return streamUrl;
+    });
+
+    const resolvedUrl = await Promise.any(resolvePromises);
+    streamUrlCache.set(cacheKey, { url: resolvedUrl, expires: Date.now() + 25 * 60 * 1000 });
+    return resolvedUrl;
+}
+
     if (endpoint === 'stream') {
         const targetId = id || req.query.id || req.query.url;
         if (!targetId) return res.status(400).json({ error: 'Missing stream id or url' });
@@ -1334,94 +1417,49 @@ export default async function handler(req, res) {
         if (!videoId) return res.status(400).json({ error: 'Could not parse video ID' });
 
         const requestedFormat = (req.query.format || 'auto').toLowerCase();
-        const cacheKey = `${videoId}:${requestedFormat}`;
-
-        // Return immediately if cached in memory
-        const cached = streamUrlCache.get(cacheKey);
-        if (cached && cached.expires > Date.now()) {
-            res.setHeader('Cache-Control', 'public, max-age=3600');
-            res.setHeader('Access-Control-Allow-Origin', '*');
-            return res.redirect(302, cached.url);
-        }
-
-        // 1. Try Cloudflare Worker stream check ONLY if CF_WORKER_URL environment variable is set
-        if (process.env.CF_WORKER_URL) {
-            try {
-                const checkRes = await fetch(`${process.env.CF_WORKER_URL}?id=${videoId}&mode=stream`, {
-                    method: 'HEAD',
-                    signal: AbortSignal.timeout(1500)
-                });
-                if (checkRes.status === 200 || checkRes.status === 206) {
-                    res.setHeader('Cache-Control', 'public, max-age=3600');
-                    return res.redirect(302, `${process.env.CF_WORKER_URL}?id=${videoId}&mode=stream`);
-                }
-            } catch (_) {}
-        }
-
-        // 2. Fast parallel stream resolution across high-health instances with codec negotiation (MP4 vs WebM)
-        const streamInstances = [
-            'https://yt.chocolatemoo53.com',
-            'https://echostreamz.com',
-            'https://invidious.schenkel.eti.br',
-            'https://inv.tux.pizza'
-        ];
 
         try {
-            const resolvePromises = streamInstances.map(async (inst) => {
-                const vidRes = await fetch(`${inst}/api/v1/videos/${videoId}?fields=adaptiveFormats`, {
-                    headers: { 'Accept': 'application/json' },
-                    signal: AbortSignal.timeout(4000)
-                });
-                if (!vidRes.ok) throw new Error('Failed ' + inst);
-                const data = await vidRes.json();
-                const audioFormats = (data.adaptiveFormats || []).filter(f => f.type?.includes('audio') && f.url);
-                if (!audioFormats.length) throw new Error('No audio ' + inst);
-
-                let chosenFormat = null;
-                if (requestedFormat === 'webm') {
-                    const webmFormats = audioFormats.filter(f => f.type?.includes('audio/webm') || f.container === 'webm');
-                    if (webmFormats.length > 0) {
-                        webmFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-                        chosenFormat = webmFormats[0];
-                    }
-                } else if (requestedFormat === 'mp4') {
-                    const mp4Formats = audioFormats.filter(f => f.type?.includes('audio/mp4') || f.container === 'm4a');
-                    if (mp4Formats.length > 0) {
-                        mp4Formats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-                        chosenFormat = mp4Formats[0];
-                    }
-                }
-
-                // If requested format was auto or not available, default to MP4 for Safari with WebM fallback
-                if (!chosenFormat) {
-                    const mp4Formats = audioFormats.filter(f => f.type?.includes('audio/mp4') || f.container === 'm4a');
-                    if (mp4Formats.length > 0) {
-                        mp4Formats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-                        chosenFormat = mp4Formats[0];
-                    } else {
-                        audioFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-                        chosenFormat = audioFormats[0];
-                    }
-                }
-
-                const rawUrl = chosenFormat.url;
-                let streamUrl = rawUrl;
-                try {
-                    const u = new URL(rawUrl);
-                    if (u.hostname.includes('googlevideo.com')) {
-                        streamUrl = `${inst}${u.pathname}${u.search}`;
-                    }
-                } catch (_) {}
-                return streamUrl;
-            });
-
-            const resolvedUrl = await Promise.any(resolvePromises);
-            streamUrlCache.set(cacheKey, { url: resolvedUrl, expires: Date.now() + 25 * 60 * 1000 });
+            const resolvedUrl = await resolveAudioStream(videoId, requestedFormat);
             res.setHeader('Cache-Control', 'public, max-age=3600');
             res.setHeader('Access-Control-Allow-Origin', '*');
             return res.redirect(302, resolvedUrl);
         } catch (err) {
             return res.status(502).json({ error: 'Audio stream temporarily unavailable' });
+        }
+    }
+
+    if (endpoint === 'download') {
+        const targetId = id || req.query.id || req.query.url;
+        if (!targetId) return res.status(400).json({ error: 'Missing download id or url' });
+
+        const videoIdMatch = String(targetId).match(/(?:v=|\/embed\/|\/v\/|youtu\.be\/|\/shorts\/|^)([a-zA-Z0-9_-]{11})/);
+        const videoId = /^[a-zA-Z0-9_-]{11}$/.test(targetId) ? targetId : (videoIdMatch?.[1] ?? null);
+        if (!videoId) return res.status(400).json({ error: 'Could not parse video ID' });
+
+        const requestedFormat = (req.query.format || 'mp4').toLowerCase();
+
+        try {
+            const resolvedUrl = await resolveAudioStream(videoId, requestedFormat);
+            const audioStreamRes = await fetch(resolvedUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                }
+            });
+            if (!audioStreamRes.ok) {
+                return res.status(audioStreamRes.status).json({ error: 'Failed to fetch audio stream' });
+            }
+
+            res.setHeader('Content-Type', requestedFormat === 'webm' ? 'audio/webm' : 'audio/mp4');
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+            if (audioStreamRes.headers.get('content-length')) {
+                res.setHeader('Content-Length', audioStreamRes.headers.get('content-length'));
+            }
+
+            Readable.fromWeb(audioStreamRes.body).pipe(res);
+            return;
+        } catch (err) {
+            return res.status(502).json({ error: 'Audio download stream unavailable' });
         }
     }
 

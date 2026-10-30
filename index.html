@@ -60,32 +60,76 @@
         }
 
         @media (max-width: 639px) {
+            /* Initial Home Page: Navbar sits below the centered search bar */
+            body:not(.is-searching)[data-page="search"] #main-header {
+                position: absolute !important;
+                top: calc(50% + 56px) !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+                width: auto !important;
+                max-width: fit-content !important;
+                z-index: 30 !important;
+            }
+
+            /* When searching or on Library / Artist / Album pages: Compact navbar docks in top-right corner */
+            body.is-searching[data-page="search"] #main-header,
+            body[data-page="library"] #main-header,
+            body[data-page="artist"] #main-header,
+            body[data-page="album"] #main-header {
+                position: fixed !important;
+                top: 10px !important;
+                right: 12px !important;
+                left: auto !important;
+                transform: none !important;
+                width: auto !important;
+                max-width: fit-content !important;
+                z-index: 45 !important;
+            }
+
+            body.is-searching[data-page="search"] #top-nav-bar,
+            body[data-page="library"] #top-nav-bar,
+            body[data-page="artist"] #top-nav-bar,
+            body[data-page="album"] #top-nav-bar {
+                height: 38px !important;
+                padding: 4px 6px !important;
+                gap: 4px !important;
+            }
+
+            body.is-searching[data-page="search"] #top-nav-bar a,
+            body[data-page="library"] #top-nav-bar a,
+            body[data-page="artist"] #top-nav-bar a,
+            body[data-page="album"] #top-nav-bar a {
+                min-width: 0 !important;
+                height: 28px !important;
+                padding: 0 10px !important;
+                font-size: 11px !important;
+            }
+
+            body.is-searching #search-block {
+                top: 56px !important;
+            }
+
             #page-library-scroll,
             #page-artist-scroll,
             #page-album-scroll {
-                padding-top: 120px !important;
+                padding-top: 58px !important;
             }
+
             .library-shell {
                 padding-top: 8px !important;
             }
             #playlist-detail-view {
                 padding-top: 8px !important;
             }
-            body.is-searching[data-phone-search-view="search"] #search-block {
-                top: 24px !important;
-            }
-            body.is-searching[data-phone-search-view="nav"] #search-block {
-                top: 120px !important;
-            }
-            body[data-page="search"][data-phone-search-view="search"] #main-header {
-                opacity: 0 !important;
-                pointer-events: none !important;
-                transform: translate(-50%, -24px) scale(0.95) !important;
-            }
-            body[data-page="search"][data-phone-search-view="nav"] #main-header {
-                opacity: 1 !important;
-                pointer-events: auto !important;
-                transform: translate(-50%, 0) scale(1) !important;
+        }
+
+        @media screen and (max-width: 768px) {
+            input[type="text"],
+            input[type="search"],
+            input[type="url"],
+            textarea,
+            select {
+                font-size: 16px !important;
             }
         }
 
@@ -836,11 +880,6 @@
             <a href="#now-playing" id="nav-now-playing" class="sleek-hover min-w-[105px] whitespace-nowrap shrink-0 text-center text-sm font-medium px-5 h-8 flex items-center justify-center rounded-full text-zinc-600 sleek-transition">
                 Now Playing
             </a>
-            <!-- Switch back to Search Bar button (visible on phone when in search view) -->
-            <button id="nav-bar-toggle-search-btn" type="button" class="sm:hidden flex items-center gap-1.5 px-3 h-8 rounded-full bg-zinc-900 text-white text-xs font-bold active:scale-95 transition-all shadow-xs shrink-0 cursor-pointer" title="Switch back to Search Bar">
-                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                <span>Search</span>
-            </button>
         </nav>
     </header>
 
@@ -864,15 +903,10 @@
                     id="searchInput"
                     type="text" 
                     placeholder="Search songs, artists, or playlists..." 
-                    class="w-full h-[56px] bg-white border border-zinc-200 text-zinc-800 text-base rounded-full pl-6 pr-24 py-[10px] outline-none transition-all duration-300 focus:border-zinc-300 focus:shadow-lg placeholder:text-zinc-400 shadow-sm"
+                    class="w-full h-[56px] bg-white border border-zinc-200 text-zinc-800 text-base rounded-full pl-6 pr-14 py-[10px] outline-none transition-all duration-300 focus:border-zinc-300 focus:shadow-lg placeholder:text-zinc-400 shadow-sm"
                     autocomplete="off"
                 >
-                <!-- Switch to Nav Bar button (visible on phone on right side of search bar) -->
-                <button id="search-bar-toggle-nav-btn" type="button" class="sm:hidden absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-100 hover:bg-zinc-200 active:scale-95 transition-all text-xs font-bold text-zinc-700 shadow-2xs z-30 cursor-pointer" title="Switch to Navigation Bar">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-                    <span>Nav</span>
-                </button>
-                <div class="hidden sm:block absolute right-[18px] top-1/2 -translate-y-1/2 text-zinc-400 transition-colors duration-300 pointer-events-none">
+                <div class="absolute right-[18px] top-1/2 -translate-y-1/2 text-zinc-400 transition-colors duration-300 pointer-events-none">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                 </div>
             </div>
@@ -1069,6 +1103,14 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
                         </button>
                         <div id="np-mobile-more-popover" class="hidden absolute right-0 bottom-full mb-3 w-56 bg-white/95 backdrop-blur-2xl border border-white/80 rounded-2xl p-2.5 shadow-[0_16px_40px_rgba(0,0,0,0.18)] flex flex-col gap-1 z-50">
+                            <button id="np-mobile-more-artist-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                                <span>View Artist</span>
+                            </button>
+                            <button id="np-mobile-more-album-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+                                <span>View Album</span>
+                            </button>
                             <button id="np-mobile-more-add-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
                                 <span>Add to Playlist</span>
@@ -1081,22 +1123,8 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                                 <span>Download Offline</span>
                             </button>
-                            <div class="px-3 py-2 flex items-center gap-2 border-t border-black/5 mt-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-zinc-500 shrink-0"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-                                <input id="np-mobile-more-volume-slider" type="range" min="0" max="100" value="100" class="yolk-volume-slider w-full cursor-pointer">
-                            </div>
                         </div>
                     </div>
-                        <button id="np-volume-btn" class="sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="Volume">
-                            <svg id="np-volume-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
-                        </button>
-                        <div class="pointer-events-none group-hover/npvol:pointer-events-auto opacity-0 group-hover/npvol:opacity-100 scale-95 group-hover/npvol:scale-100 transition-all duration-200 ease-out absolute right-0 bottom-full pb-2.5 sm:pb-0 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 sm:left-full sm:right-auto sm:pl-2.5 z-40 flex items-center">
-                            <div class="flex items-center gap-2 bg-white/70 backdrop-blur-2xl px-4 py-2.5 rounded-full shadow-[0_12px_36px_rgba(0,0,0,0.16)] border border-white/60">
-                                <input id="np-volume-slider" type="range" min="0" max="100" value="100" class="yolk-volume-slider w-24 sm:w-28 cursor-pointer">
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <!-- Right Side: Invisible, Expansive Synced Lyrics Container -->
@@ -1157,6 +1185,14 @@
 
                     <!-- More Popover Container -->
                     <div id="lyrics-bar-more-popover" class="hidden absolute right-0 bottom-full mb-3 w-56 bg-white/90 backdrop-blur-2xl border border-white/80 rounded-2xl p-2.5 shadow-[0_16px_40px_rgba(0,0,0,0.18)] flex flex-col gap-1 z-50">
+                        <button id="lyrics-more-artist-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            <span>View Artist</span>
+                        </button>
+                        <button id="lyrics-more-album-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+                            <span>View Album</span>
+                        </button>
                         <button id="lyrics-more-add-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
                             <span>Add to Playlist</span>
@@ -1169,10 +1205,6 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                             <span>Download Offline</span>
                         </button>
-                        <div class="px-3 py-2 flex items-center gap-2 border-t border-black/5 mt-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-zinc-500 shrink-0"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-                            <input id="lyrics-more-volume-slider" type="range" min="0" max="100" value="100" class="yolk-volume-slider w-full cursor-pointer">
-                        </div>
                     </div>
                 </div>
             </div>
@@ -1339,6 +1371,14 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
                     </button>
                     <div id="bp-mobile-more-popover" class="hidden absolute right-0 bottom-full mb-3 w-56 bg-white/95 backdrop-blur-2xl border border-zinc-200/90 rounded-2xl p-2.5 shadow-[0_16px_40px_rgba(0,0,0,0.18)] flex flex-col gap-1 z-50">
+                        <button id="bp-more-artist-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            <span>View Artist</span>
+                        </button>
+                        <button id="bp-more-album-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+                            <span>View Album</span>
+                        </button>
                         <button id="bp-more-fav-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#18181b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                             <span>Favorite</span>
@@ -1355,10 +1395,6 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                             <span>Download Offline</span>
                         </button>
-                        <div class="px-3 py-2 flex items-center gap-2 border-t border-black/5 mt-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-zinc-500 shrink-0"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-                            <input id="bp-more-volume-slider" type="range" min="0" max="100" value="100" class="yolk-volume-slider w-full cursor-pointer">
-                        </div>
                     </div>
                 </div>
             </div>
@@ -1693,12 +1729,6 @@
                 // Set body data attribute for conditional CSS (like hiding bottom player)
                 body.setAttribute('data-page', hash);
 
-                if (hash === 'search') {
-                    body.setAttribute('data-phone-search-view', 'search');
-                } else {
-                    body.removeAttribute('data-phone-search-view');
-                }
-
                 if (hash !== 'library') {
                     const tintEl = document.getElementById('playlist-bg-tint');
                     if (tintEl) tintEl.style.opacity = '0';
@@ -1724,11 +1754,12 @@
                     if (fb) fb.classList.add('hidden');
                 }
 
-                // Update nav links
+                // Update nav links: map album and artist to library
+                const activeNavKey = (hash === 'library' || hash === 'album' || hash === 'artist') ? 'library' : hash;
                 Object.keys(navLinks).forEach(key => {
-                    if (key === hash) {
-                        navLinks[key].className = 'yolk-active min-w-[105px] whitespace-nowrap shrink-0 text-center select-none text-sm font-medium px-5 h-8 flex items-center justify-center rounded-full text-white sleek-transition';
-                        navLinks[key].style.color = '';
+                    if (key === activeNavKey) {
+                        navLinks[key].className = 'yolk-active min-w-[105px] whitespace-nowrap shrink-0 text-center select-none text-sm font-medium px-5 h-8 flex items-center justify-center rounded-full !text-white sleek-transition';
+                        navLinks[key].style.color = '#ffffff';
                     } else {
                         navLinks[key].className = 'sleek-hover min-w-[105px] whitespace-nowrap shrink-0 text-center select-none text-sm font-medium px-5 h-8 flex items-center justify-center rounded-full text-zinc-600 sleek-transition';
                         navLinks[key].style.color = '';
@@ -1772,33 +1803,7 @@
                 }
             }
 
-            // Mobile Phone Search vs Navigation Bar Toggle
-            const searchBarToggleNavBtn = document.getElementById('search-bar-toggle-nav-btn');
-            const navBarToggleSearchBtn = document.getElementById('nav-bar-toggle-search-btn');
             const searchInputEl = document.getElementById('searchInput');
-
-            if (searchBarToggleNavBtn) {
-                searchBarToggleNavBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    body.setAttribute('data-phone-search-view', 'nav');
-                });
-            }
-
-            if (navBarToggleSearchBtn) {
-                navBarToggleSearchBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    body.setAttribute('data-phone-search-view', 'search');
-                    if (searchInputEl) searchInputEl.focus();
-                });
-            }
-
-            if (searchInputEl) {
-                searchInputEl.addEventListener('focus', () => {
-                    if (window.innerWidth < 640) {
-                        body.setAttribute('data-phone-search-view', 'search');
-                    }
-                });
-            }
 
             Object.keys(navLinks).forEach(key => {
                 const link = navLinks[key];
@@ -1808,7 +1813,6 @@
                     if (currentHash === key) {
                         e.preventDefault();
                         if (key === 'search' && window.innerWidth < 640) {
-                            body.setAttribute('data-phone-search-view', 'search');
                             if (searchInputEl) searchInputEl.focus();
                         } else {
                             scrollToTopOf(key);
