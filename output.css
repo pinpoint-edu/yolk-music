@@ -294,6 +294,9 @@
   .inset-\[-60px\] {
     inset: -60px;
   }
+  .inset-\[2px\] {
+    inset: 2px;
+  }
   .inset-x-0 {
     inset-inline: 0px;
   }
@@ -398,9 +401,6 @@
     @media (width >= 96rem) {
       max-width: 96rem;
     }
-  }
-  .-m-1 {
-    margin: calc(var(--spacing) * -1);
   }
   .mx-2 {
     margin-inline: calc(var(--spacing) * 2);
@@ -848,6 +848,9 @@
   }
   .min-w-\[32px\] {
     min-width: 32px;
+  }
+  .min-w-\[124px\] {
+    min-width: 124px;
   }
   .min-w-\[180px\] {
     min-width: 180px;

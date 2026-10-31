@@ -3267,16 +3267,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const npNav = document.getElementById('nav-now-playing');
         const bpNpNav = document.getElementById('bp-nav-now-playing');
         const shouldShow = Boolean(isVisible && currentTrack);
-        [npNav, bpNpNav].forEach(el => {
-            if (!el) return;
+        if (npNav) {
             if (shouldShow) {
-                el.classList.remove('nav-hidden');
-                el.classList.add('nav-visible');
+                npNav.classList.remove('nav-hidden');
+                npNav.classList.add('nav-visible');
             } else {
-                el.classList.add('nav-hidden');
-                el.classList.remove('nav-visible');
+                npNav.classList.add('nav-hidden');
+                npNav.classList.remove('nav-visible');
             }
-        });
+        }
+        if (bpNpNav) {
+            bpNpNav.classList.remove('nav-hidden');
+            bpNpNav.classList.add('nav-visible');
+        }
     }
     window.updateNowPlayingNavVisibility = updateNowPlayingNavVisibility;
 
@@ -8880,7 +8883,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function togglePictureInPicture() {
-        if (isIOSOrMobileDevice) return;
         if (!currentTrack) {
             showToast('Play a song first to open the Mini-Player');
             return;
@@ -8899,6 +8901,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     height: 125
                 });
                 pipWindowRef = pipWin;
+                pipWin.addEventListener('pagehide', () => {
+                    pipWindowRef = null;
+                });
                 const doc = pipWin.document;
                 doc.head.innerHTML = `
                     <style>
@@ -9052,9 +9057,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 pipVideoEl.setAttribute('webkit-playsinline', '');
                 pipVideoEl.style.cssText = 'position:fixed;bottom:0;right:0;width:1px;height:1px;opacity:0.001;pointer-events:none;z-index:-1;';
                 document.body.appendChild(pipVideoEl);
-                if (typeof pipStreamCanvas.captureStream === 'function') {
-                    pipVideoEl.srcObject = pipStreamCanvas.captureStream(30);
-                }
+            }
+            if (!pipVideoEl.srcObject && typeof pipStreamCanvas.captureStream === 'function') {
+                pipVideoEl.srcObject = pipStreamCanvas.captureStream(30);
             }
             await pipVideoEl.play().catch(() => {});
             if (typeof pipVideoEl.requestPictureInPicture === 'function') {

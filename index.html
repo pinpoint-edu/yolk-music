@@ -73,9 +73,8 @@
             font-size: 16px !important;
         }
 
-        /* Smooth expand/collapse animation for Now Playing nav icon pill */
-        #nav-now-playing,
-        #bp-nav-now-playing {
+        /* Smooth expand/collapse animation for Top-Nav Now Playing nav icon pill */
+        #nav-now-playing {
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -91,17 +90,12 @@
 
         #nav-now-playing.nav-hidden,
         #top-nav-bar #nav-now-playing.nav-hidden,
-        body.is-searching #top-nav-bar #nav-now-playing.nav-hidden,
-        #bp-nav-now-playing.nav-hidden,
-        #bp-desktop-nav #bp-nav-now-playing.nav-hidden {
+        body.is-searching #top-nav-bar #nav-now-playing.nav-hidden {
             display: none !important;
             max-width: 0 !important;
             min-width: 0 !important;
             width: 0 !important;
-            padding-left: 0 !important;
-            padding-right: 0 !important;
-            padding-top: 0 !important;
-            padding-bottom: 0 !important;
+            padding: 0 !important;
             margin: 0 !important;
             opacity: 0 !important;
             pointer-events: none !important;
@@ -110,13 +104,50 @@
         }
 
         #nav-now-playing.nav-visible,
-        #bp-nav-now-playing.nav-visible {
+        #top-nav-bar #nav-now-playing.nav-visible {
             display: inline-flex !important;
-            max-width: 52px !important;
+            max-width: 48px !important;
+            width: 36px !important;
             opacity: 1 !important;
             pointer-events: auto !important;
             visibility: visible !important;
             transform: scaleX(1) translateX(0) !important;
+        }
+
+        /* Desktop Bottom Bar Now Playing Nav Pill: Force minimum width so full text always displays */
+        #bp-desktop-nav #bp-nav-now-playing {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            min-width: 126px !important;
+            max-width: none !important;
+            width: auto !important;
+            padding-left: 12px !important;
+            padding-right: 14px !important;
+            flex-shrink: 0 !important;
+            white-space: nowrap !important;
+            overflow: visible !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            pointer-events: auto !important;
+            transform: none !important;
+        }
+
+        #bp-desktop-nav #bp-nav-now-playing span {
+            display: inline !important;
+            white-space: nowrap !important;
+            overflow: visible !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            font-size: 12px !important;
+            font-weight: 700 !important;
+            margin-left: 2px !important;
+        }
+
+        /* Bottom Player previous & next track circular hover */
+        #bottom-player-prev,
+        #bottom-player-next {
+            border-radius: 9999px !important;
         }
 
         /* Nudged slightly lower so Safari top edge fade never clips title or navbar */
@@ -485,12 +516,14 @@
                 box-shadow: none !important;
             }
             #smallLogo-icon-glow {
-                background: radial-gradient(circle, rgba(255, 253, 245, 0.95) 0%, rgba(255, 252, 240, 0.55) 50%, rgba(255, 252, 240, 0) 100%) !important;
-                box-shadow: 0 0 22px 8px rgba(255, 253, 245, 0.75) !important;
+                background: radial-gradient(circle, rgba(255, 253, 245, 0.95) 0%, rgba(255, 252, 240, 0.60) 60%, rgba(255, 252, 240, 0.20) 100%) !important;
+                box-shadow: none !important;
+                border-radius: 9999px !important;
             }
             body.dark-mode #smallLogo-icon-glow {
-                background: radial-gradient(circle, rgba(255, 253, 245, 0.30) 0%, rgba(255, 252, 240, 0.10) 50%, rgba(255, 252, 240, 0) 100%) !important;
-                box-shadow: 0 0 18px 6px rgba(255, 253, 245, 0.18) !important;
+                background: radial-gradient(circle, rgba(255, 253, 245, 0.35) 0%, rgba(255, 252, 240, 0.15) 60%, rgba(255, 252, 240, 0) 100%) !important;
+                box-shadow: none !important;
+                border-radius: 9999px !important;
             }
         }
 
@@ -1897,10 +1930,10 @@
         <p class="text-xs font-medium text-zinc-500 mt-1 max-w-xs">Rotate your phone back to portrait to view Yolk!</p>
     </div>
 
-    <!-- Small Top-Left Logo (Glow only behind the icon, no gradient around the entire container) -->
+    <!-- Small Top-Left Logo (Circle gradient sits BEHIND the icon, not bigger than it) -->
     <div id="smallLogo" class="fixed top-5 left-4 sm:top-7 sm:left-8 z-40 flex items-center gap-2.5 cursor-pointer pointer-events-auto select-none transition-transform hover:scale-105 active:scale-95" title="Return to Home">
-        <div class="relative flex items-center justify-center shrink-0 w-7 h-7">
-            <div id="smallLogo-icon-glow" class="absolute inset-0 -m-1 rounded-full pointer-events-none"></div>
+        <div class="relative flex items-center justify-center shrink-0 w-6 h-6">
+            <div id="smallLogo-icon-glow" class="absolute inset-[2px] rounded-full pointer-events-none"></div>
             <img src="/yolk-circle.png" alt="" class="w-6 h-6 object-contain relative z-10 pointer-events-none select-none">
         </div>
         <span class="text-xl font-bold text-black tracking-tight">Yolk!</span>
@@ -2191,6 +2224,10 @@
                             <button id="np-mobile-more-download-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                                 <span>Download Offline</span>
+                            </button>
+                            <button id="np-mobile-more-pip-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 9V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h4"></path><rect width="10" height="7" x="12" y="13" rx="2"></rect></svg>
+                                <span>Floating Mini-Player</span>
                             </button>
                         </div>
                     </div>
@@ -2691,7 +2728,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                     <span class="text-xs font-bold hidden md:inline">Settings</span>
                 </a>
-                <a href="#now-playing" id="bp-nav-now-playing" title="Now Playing" aria-label="Now Playing" class="sleek-hover nav-hidden px-3 h-9 shrink-0 flex items-center justify-center gap-1.5 rounded-full text-zinc-600 sleek-transition whitespace-nowrap">
+                <a href="#now-playing" id="bp-nav-now-playing" title="Now Playing" aria-label="Now Playing" class="sleek-hover px-3.5 h-9 shrink-0 flex items-center justify-center gap-1.5 rounded-full text-zinc-600 sleek-transition whitespace-nowrap min-w-[124px]">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10v3"></path><path d="M6 6v11"></path><path d="M10 3v18"></path><path d="M14 8v7"></path><path d="M18 5v13"></path><path d="M22 10v3"></path></svg>
                     <span class="text-xs font-bold whitespace-nowrap">Now Playing</span>
                 </a>
@@ -2724,13 +2761,13 @@
                 <button id="bottom-player-fav-btn" class="hidden sm:inline-flex sleek-hover transition-transform hover:scale-110 p-2 rounded-full hover:bg-black/5 shrink-0" title="Favorite">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                 </button>
-                <button id="bottom-player-prev" class="sleek-hover transition-colors p-2 shrink-0" title="Previous Track">
+                <button id="bottom-player-prev" class="sleek-hover transition-colors p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 shrink-0 flex items-center justify-center cursor-pointer" title="Previous Track">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
                 </button>
                 <button id="bottom-player-play-pause" class="flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-zinc-900 border border-zinc-800 text-white transition-all duration-300 shadow-md hover:scale-105 active:scale-95 shrink-0" title="Play / Pause">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                 </button>
-                <button id="bottom-player-next" class="sleek-hover transition-colors p-2 shrink-0" title="Next Track">
+                <button id="bottom-player-next" class="sleek-hover transition-colors p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 shrink-0 flex items-center justify-center cursor-pointer" title="Next Track">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
                 </button>
                 <button id="bottom-player-add-btn" class="hidden sm:inline-flex sleek-hover transition-colors p-2 rounded-full hover:bg-black/5 shrink-0" title="Add to Playlist">
@@ -2776,6 +2813,10 @@
                         <button id="bp-more-download-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                             <span>Download Offline</span>
+                        </button>
+                        <button id="bp-more-pip-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 9V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h4"></path><rect width="10" height="7" x="12" y="13" rx="2"></rect></svg>
+                            <span>Floating Mini-Player</span>
                         </button>
                     </div>
                 </div>
