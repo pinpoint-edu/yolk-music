@@ -1398,6 +1398,23 @@
             background: rgba(20, 20, 25, 0.55) !important;
             border-color: rgba(255, 255, 255, 0.16) !important;
         }
+        body.dark-mode .eq-preset-pill.bg-zinc-900,
+        body.dark-mode #storage-sync-library-btn,
+        body.dark-mode #share-native-btn,
+        body.dark-mode #share-tab-song.bg-zinc-900,
+        body.dark-mode #share-tab-lyrics.bg-zinc-900 {
+            background-color: #f4f4f5 !important;
+            color: #09090b !important;
+            border-color: #f4f4f5 !important;
+        }
+        body.dark-mode #storage-bar-audio {
+            background-color: #f4f4f5 !important;
+        }
+        body.dark-mode #np-share-lyrics-btn {
+            background-color: rgba(255, 255, 255, 0.14) !important;
+            border-color: rgba(255, 255, 255, 0.24) !important;
+            color: #f4f4f5 !important;
+        }
     </style>
     <script>
         try {
@@ -1681,7 +1698,13 @@
                                 <input id="np-volume-slider" type="range" min="0" max="100" value="100" class="yolk-volume-slider w-24 sm:w-28 cursor-pointer">
                             </div>
                         </div>
+                        <button id="np- volume-btn-placeholder" class="hidden"></button>
                     </div>
+
+                    <!-- Share Song Button (Desktop & Tablet) -->
+                    <button id="np-share-btn" class="hidden sm:inline-flex sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="Share Song or Lyrics">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
+                    </button>
 
                     <!-- Mobile More Button & Popover (Accessible on phone format in standard Now Playing) -->
                     <div class="relative sm:hidden flex items-center shrink-0">
@@ -1689,6 +1712,10 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
                         </button>
                         <div id="np-mobile-more-popover" class="hidden absolute right-0 bottom-full mb-3 w-56 bg-white/80 backdrop-blur-2xl border border-white/80 rounded-2xl p-2.5 shadow-[0_16px_40px_rgba(0,0,0,0.16)] flex flex-col gap-1 z-50">
+                            <button id="np-mobile-more-share-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
+                                <span>Share Song / Lyrics</span>
+                            </button>
                             <button id="np-mobile-more-artist-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                                 <span>View Artist</span>
@@ -1714,7 +1741,13 @@
             <div id="np-lyrics-col" class="np-right-col">
                 <div class="flex items-center justify-between mb-3 shrink-0 select-none px-2">
                     <span class="text-[11px] uppercase font-black tracking-widest text-black/70">Lyrics</span>
-                    <span id="lyrics-badge" class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-black text-white shadow-xs">Synced</span>
+                    <div class="flex items-center gap-2">
+                        <button id="np-share-lyrics-btn" type="button" class="bubbly-hover inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-white/55 backdrop-blur-md text-black border border-white/75 shadow-xs hover:bg-white/80 cursor-pointer transition-all" title="Share Lyrics Card">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
+                            <span>Share Lyrics</span>
+                        </button>
+                        <span id="lyrics-badge" class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-black text-white shadow-xs">Synced</span>
+                    </div>
                 </div>
                 <div id="lyrics-container">
                     <div class="h-full flex flex-col items-center justify-center gap-2 text-black/50 select-none py-16 text-center">
@@ -1768,6 +1801,10 @@
 
                     <!-- More Popover Container -->
                     <div id="lyrics-bar-more-popover" class="hidden absolute right-0 bottom-full mb-3 w-56 bg-white/90 backdrop-blur-2xl border border-white/80 rounded-2xl p-2.5 shadow-[0_16px_40px_rgba(0,0,0,0.18)] flex flex-col gap-1 z-50">
+                        <button id="lyrics-more-share-lyrics-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
+                            <span>Share Lyrics Card</span>
+                        </button>
                         <button id="lyrics-more-artist-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                             <span>View Artist</span>
@@ -1895,6 +1932,9 @@
                             <button id="album-download-all-btn" class="bubbly-hover flex items-center justify-center w-11 h-11 rounded-full bg-white text-zinc-700 hover:bg-zinc-100 transition-all border border-zinc-200/80 shadow-sm cursor-pointer shrink-0" title="Download Album">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                             </button>
+                            <button id="album-share-btn" class="bubbly-hover flex items-center justify-center w-11 h-11 rounded-full bg-white text-zinc-700 hover:bg-zinc-100 transition-all border border-zinc-200/80 shadow-sm cursor-pointer shrink-0" title="Share Album">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1922,59 +1962,199 @@
             <div class="library-shell max-w-3xl mx-auto pb-20">
                 <div class="mb-6">
                     <h1 class="text-3xl font-bold tracking-tight text-zinc-900">Settings</h1>
-                    <p class="text-sm text-zinc-500 mt-1">Customize your Yolk! appearance</p>
+                    <p class="text-sm text-zinc-500 mt-1">Customize appearance, audio EQ, haptics, and offline storage</p>
                 </div>
 
-                <!-- Theme Mode Setting Card -->
-                <div class="bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-5">
-                    <div class="flex items-center justify-between gap-4 flex-wrap">
-                        <div class="flex items-center gap-3.5">
-                            <div class="w-11 h-11 rounded-2xl bg-zinc-100 border border-zinc-200/80 flex items-center justify-center text-zinc-800 shrink-0">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>
-                            </div>
-                            <div>
-                                <div class="flex items-center gap-2">
-                                    <h2 class="text-base sm:text-lg font-bold text-zinc-900">Dark Mode</h2>
-                                    <span class="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded-full bg-[#FACC15]/25 text-amber-700 border border-[#FACC15]/60">Beta</span>
+                <div class="flex flex-col gap-5">
+                    <!-- 1. Theme Mode Setting Card -->
+                    <div class="bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-5">
+                        <div class="flex items-center justify-between gap-4 flex-wrap">
+                            <div class="flex items-center gap-3.5">
+                                <div class="w-11 h-11 rounded-2xl bg-zinc-100 border border-zinc-200/80 flex items-center justify-center text-zinc-800 shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>
                                 </div>
-                                <p class="text-xs sm:text-sm text-zinc-500 mt-0.5">Switch between Yolk!'s classic warm light mode and dark mode</p>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <h2 class="text-base sm:text-lg font-bold text-zinc-900">Dark Mode</h2>
+                                        <span class="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded-full bg-[#FACC15]/25 text-amber-700 border border-[#FACC15]/60">Beta</span>
+                                    </div>
+                                    <p class="text-xs sm:text-sm text-zinc-500 mt-0.5">Switch between Yolk!'s classic warm light mode and dark mode</p>
+                                </div>
+                            </div>
+
+                            <button id="theme-mode-toggle-btn" type="button" role="switch" aria-checked="false" class="w-14 h-8 rounded-full bg-zinc-200 p-1 transition-colors duration-300 cursor-pointer flex items-center relative shrink-0 border border-zinc-300/80">
+                                <span id="theme-mode-toggle-knob" class="w-6 h-6 rounded-full bg-white shadow-md transform transition-transform duration-300 translate-x-0 flex items-center justify-center text-zinc-800"></span>
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 pt-2 border-t border-zinc-100">
+                            <button id="theme-mode-light-btn" type="button" class="bubbly-hover p-4 rounded-2xl border-2 border-zinc-900 bg-[#FCFBF8] text-left flex flex-col gap-2.5 cursor-pointer transition-all">
+                                <div class="flex items-center justify-between">
+                                    <div class="w-8 h-8 rounded-full bg-white border border-zinc-200 flex items-center justify-center text-amber-500 shadow-xs">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>
+                                    </div>
+                                    <span id="theme-light-active-dot" class="w-2.5 h-2.5 rounded-full bg-zinc-900"></span>
+                                </div>
+                                <div>
+                                    <div class="text-sm font-bold text-zinc-900">Light Mode</div>
+                                    <div class="text-[11px] font-medium text-zinc-500">Classic warm Yolk! paper</div>
+                                </div>
+                            </button>
+
+                            <button id="theme-mode-dark-btn" type="button" class="bubbly-hover p-4 rounded-2xl border-2 border-zinc-200/80 bg-zinc-900 text-left flex flex-col gap-2.5 cursor-pointer transition-all">
+                                <div class="flex items-center justify-between">
+                                    <div class="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-[#FACC15] shadow-xs">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>
+                                    </div>
+                                    <span id="theme-dark-active-dot" class="w-2.5 h-2.5 rounded-full bg-[#FACC15] hidden"></span>
+                                </div>
+                                <div>
+                                    <div class="text-sm font-bold text-white flex items-center gap-1.5">
+                                        <span>Dark Mode</span>
+                                        <span class="text-[9px] font-extrabold uppercase px-1.5 py-0.2 bg-[#FACC15] text-black rounded-full">Beta</span>
+                                    </div>
+                                    <div class="text-[11px] font-medium text-zinc-400">Deep obsidian midnight</div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 2. Haptic Feedback Setting Card (iOS Taptic Engine + Web Haptics) -->
+                    <div class="bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex items-center justify-between gap-4">
+                        <div class="flex items-center gap-3.5 min-w-0">
+                            <div class="w-11 h-11 rounded-2xl bg-zinc-100 border border-zinc-200/80 flex items-center justify-center text-zinc-800 shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10v3"></path><path d="M6 6v11"></path><path d="M10 3v18"></path><path d="M14 8v7"></path><path d="M18 5v13"></path><path d="M22 10v3"></path></svg>
+                            </div>
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <h2 class="text-base sm:text-lg font-bold text-zinc-900">Haptic Feedback</h2>
+                                    <span class="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded-full bg-zinc-100 text-zinc-700 border border-zinc-200/80">iOS Taptic</span>
+                                </div>
+                                <p class="text-xs sm:text-sm text-zinc-500 mt-0.5">Tactile taps on playback controls, favorites, lyrics scrubbing, and EQ</p>
                             </div>
                         </div>
 
-                        <button id="theme-mode-toggle-btn" type="button" role="switch" aria-checked="false" class="w-14 h-8 rounded-full bg-zinc-200 p-1 transition-colors duration-300 cursor-pointer flex items-center relative shrink-0 border border-zinc-300/80">
-                            <span id="theme-mode-toggle-knob" class="w-6 h-6 rounded-full bg-white shadow-md transform transition-transform duration-300 translate-x-0 flex items-center justify-center text-zinc-800"></span>
+                        <button id="haptic-toggle-btn" type="button" role="switch" aria-checked="true" class="w-14 h-8 rounded-full bg-[#FDE047] p-1 transition-colors duration-300 cursor-pointer flex items-center relative shrink-0 border border-[#FACC15]">
+                            <span id="haptic-toggle-knob" class="w-6 h-6 rounded-full bg-zinc-900 shadow-md transform transition-transform duration-300 translate-x-6 flex items-center justify-center"></span>
                         </button>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-3 pt-2 border-t border-zinc-100">
-                        <button id="theme-mode-light-btn" type="button" class="bubbly-hover p-4 rounded-2xl border-2 border-zinc-900 bg-[#FCFBF8] text-left flex flex-col gap-2.5 cursor-pointer transition-all">
-                            <div class="flex items-center justify-between">
-                                <div class="w-8 h-8 rounded-full bg-white border border-zinc-200 flex items-center justify-center text-amber-500 shadow-xs">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>
+                    <!-- 3. 5-Band Audio Equalizer (EQ) Card -->
+                    <div class="bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-5">
+                        <div class="flex items-center justify-between gap-4 flex-wrap">
+                            <div class="flex items-center gap-3.5">
+                                <div class="w-11 h-11 rounded-2xl bg-zinc-100 border border-zinc-200/80 flex items-center justify-center text-zinc-800 shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
                                 </div>
-                                <span id="theme-light-active-dot" class="w-2.5 h-2.5 rounded-full bg-zinc-900"></span>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <h2 class="text-base sm:text-lg font-bold text-zinc-900">Equalizer (EQ)</h2>
+                                        <span id="eq-active-preset-badge" class="px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-zinc-100 text-zinc-700 border border-zinc-200/80">Flat</span>
+                                    </div>
+                                    <p class="text-xs sm:text-sm text-zinc-500 mt-0.5">Real-time 5-band Web Audio filter with Bass Boost & studio presets</p>
+                                </div>
                             </div>
-                            <div>
-                                <div class="text-sm font-bold text-zinc-900">Light Mode</div>
-                                <div class="text-[11px] font-medium text-zinc-500">Classic warm Yolk! paper</div>
-                            </div>
-                        </button>
 
-                        <button id="theme-mode-dark-btn" type="button" class="bubbly-hover p-4 rounded-2xl border-2 border-zinc-200/80 bg-zinc-900 text-left flex flex-col gap-2.5 cursor-pointer transition-all">
-                            <div class="flex items-center justify-between">
-                                <div class="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-[#FACC15] shadow-xs">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>
-                                </div>
-                                <span id="theme-dark-active-dot" class="w-2.5 h-2.5 rounded-full bg-[#FACC15] hidden"></span>
+                            <div class="flex items-center gap-2.5">
+                                <button id="eq-reset-btn" type="button" class="px-3 py-1.5 rounded-full text-xs font-bold bg-zinc-100 hover:bg-zinc-200 text-zinc-700 border border-zinc-200/80 transition-colors cursor-pointer">
+                                    Reset
+                                </button>
+                                <button id="eq-enable-toggle-btn" type="button" role="switch" aria-checked="true" class="w-14 h-8 rounded-full bg-[#FDE047] p-1 transition-colors duration-300 cursor-pointer flex items-center relative shrink-0 border border-[#FACC15]">
+                                    <span id="eq-enable-toggle-knob" class="w-6 h-6 rounded-full bg-zinc-900 shadow-md transform transition-transform duration-300 translate-x-6 flex items-center justify-center"></span>
+                                </button>
                             </div>
-                            <div>
-                                <div class="text-sm font-bold text-white flex items-center gap-1.5">
-                                    <span>Dark Mode</span>
-                                    <span class="text-[9px] font-extrabold uppercase px-1.5 py-0.2 bg-[#FACC15] text-black rounded-full">Beta</span>
-                                </div>
-                                <div class="text-[11px] font-medium text-zinc-400">Deep obsidian midnight</div>
+                        </div>
+
+                        <!-- EQ Presets Row -->
+                        <div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar pt-2 border-t border-zinc-100" id="eq-presets-container">
+                            <button type="button" data-eq-preset="flat" class="eq-preset-pill px-3.5 py-1.5 rounded-full text-xs font-bold bg-zinc-900 text-white border border-zinc-900 shrink-0 cursor-pointer transition-all">Flat</button>
+                            <button type="button" data-eq-preset="bass" class="eq-preset-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border border-zinc-200/80 shrink-0 cursor-pointer transition-all">Bass Boost</button>
+                            <button type="button" data-eq-preset="vocal" class="eq-preset-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border border-zinc-200/80 shrink-0 cursor-pointer transition-all">Vocal Booster</button>
+                            <button type="button" data-eq-preset="late-night" class="eq-preset-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border border-zinc-200/80 shrink-0 cursor-pointer transition-all">Late Night</button>
+                            <button type="button" data-eq-preset="electronic" class="eq-preset-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border border-zinc-200/80 shrink-0 cursor-pointer transition-all">Electronic</button>
+                            <button type="button" data-eq-preset="acoustic" class="eq-preset-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border border-zinc-200/80 shrink-0 cursor-pointer transition-all">Acoustic</button>
+                        </div>
+
+                        <!-- 5-Band EQ Sliders -->
+                        <div id="eq-bands-wrapper" class="flex flex-col gap-3 pt-1">
+                            <div class="flex items-center gap-3">
+                                <span class="w-16 text-xs font-bold text-zinc-700 shrink-0">60 Hz <span class="text-[10px] font-medium text-zinc-400 block">Sub-Bass</span></span>
+                                <input type="range" min="-12" max="12" step="0.5" value="0" data-eq-band="0" class="eq-band-slider yolk-volume-slider flex-1 cursor-pointer">
+                                <span id="eq-band-val-0" class="w-12 text-right font-mono text-xs font-bold text-zinc-700 shrink-0">0 dB</span>
                             </div>
-                        </button>
+                            <div class="flex items-center gap-3">
+                                <span class="w-16 text-xs font-bold text-zinc-700 shrink-0">230 Hz <span class="text-[10px] font-medium text-zinc-400 block">Bass</span></span>
+                                <input type="range" min="-12" max="12" step="0.5" value="0" data-eq-band="1" class="eq-band-slider yolk-volume-slider flex-1 cursor-pointer">
+                                <span id="eq-band-val-1" class="w-12 text-right font-mono text-xs font-bold text-zinc-700 shrink-0">0 dB</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="w-16 text-xs font-bold text-zinc-700 shrink-0">910 Hz <span class="text-[10px] font-medium text-zinc-400 block">Midrange</span></span>
+                                <input type="range" min="-12" max="12" step="0.5" value="0" data-eq-band="2" class="eq-band-slider yolk-volume-slider flex-1 cursor-pointer">
+                                <span id="eq-band-val-2" class="w-12 text-right font-mono text-xs font-bold text-zinc-700 shrink-0">0 dB</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="w-16 text-xs font-bold text-zinc-700 shrink-0">3.6 kHz <span class="text-[10px] font-medium text-zinc-400 block">Presence</span></span>
+                                <input type="range" min="-12" max="12" step="0.5" value="0" data-eq-band="3" class="eq-band-slider yolk-volume-slider flex-1 cursor-pointer">
+                                <span id="eq-band-val-3" class="w-12 text-right font-mono text-xs font-bold text-zinc-700 shrink-0">0 dB</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="w-16 text-xs font-bold text-zinc-700 shrink-0">14 kHz <span class="text-[10px] font-medium text-zinc-400 block">Treble / Air</span></span>
+                                <input type="range" min="-12" max="12" step="0.5" value="0" data-eq-band="4" class="eq-band-slider yolk-volume-slider flex-1 cursor-pointer">
+                                <span id="eq-band-val-4" class="w-12 text-right font-mono text-xs font-bold text-zinc-700 shrink-0">0 dB</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. Offline Storage & Cache Manager Card -->
+                    <div class="bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-5">
+                        <div class="flex items-center justify-between gap-4 flex-wrap">
+                            <div class="flex items-center gap-3.5">
+                                <div class="w-11 h-11 rounded-2xl bg-zinc-100 border border-zinc-200/80 flex items-center justify-center text-zinc-800 shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <h2 class="text-base sm:text-lg font-bold text-zinc-900">Offline Storage Manager</h2>
+                                        <span id="storage-count-badge" class="px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/70">0 Songs</span>
+                                    </div>
+                                    <p class="text-xs sm:text-sm text-zinc-500 mt-0.5">Manage downloaded audio streams, artwork, and synced lyrics cached on this device</p>
+                                </div>
+                            </div>
+
+                            <div class="text-left sm:text-right">
+                                <div id="storage-used-label" class="text-lg sm:text-xl font-extrabold text-zinc-900">0.0 MB</div>
+                                <div id="storage-quota-label" class="text-[11px] font-medium text-zinc-400">Calculating device storage…</div>
+                            </div>
+                        </div>
+
+                        <!-- Storage Bar & Breakdown -->
+                        <div class="flex flex-col gap-2.5 pt-2 border-t border-zinc-100">
+                            <div class="w-full h-3 rounded-full bg-zinc-100 overflow-hidden flex border border-zinc-200/60 p-0.5 gap-0.5">
+                                <div id="storage-bar-audio" class="h-full bg-zinc-900 rounded-l-full transition-all duration-500" style="width: 0%;"></div>
+                                <div id="storage-bar-art" class="h-full bg-[#FACC15] rounded-r-full transition-all duration-500" style="width: 0%;"></div>
+                            </div>
+                            <div class="flex items-center justify-between text-[11px] font-semibold text-zinc-500 flex-wrap gap-2">
+                                <div class="flex items-center gap-4">
+                                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-zinc-900 inline-block"></span>Audio: <strong id="storage-audio-mb" class="text-zinc-800">0.0 MB</strong></span>
+                                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-[#FACC15] inline-block"></span>Artwork & Lyrics: <strong id="storage-art-mb" class="text-zinc-800">0.0 MB</strong></span>
+                                </div>
+                                <span id="storage-orphan-status" class="text-zinc-400">All cached songs in Library</span>
+                            </div>
+                        </div>
+
+                        <!-- Storage Actions -->
+                        <div class="flex items-center gap-2.5 flex-wrap pt-1">
+                            <button id="storage-sync-library-btn" type="button" class="bubbly-hover px-4 py-2 rounded-2xl text-xs font-bold bg-zinc-900 text-white hover:bg-zinc-800 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                <span>Sync Missing Library Songs</span>
+                            </button>
+                            <button id="storage-clean-orphans-btn" type="button" class="bubbly-hover px-4 py-2 rounded-2xl text-xs font-bold bg-zinc-100 hover:bg-zinc-200 text-zinc-800 border border-zinc-200/80 transition-all cursor-pointer">
+                                Clear Orphaned Cache
+                            </button>
+                            <button id="storage-clear-all-btn" type="button" class="bubbly-hover px-4 py-2 rounded-2xl text-xs font-bold bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/60 transition-all cursor-pointer ml-auto">
+                                Delete All Downloads
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2044,6 +2224,10 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
                     </button>
                     <div id="bp-mobile-more-popover" class="hidden absolute right-0 bottom-full mb-3 w-56 bg-white/95 backdrop-blur-2xl border border-zinc-200/90 rounded-2xl p-2.5 shadow-[0_16px_40px_rgba(0,0,0,0.18)] flex flex-col gap-1 z-50">
+                        <button id="bp-more-share-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
+                            <span>Share Song / Lyrics</span>
+                        </button>
                         <button id="bp-more-artist-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                             <span>View Artist</span>
@@ -2352,16 +2536,72 @@
                     </div>
                 </div>
 
-                <!-- Up Next Section -->
-                <div>
-                    <div class="flex items-center justify-between px-1 mb-1.5">
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Up Next</span>
-                        <span id="queue-up-next-count" class="text-[10px] font-medium text-zinc-400"></span>
+                    <!-- Up Next Section -->
+                    <div>
+                        <div class="flex items-center justify-between px-1 mb-1.5">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Up Next</span>
+                            <span id="queue-up-next-count" class="text-[10px] font-medium text-zinc-400"></span>
+                        </div>
+                        <div id="queue-up-next-list" class="flex flex-col gap-1.5">
+                            <!-- Populated by JS -->
+                        </div>
                     </div>
-                    <div id="queue-up-next-list" class="flex flex-col gap-1.5">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Share Song / Lyrics / Album Card Generator -->
+    <div id="share-card-modal" class="modal-overlay fixed inset-0 bg-black/50 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4">
+        <div class="modal-card bg-white rounded-3xl p-5 sm:p-6 w-full max-w-md shadow-2xl border border-zinc-200/80 max-h-[92vh] flex flex-col">
+            <div class="flex items-center justify-between pb-3 border-b border-zinc-100 shrink-0">
+                <div>
+                    <h3 id="share-modal-title" class="text-lg font-extrabold text-zinc-900">Share</h3>
+                    <p id="share-modal-subtitle" class="text-xs text-zinc-500 font-medium">Share via iOS Share Sheet or save story card</p>
+                </div>
+                <button id="share-modal-close-btn" type="button" class="p-1.5 rounded-full text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer" title="Close">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+
+            <!-- Mode Switcher (Song Card vs Lyrics Card) -->
+            <div id="share-mode-tabs" class="grid grid-cols-2 gap-1.5 p-1 bg-zinc-100 rounded-2xl mt-3 shrink-0">
+                <button type="button" id="share-tab-song" class="py-1.5 px-3 rounded-xl text-xs font-bold bg-zinc-900 text-white shadow-xs transition-all cursor-pointer">Song Card</button>
+                <button type="button" id="share-tab-lyrics" class="py-1.5 px-3 rounded-xl text-xs font-bold text-zinc-600 hover:text-zinc-900 transition-all cursor-pointer">Lyrics Card</button>
+            </div>
+
+            <!-- Scrollable Content: Lyric Line Picker (when in Lyrics mode) + Live Canvas Card Preview -->
+            <div class="flex-1 overflow-y-auto sleek-scrollbar pr-1 mt-3 flex flex-col gap-3">
+                <div id="share-lyrics-picker-section" class="hidden flex-col gap-1.5">
+                    <div class="flex items-center justify-between px-1">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Tap up to 4 lyric lines to feature</span>
+                        <span id="share-lyrics-selected-count" class="text-[10px] font-bold text-zinc-700">1/4 selected</span>
+                    </div>
+                    <div id="share-lyrics-picker-list" class="max-h-36 overflow-y-auto sleek-scrollbar p-2 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex flex-col gap-1">
                         <!-- Populated by JS -->
                     </div>
                 </div>
+
+                <!-- Live High-Res Share Card Canvas Preview -->
+                <div class="w-full flex items-center justify-center bg-zinc-100/70 rounded-2xl p-3 border border-zinc-200/60">
+                    <canvas id="share-card-canvas" width="1080" height="1350" class="w-full max-w-[240px] aspect-4/5 rounded-2xl shadow-lg border border-black/10"></canvas>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-3 mt-3 border-t border-zinc-100 shrink-0">
+                <button type="button" id="share-native-btn" class="col-span-2 sm:col-span-1 py-2.5 px-4 rounded-xl text-xs font-bold bg-zinc-900 text-white hover:bg-zinc-800 transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
+                    <span>Share…</span>
+                </button>
+                <button type="button" id="share-download-img-btn" class="py-2.5 px-3 rounded-xl text-xs font-bold bg-zinc-100 text-zinc-800 hover:bg-zinc-200 border border-zinc-200/80 transition-all cursor-pointer flex items-center justify-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    <span>Save Card</span>
+                </button>
+                <button type="button" id="share-copy-link-btn" class="py-2.5 px-3 rounded-xl text-xs font-bold bg-zinc-100 text-zinc-800 hover:bg-zinc-200 border border-zinc-200/80 transition-all cursor-pointer flex items-center justify-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                    <span>Copy Link</span>
+                </button>
             </div>
         </div>
     </div>
@@ -2409,8 +2649,19 @@
 
             function navigate() {
                 window.scrollTo(0, 0);
-                let hash = window.location.hash.replace('#', '') || 'search';
+                let rawHash = window.location.hash.replace('#', '') || 'search';
+                if (rawHash.startsWith('song=') || rawHash.startsWith('album=')) {
+                    if (typeof window.handleYolkDeepLink === 'function') {
+                        window.handleYolkDeepLink(rawHash);
+                    }
+                    return;
+                }
+                let hash = rawHash;
                 if (!pages[hash]) hash = 'search';
+
+                if (hash === 'settings' && typeof window.refreshStorageManagerUI === 'function') {
+                    window.refreshStorageManagerUI();
+                }
 
                 // Set body data attribute for conditional CSS (like hiding bottom player)
                 body.setAttribute('data-page', hash);
@@ -2531,6 +2782,9 @@
                     const link = group[key];
                     if (!link) return;
                     link.addEventListener('click', (e) => {
+                        if (typeof window.triggerHaptic === 'function') {
+                            window.triggerHaptic('selection');
+                        }
                         const currentHash = window.location.hash.replace('#', '') || 'search';
                         if (currentHash === key) {
                             e.preventDefault();
@@ -2559,6 +2813,10 @@
             navigate(); // Trigger on initial load
         });
     </script>
+    <!-- Hidden iOS 18+ Safari Native Taptic Engine Switch Trigger -->
+    <label id="yolk-ios-haptic-label" for="yolk-ios-haptic-input" aria-hidden="true" style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0.001;pointer-events:none;overflow:hidden;">
+        <input type="checkbox" id="yolk-ios-haptic-input" switch>
+    </label>
     <div id="youtubePlayer"></div>
     <audio id="yolk-audio-player" playsinline webkit-playsinline x-webkit-airplay="allow" preload="auto" class="hidden"></audio>
     <script src="yolk-app.js"></script>

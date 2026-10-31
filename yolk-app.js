@@ -109,6 +109,38 @@ function formatTime(seconds) {
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
 }
 
+// ==========================================
+// iOS 18+ Safari Taptic Engine & Web Haptics
+// ==========================================
+let hapticsEnabled = localStorage.getItem('yolk_haptics') !== 'false';
+let _lastHapticTs = 0;
+
+function triggerHaptic(style = 'light') {
+    if (!hapticsEnabled) return;
+    const now = performance.now();
+    if (now - _lastHapticTs < 35) return;
+    _lastHapticTs = now;
+
+    try {
+        // 1. iOS 18+ Safari Native Taptic Engine via <input type="checkbox" switch> label click
+        const iosSwitchLabel = document.getElementById('yolk-ios-haptic-label');
+        if (iosSwitchLabel) {
+            iosSwitchLabel.click();
+        }
+        // 2. Web Vibration API fallback (Android / supported mobile browsers)
+        if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+            if (style === 'heavy') {
+                navigator.vibrate([14, 28, 18]);
+            } else if (style === 'medium') {
+                navigator.vibrate(16);
+            } else {
+                navigator.vibrate(8);
+            }
+        }
+    } catch (_) {}
+}
+window.triggerHaptic = triggerHaptic;
+
 function getTrackUid(track) {
     if (!track) return '';
     return track.youtube_id || track.videoId || track.id || `${track.title || track.name}_${track.artist_name || track.artist}`;
@@ -408,6 +440,7 @@ window.syncLyricsOnNavigate = function() {
 
 window.seekToLyrics = function(time) {
     if (typeof time === 'number' && !isNaN(time)) {
+        triggerHaptic('selection');
         const targetTime = Math.max(0, time);
         if (activeSource === 'youtube' && ytPlayer && typeof ytPlayer.seekTo === 'function') {
             ytPlayer.seekTo(targetTime, true);
@@ -968,6 +1001,9 @@ window.refreshAllDownloadButtonsUI = function () {
     if (typeof window._updateAlbumDownloadAllBtn === 'function') {
         window._updateAlbumDownloadAllBtn();
     }
+    if (typeof window.refreshStorageManagerUI === 'function') {
+        window.refreshStorageManagerUI();
+    }
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1087,6 +1123,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const toggleLyricsMode = () => {
         if (!isLyricsAvailable) return;
+        triggerHaptic('light');
         isLyricsUserEnabled = !isLyricsUserEnabled;
         updateLyricsVisibilityUI();
         if (isLyricsUserEnabled && typeof window.syncLyricsOnNavigate === 'function') {
@@ -3154,36 +3191,42 @@ document.addEventListener('DOMContentLoaded', () => {
     if (npPlayPauseBtn) {
         npPlayPauseBtn.onclick = (e) => {
             if (e && e.currentTarget && typeof e.currentTarget.blur === 'function') e.currentTarget.blur();
+            triggerHaptic('medium');
             togglePlayPause();
         };
     }
     if (bpPlayPauseBtn) {
         bpPlayPauseBtn.onclick = (e) => {
             if (e && e.currentTarget && typeof e.currentTarget.blur === 'function') e.currentTarget.blur();
+            triggerHaptic('medium');
             togglePlayPause();
         };
     }
     if (npNextBtn) {
         npNextBtn.onclick = (e) => {
             if (e && e.currentTarget && typeof e.currentTarget.blur === 'function') e.currentTarget.blur();
+            triggerHaptic('light');
             playNext();
         };
     }
     if (bpNextBtn) {
         bpNextBtn.onclick = (e) => {
             if (e && e.currentTarget && typeof e.currentTarget.blur === 'function') e.currentTarget.blur();
+            triggerHaptic('light');
             playNext();
         };
     }
     if (npPrevBtn) {
         npPrevBtn.onclick = (e) => {
             if (e && e.currentTarget && typeof e.currentTarget.blur === 'function') e.currentTarget.blur();
+            triggerHaptic('light');
             playPrev();
         };
     }
     if (bpPrevBtn) {
         bpPrevBtn.onclick = (e) => {
             if (e && e.currentTarget && typeof e.currentTarget.blur === 'function') e.currentTarget.blur();
+            triggerHaptic('light');
             playPrev();
         };
     }
@@ -3750,6 +3793,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Favorites Logic
     function toggleFavorite(track, svgElement) {
+        triggerHaptic('medium');
         const favIndex = favorites.findIndex(f => f.id === track.id);
         if (favIndex > -1) {
             favorites.splice(favIndex, 1);
@@ -6401,12 +6445,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (themeToggleBtn) {
         themeToggleBtn.addEventListener('click', () => {
+            triggerHaptic('medium');
             const isCurrentlyDark = document.body.classList.contains('dark-mode');
             applyThemeMode(isCurrentlyDark ? 'light' : 'dark', true);
         });
     }
     if (themeLightBtn) {
         themeLightBtn.addEventListener('click', () => {
+            triggerHaptic('light');
             if (document.body.classList.contains('dark-mode')) {
                 applyThemeMode('light', true);
             }
@@ -6414,10 +6460,983 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (themeDarkBtn) {
         themeDarkBtn.addEventListener('click', () => {
+            triggerHaptic('light');
             if (!document.body.classList.contains('dark-mode')) {
                 applyThemeMode('dark', true);
             }
         });
+    }
+
+    // ==== SETTINGS PAGE: HAPTIC FEEDBACK TOGGLE ====
+    const hapticToggleBtn = document.getElementById('haptic-toggle-btn');
+    const hapticToggleKnob = document.getElementById('haptic-toggle-knob');
+
+    function updateHapticToggleUI(enabled, notify = false) {
+        hapticsEnabled = !!enabled;
+        localStorage.setItem('yolk_haptics', hapticsEnabled ? 'true' : 'false');
+        if (hapticToggleBtn) {
+            hapticToggleBtn.setAttribute('aria-checked', hapticsEnabled ? 'true' : 'false');
+            hapticToggleBtn.style.backgroundColor = hapticsEnabled ? '#FDE047' : 'rgba(212, 212, 216, 0.8)';
+            hapticToggleBtn.style.borderColor = hapticsEnabled ? '#FACC15' : 'rgba(161, 161, 170, 0.7)';
+        }
+        if (hapticToggleKnob) {
+            hapticToggleKnob.style.transform = hapticsEnabled ? 'translateX(24px)' : 'translateX(0px)';
+            hapticToggleKnob.style.backgroundColor = hapticsEnabled ? '#18181b' : '#ffffff';
+        }
+        if (notify) {
+            if (hapticsEnabled) triggerHaptic('medium');
+            showToast(hapticsEnabled ? 'Haptic Feedback enabled' : 'Haptic Feedback disabled');
+        }
+    }
+
+    if (hapticToggleBtn) {
+        hapticToggleBtn.addEventListener('click', () => {
+            updateHapticToggleUI(!hapticsEnabled, true);
+        });
+    }
+    updateHapticToggleUI(hapticsEnabled, false);
+
+    // ==== SETTINGS PAGE: REAL-TIME 5-BAND WEB AUDIO EQUALIZER (EQ) ====
+    const EQ_PRESETS = {
+        flat: { name: 'Flat', gains: [0, 0, 0, 0, 0] },
+        bass: { name: 'Bass Boost', gains: [7.5, 5.5, 0, 1, 2] },
+        vocal: { name: 'Vocal Booster', gains: [-2, -1, 4.5, 5, 2] },
+        'late-night': { name: 'Late Night', gains: [5, 3, -1.5, 2.5, 4] },
+        electronic: { name: 'Electronic', gains: [6.5, 4, -2, 3, 6] },
+        acoustic: { name: 'Acoustic', gains: [3.5, 2, 1, 3, 4] }
+    };
+    const EQ_FREQS = [
+        { freq: 60, type: 'lowshelf', q: 0.7 },
+        { freq: 230, type: 'peaking', q: 1.0 },
+        { freq: 910, type: 'peaking', q: 1.0 },
+        { freq: 3600, type: 'peaking', q: 1.0 },
+        { freq: 14000, type: 'highshelf', q: 0.7 }
+    ];
+
+    let eqEnabled = localStorage.getItem('yolk_eq_enabled') !== 'false';
+    let eqCurrentPreset = localStorage.getItem('yolk_eq_preset') || 'flat';
+    let eqBands = [0, 0, 0, 0, 0];
+    try {
+        const savedBands = JSON.parse(localStorage.getItem('yolk_eq_bands') || 'null');
+        if (Array.isArray(savedBands) && savedBands.length === 5) {
+            eqBands = savedBands.map(v => Math.max(-12, Math.min(12, Number(v) || 0)));
+        } else if (EQ_PRESETS[eqCurrentPreset]) {
+            eqBands = [...EQ_PRESETS[eqCurrentPreset].gains];
+        }
+    } catch (_) {}
+
+    let yolkAudioCtx = null;
+    let yolkMediaSourceNode = null;
+    let yolkEqPreGain = null;
+    let yolkEqFilters = [];
+
+    function ensureWebAudioEqualizer() {
+        const hasNonZero = eqEnabled && eqBands.some(g => Math.abs(g) > 0.05);
+        if (!yolkAudioCtx && !hasNonZero) {
+            // Keep native HTMLAudioElement direct pipeline untouched when EQ is flat
+            return;
+        }
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            if (!yolkAudioCtx) {
+                yolkAudioCtx = new AudioCtx();
+                yolkMediaSourceNode = yolkAudioCtx.createMediaElementSource(currentAudio);
+                yolkEqPreGain = yolkAudioCtx.createGain();
+                yolkEqFilters = EQ_FREQS.map(cfg => {
+                    const filter = yolkAudioCtx.createBiquadFilter();
+                    filter.type = cfg.type;
+                    filter.frequency.value = cfg.freq;
+                    filter.Q.value = cfg.q;
+                    filter.gain.value = 0;
+                    return filter;
+                });
+
+                // Connect chain: source -> preGain -> filter0..4 -> destination
+                yolkMediaSourceNode.connect(yolkEqPreGain);
+                let prevNode = yolkEqPreGain;
+                yolkEqFilters.forEach(f => {
+                    prevNode.connect(f);
+                    prevNode = f;
+                });
+                prevNode.connect(yolkAudioCtx.destination);
+            }
+            if (yolkAudioCtx.state === 'suspended') {
+                yolkAudioCtx.resume().catch(() => {});
+            }
+
+            // Apply band gains & automatic headroom compensation to prevent clipping
+            const maxPositiveGain = eqEnabled ? Math.max(0, ...eqBands) : 0;
+            const headroomDb = maxPositiveGain > 2 ? -(maxPositiveGain * 0.42) : 0;
+            const linearPreGain = Math.pow(10, headroomDb / 20);
+            if (yolkEqPreGain) {
+                yolkEqPreGain.gain.setTargetAtTime(linearPreGain, yolkAudioCtx.currentTime, 0.03);
+            }
+            yolkEqFilters.forEach((filter, idx) => {
+                const targetGain = eqEnabled ? (eqBands[idx] || 0) : 0;
+                filter.gain.setTargetAtTime(targetGain, yolkAudioCtx.currentTime, 0.03);
+            });
+        } catch (err) {
+            console.warn('Web Audio EQ init notice:', err);
+        }
+    }
+
+    currentAudio.addEventListener('play', () => {
+        if (yolkAudioCtx && yolkAudioCtx.state === 'suspended') {
+            yolkAudioCtx.resume().catch(() => {});
+        } else if (eqEnabled && eqBands.some(g => Math.abs(g) > 0.05)) {
+            ensureWebAudioEqualizer();
+        }
+    });
+
+    const eqEnableToggleBtn = document.getElementById('eq-enable-toggle-btn');
+    const eqEnableToggleKnob = document.getElementById('eq-enable-toggle-knob');
+    const eqResetBtn = document.getElementById('eq-reset-btn');
+    const eqPresetBadge = document.getElementById('eq-active-preset-badge');
+    const eqPresetPills = document.querySelectorAll('.eq-preset-pill');
+    const eqBandSliders = document.querySelectorAll('.eq-band-slider');
+
+    function updateEqUI() {
+        localStorage.setItem('yolk_eq_enabled', eqEnabled ? 'true' : 'false');
+        localStorage.setItem('yolk_eq_preset', eqCurrentPreset);
+        localStorage.setItem('yolk_eq_bands', JSON.stringify(eqBands));
+
+        if (eqEnableToggleBtn) {
+            eqEnableToggleBtn.setAttribute('aria-checked', eqEnabled ? 'true' : 'false');
+            eqEnableToggleBtn.style.backgroundColor = eqEnabled ? '#FDE047' : 'rgba(212, 212, 216, 0.8)';
+            eqEnableToggleBtn.style.borderColor = eqEnabled ? '#FACC15' : 'rgba(161, 161, 170, 0.7)';
+        }
+        if (eqEnableToggleKnob) {
+            eqEnableToggleKnob.style.transform = eqEnabled ? 'translateX(24px)' : 'translateX(0px)';
+            eqEnableToggleKnob.style.backgroundColor = eqEnabled ? '#18181b' : '#ffffff';
+        }
+        if (eqPresetBadge) {
+            const label = !eqEnabled ? 'Off' : (EQ_PRESETS[eqCurrentPreset]?.name || 'Custom');
+            eqPresetBadge.textContent = label;
+        }
+        const bandsWrapper = document.getElementById('eq-bands-wrapper');
+        if (bandsWrapper) {
+            bandsWrapper.style.opacity = eqEnabled ? '1' : '0.45';
+            bandsWrapper.style.pointerEvents = eqEnabled ? 'auto' : 'none';
+        }
+
+        eqPresetPills.forEach(pill => {
+            const key = pill.getAttribute('data-eq-preset');
+            const isActive = eqEnabled && key === eqCurrentPreset;
+            pill.classList.toggle('bg-zinc-900', isActive);
+            pill.classList.toggle('text-white', isActive);
+            pill.classList.toggle('border-zinc-900', isActive);
+            pill.classList.toggle('font-bold', isActive);
+            pill.classList.toggle('bg-zinc-100', !isActive);
+            pill.classList.toggle('text-zinc-700', !isActive);
+            pill.classList.toggle('font-semibold', !isActive);
+        });
+
+        eqBandSliders.forEach(slider => {
+            const idx = parseInt(slider.getAttribute('data-eq-band'), 10);
+            const val = eqBands[idx] || 0;
+            slider.value = val;
+            const valEl = document.getElementById(`eq-band-val-${idx}`);
+            if (valEl) {
+                const sign = val > 0 ? '+' : '';
+                valEl.textContent = `${sign}${val % 1 === 0 ? val : val.toFixed(1)} dB`;
+            }
+        });
+
+        ensureWebAudioEqualizer();
+    }
+
+    if (eqEnableToggleBtn) {
+        eqEnableToggleBtn.addEventListener('click', () => {
+            triggerHaptic('medium');
+            eqEnabled = !eqEnabled;
+            updateEqUI();
+            showToast(eqEnabled ? 'Equalizer enabled' : 'Equalizer bypassed');
+        });
+    }
+
+    if (eqResetBtn) {
+        eqResetBtn.addEventListener('click', () => {
+            triggerHaptic('light');
+            eqEnabled = true;
+            eqCurrentPreset = 'flat';
+            eqBands = [0, 0, 0, 0, 0];
+            updateEqUI();
+            showToast('Equalizer reset to Flat');
+        });
+    }
+
+    eqPresetPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            const presetKey = pill.getAttribute('data-eq-preset');
+            if (!EQ_PRESETS[presetKey]) return;
+            triggerHaptic('selection');
+            eqEnabled = true;
+            eqCurrentPreset = presetKey;
+            eqBands = [...EQ_PRESETS[presetKey].gains];
+            updateEqUI();
+            showToast(`EQ Preset: ${EQ_PRESETS[presetKey].name}`);
+        });
+    });
+
+    eqBandSliders.forEach(slider => {
+        slider.addEventListener('input', (e) => {
+            const idx = parseInt(slider.getAttribute('data-eq-band'), 10);
+            const newVal = parseFloat(e.target.value) || 0;
+            if (Math.abs(newVal) < 0.25 && Math.abs(eqBands[idx]) >= 0.25) {
+                triggerHaptic('light');
+            }
+            eqBands[idx] = newVal;
+            eqEnabled = true;
+            eqCurrentPreset = 'custom';
+            updateEqUI();
+        });
+    });
+
+    updateEqUI();
+
+    // ==== SETTINGS PAGE: OFFLINE STORAGE & CACHE MANAGER ====
+    async function refreshStorageManagerUI() {
+        const countBadge = document.getElementById('storage-count-badge');
+        const usedLabel = document.getElementById('storage-used-label');
+        const quotaLabel = document.getElementById('storage-quota-label');
+        const barAudio = document.getElementById('storage-bar-audio');
+        const barArt = document.getElementById('storage-bar-art');
+        const audioMbEl = document.getElementById('storage-audio-mb');
+        const artMbEl = document.getElementById('storage-art-mb');
+        const orphanStatusEl = document.getElementById('storage-orphan-status');
+
+        if (!usedLabel) return;
+
+        try {
+            const allRecords = await YolkOfflineDB.getAllTracks();
+            let audioBytes = 0;
+            let extraBytes = 0;
+
+            const libraryUidSet = new Set();
+            favorites.forEach(t => { if (t) libraryUidSet.add(getTrackUid(t)); });
+            playlists.forEach(pl => {
+                if (Array.isArray(pl.tracks)) {
+                    pl.tracks.forEach(t => { if (t) libraryUidSet.add(getTrackUid(t)); });
+                }
+            });
+
+            let orphanCount = 0;
+            for (const rec of allRecords) {
+                const aSize = rec.audioBlob ? rec.audioBlob.size : (rec.size || 0);
+                const iSize = (rec.artworkBlob ? rec.artworkBlob.size : 0) + (rec.lyrics ? rec.lyrics.length * 2 : 0);
+                audioBytes += aSize;
+                extraBytes += iSize;
+                if (rec.uid && !libraryUidSet.has(rec.uid)) {
+                    orphanCount++;
+                }
+            }
+
+            const totalBytes = audioBytes + extraBytes;
+            const totalMb = (totalBytes / (1024 * 1024)).toFixed(1);
+            const audioMb = (audioBytes / (1024 * 1024)).toFixed(1);
+            const artMb = (extraBytes / (1024 * 1024)).toFixed(2);
+
+            if (countBadge) countBadge.textContent = `${allRecords.length} ${allRecords.length === 1 ? 'Song' : 'Songs'}`;
+            if (usedLabel) usedLabel.textContent = `${totalMb} MB`;
+            if (audioMbEl) audioMbEl.textContent = `${audioMb} MB`;
+            if (artMbEl) artMbEl.textContent = `${artMb} MB`;
+
+            if (orphanStatusEl) {
+                if (orphanCount > 0) {
+                    orphanStatusEl.textContent = `${orphanCount} cached ${orphanCount === 1 ? 'song' : 'songs'} not in Library`;
+                } else {
+                    orphanStatusEl.textContent = `All cached songs in Library (${libraryUidSet.size} total in Library)`;
+                }
+            }
+
+            let quotaBytes = 0;
+            if (navigator.storage && typeof navigator.storage.estimate === 'function') {
+                try {
+                    const est = await navigator.storage.estimate();
+                    quotaBytes = est.quota || 0;
+                } catch (_) {}
+            }
+
+            if (quotaLabel) {
+                if (quotaBytes > 0) {
+                    const quotaGb = (quotaBytes / (1024 * 1024 * 1024)).toFixed(1);
+                    quotaLabel.textContent = `of ~${quotaGb} GB available browser storage`;
+                } else {
+                    quotaLabel.textContent = `${allRecords.length} offline tracks stored in IndexedDB`;
+                }
+            }
+
+            if (barAudio && barArt) {
+                if (totalBytes <= 0) {
+                    barAudio.style.width = '0%';
+                    barArt.style.width = '0%';
+                } else {
+                    const audioRatio = Math.max(8, Math.round((audioBytes / totalBytes) * 100));
+                    const artRatio = Math.max(2, 100 - audioRatio);
+                    barAudio.style.width = `${audioRatio}%`;
+                    barArt.style.width = `${artRatio}%`;
+                }
+            }
+        } catch (err) {
+            console.warn('Storage manager error:', err);
+        }
+    }
+    window.refreshStorageManagerUI = refreshStorageManagerUI;
+
+    const storageSyncBtn = document.getElementById('storage-sync-library-btn');
+    const storageCleanOrphansBtn = document.getElementById('storage-clean-orphans-btn');
+    const storageClearAllBtn = document.getElementById('storage-clear-all-btn');
+
+    if (storageSyncBtn) {
+        storageSyncBtn.addEventListener('click', async () => {
+            triggerHaptic('medium');
+            const allLibTracks = [...favorites];
+            playlists.forEach(pl => {
+                if (Array.isArray(pl.tracks)) allLibTracks.push(...pl.tracks);
+            });
+            if (allLibTracks.length === 0) {
+                showToast('Your Library is empty');
+                return;
+            }
+            let missing = 0;
+            for (const t of allLibTracks) {
+                if (!(await YolkOfflineDB.isDownloaded(getTrackUid(t)))) missing++;
+            }
+            if (missing === 0) {
+                showToast('All Library songs are already downloaded offline!');
+            } else {
+                enqueueLibraryDownload(allLibTracks);
+                showToast(`Syncing ${missing} missing Library ${missing === 1 ? 'song' : 'songs'}…`);
+            }
+            refreshStorageManagerUI();
+        });
+    }
+
+    if (storageCleanOrphansBtn) {
+        storageCleanOrphansBtn.addEventListener('click', async () => {
+            triggerHaptic('light');
+            const libraryUidSet = new Set();
+            favorites.forEach(t => { if (t) libraryUidSet.add(getTrackUid(t)); });
+            playlists.forEach(pl => {
+                if (Array.isArray(pl.tracks)) {
+                    pl.tracks.forEach(t => { if (t) libraryUidSet.add(getTrackUid(t)); });
+                }
+            });
+            const allRecords = await YolkOfflineDB.getAllTracks();
+            let removed = 0;
+            for (const rec of allRecords) {
+                if (rec.uid && !libraryUidSet.has(rec.uid)) {
+                    await YolkOfflineDB.deleteTrack(rec.uid);
+                    removed++;
+                }
+            }
+            await refreshStorageManagerUI();
+            if (typeof window.refreshAllDownloadButtonsUI === 'function') window.refreshAllDownloadButtonsUI();
+            showToast(removed > 0 ? `Cleared ${removed} orphaned offline ${removed === 1 ? 'track' : 'tracks'}` : 'No orphaned cache found');
+        });
+    }
+
+    if (storageClearAllBtn) {
+        storageClearAllBtn.addEventListener('click', async () => {
+            triggerHaptic('heavy');
+            const allRecords = await YolkOfflineDB.getAllTracks();
+            if (allRecords.length === 0) {
+                showToast('No offline downloads to delete');
+                return;
+            }
+            if (!confirm(`Delete all ${allRecords.length} downloaded offline songs from this device? (Your playlists & favorites will remain intact.)`)) {
+                return;
+            }
+            _yolkDownloadQueue.length = 0;
+            for (const rec of allRecords) {
+                await YolkOfflineDB.deleteTrack(rec.uid);
+            }
+            await refreshStorageManagerUI();
+            if (typeof window.refreshAllDownloadButtonsUI === 'function') window.refreshAllDownloadButtonsUI();
+            showToast('Cleared all offline downloads');
+        });
+    }
+
+    refreshStorageManagerUI();
+
+    // ==== SHARE SONG, SHARE LYRICS & SHARE ALBUM CARD GENERATOR + NATIVE iOS SHARE SHEET ====
+    const shareCardModal = document.getElementById('share-card-modal');
+    const shareModalCloseBtn = document.getElementById('share-modal-close-btn');
+    const shareModalTitle = document.getElementById('share-modal-title');
+    const shareModalSubtitle = document.getElementById('share-modal-subtitle');
+    const shareModeTabs = document.getElementById('share-mode-tabs');
+    const shareTabSong = document.getElementById('share-tab-song');
+    const shareTabLyrics = document.getElementById('share-tab-lyrics');
+    const shareLyricsPickerSection = document.getElementById('share-lyrics-picker-section');
+    const shareLyricsPickerList = document.getElementById('share-lyrics-picker-list');
+    const shareLyricsSelectedCount = document.getElementById('share-lyrics-selected-count');
+    const shareCardCanvas = document.getElementById('share-card-canvas');
+    const shareNativeBtn = document.getElementById('share-native-btn');
+    const shareDownloadImgBtn = document.getElementById('share-download-img-btn');
+    const shareCopyLinkBtn = document.getElementById('share-copy-link-btn');
+
+    let currentShareState = {
+        mode: 'song', // 'song', 'lyrics', or 'album'
+        title: '',
+        artist: '',
+        subtitle: '',
+        artworkUrl: '',
+        shareUrl: '',
+        lyricLines: [],
+        selectedLyricIndices: [],
+        palette: null,
+        loadedCoverImg: null
+    };
+
+    function getShareDeepLinkUrl() {
+        const base = window.location.origin + window.location.pathname;
+        if (currentShareState.mode === 'album' && currentAlbumData && currentAlbumData.id) {
+            const cleanId = String(currentAlbumData.id).replace('ytm-', '');
+            return `${base}#album=${encodeURIComponent(cleanId)}`;
+        }
+        if (currentTrack) {
+            const vid = getYoutubeIdSync(currentTrack) || currentTrack.id || '';
+            const title = currentTrack.title || currentTrack.name || '';
+            const artist = currentTrack.artist_name || currentTrack.artist || '';
+            return `${base}#song=${encodeURIComponent(vid)}&t=${encodeURIComponent(title)}&a=${encodeURIComponent(artist)}`;
+        }
+        return window.location.origin;
+    }
+
+    function drawRoundedRectPath(ctx, x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+    }
+
+    function wrapCanvasText(ctx, text, maxWidth, maxLines = 3) {
+        const words = String(text || '').split(/\s+/);
+        const lines = [];
+        let cur = '';
+        for (const w of words) {
+            const test = cur ? `${cur} ${w}` : w;
+            if (ctx.measureText(test).width > maxWidth && cur) {
+                lines.push(cur);
+                cur = w;
+                if (lines.length >= maxLines) break;
+            } else {
+                cur = test;
+            }
+        }
+        if (cur && lines.length < maxLines) {
+            lines.push(cur);
+        }
+        return lines;
+    }
+
+    function renderShareCardCanvas() {
+        if (!shareCardCanvas) return;
+        const ctx = shareCardCanvas.getContext('2d');
+        const W = shareCardCanvas.width; // 1080
+        const H = shareCardCanvas.height; // 1350
+
+        ctx.clearRect(0, 0, W, H);
+
+        const pal = currentShareState.palette;
+        const c1 = pal && pal[0] ? pal[0] : { r: 24, g: 24, b: 29 };
+        const c2 = pal && pal[1] ? pal[1] : { r: 45, g: 45, b: 55 };
+        const c3 = pal && pal[2] ? pal[2] : { r: 18, g: 18, b: 22 };
+
+        // 1. Rich Multi-Stop Mesh Gradient Background
+        const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+        bgGrad.addColorStop(0, `rgb(${Math.round(c1.r * 0.72)}, ${Math.round(c1.g * 0.72)}, ${Math.round(c1.b * 0.72)})`);
+        bgGrad.addColorStop(0.52, `rgb(${Math.round(c2.r * 0.55)}, ${Math.round(c2.g * 0.55)}, ${Math.round(c2.b * 0.55)})`);
+        bgGrad.addColorStop(1, `rgb(${Math.round(c3.r * 0.35)}, ${Math.round(c3.g * 0.35)}, ${Math.round(c3.b * 0.35)})`);
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, W, H);
+
+        // Ambient radial glow
+        const radGrad = ctx.createRadialGradient(W * 0.25, H * 0.2, 40, W * 0.25, H * 0.2, W * 0.85);
+        radGrad.addColorStop(0, `rgba(${c1.r}, ${c1.g}, ${c1.b}, 0.55)`);
+        radGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = radGrad;
+        ctx.fillRect(0, 0, W, H);
+
+        // 2. Frosted Inner Glass Container
+        const cardX = 76, cardY = 76, cardW = W - 152, cardH = H - 152;
+        ctx.save();
+        drawRoundedRectPath(ctx, cardX, cardY, cardW, cardH, 64);
+        ctx.fillStyle = 'rgba(18, 18, 22, 0.44)';
+        ctx.fill();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+        ctx.stroke();
+        ctx.restore();
+
+        const img = currentShareState.loadedCoverImg;
+
+        if (currentShareState.mode === 'lyrics') {
+            // LYRICS CARD LAYOUT: Top Header (Cover + Song/Artist) + Bold Featured Lyric Lines
+            const thumbX = cardX + 72, thumbY = cardY + 76, thumbSize = 148;
+            ctx.save();
+            drawRoundedRectPath(ctx, thumbX, thumbY, thumbSize, thumbSize, 32);
+            ctx.clip();
+            if (img && img.complete && img.naturalWidth > 0) {
+                ctx.drawImage(img, thumbX, thumbY, thumbSize, thumbSize);
+            } else {
+                ctx.fillStyle = 'rgba(255,255,255,0.12)';
+                ctx.fillRect(thumbX, thumbY, thumbSize, thumbSize);
+            }
+            ctx.restore();
+
+            // Header Text
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '800 42px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
+            const titleLines = wrapCanvasText(ctx, currentShareState.title, cardW - 320, 1);
+            ctx.fillText(titleLines[0] || '', thumbX + thumbSize + 36, thumbY + 68);
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.72)';
+            ctx.font = '600 32px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
+            const artistLines = wrapCanvasText(ctx, currentShareState.artist, cardW - 320, 1);
+            ctx.fillText(artistLines[0] || '', thumbX + thumbSize + 36, thumbY + 116);
+
+            // Divider
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
+            ctx.fillRect(cardX + 72, thumbY + thumbSize + 48, cardW - 144, 2);
+
+            // Selected Lyric Lines
+            const selectedTexts = currentShareState.selectedLyricIndices
+                .map(i => currentShareState.lyricLines[i])
+                .filter(Boolean);
+            const linesToRender = selectedTexts.length > 0 ? selectedTexts : ['♪ Instrumental / Enjoy the music'];
+
+            let curY = thumbY + thumbSize + 135;
+            const maxLyricWidth = cardW - 144;
+            const fontSize = linesToRender.length >= 4 ? 50 : (linesToRender.length === 3 ? 56 : 64);
+            const lineHeight = Math.round(fontSize * 1.32);
+
+            ctx.font = `800 ${fontSize}px Inter, -apple-system, BlinkMacSystemFont, sans-serif`;
+            ctx.fillStyle = '#FFFFFF';
+
+            for (const lyricLine of linesToRender) {
+                const wrapped = wrapCanvasText(ctx, lyricLine, maxLyricWidth, 2);
+                for (const wLine of wrapped) {
+                    if (curY < cardY + cardH - 160) {
+                        ctx.fillText(wLine, cardX + 72, curY);
+                        curY += lineHeight;
+                    }
+                }
+                curY += Math.round(fontSize * 0.42);
+            }
+        } else {
+            // SONG OR ALBUM CARD LAYOUT: Large Centered Artwork + Bold Title & Artist + Badge
+            const artSize = 620;
+            const artX = Math.round((W - artSize) / 2);
+            const artY = cardY + 86;
+
+            ctx.save();
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+            ctx.shadowBlur = 48;
+            ctx.shadowOffsetY = 24;
+            drawRoundedRectPath(ctx, artX, artY, artSize, artSize, 48);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+            ctx.fill();
+            ctx.restore();
+
+            ctx.save();
+            drawRoundedRectPath(ctx, artX, artY, artSize, artSize, 48);
+            ctx.clip();
+            if (img && img.complete && img.naturalWidth > 0) {
+                ctx.drawImage(img, artX, artY, artSize, artSize);
+            } else {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+                ctx.fillRect(artX, artY, artSize, artSize);
+            }
+            ctx.restore();
+
+            // Badge Pill (SONG or ALBUM)
+            const badgeText = currentShareState.mode === 'album'
+                ? (currentShareState.subtitle || 'ALBUM').toUpperCase()
+                : 'NOW PLAYING ON YOLK!';
+            ctx.font = '800 22px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx.fillStyle = '#FACC15';
+            ctx.fillText(badgeText, artX, artY + artSize + 72);
+
+            // Title
+            ctx.font = '800 56px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx.fillStyle = '#FFFFFF';
+            const wrappedTitle = wrapCanvasText(ctx, currentShareState.title, artSize, 2);
+            let textY = artY + artSize + 140;
+            wrappedTitle.forEach(line => {
+                ctx.fillText(line, artX, textY);
+                textY += 66;
+            });
+
+            // Artist
+            ctx.font = '600 38px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+            const wrappedArtist = wrapCanvasText(ctx, currentShareState.artist, artSize, 1);
+            ctx.fillText(wrappedArtist[0] || '', artX, textY + 10);
+        }
+
+        // 3. Bottom Yolk! Branding Footer inside Card
+        const footerY = cardY + cardH - 64;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cardX + 90, footerY - 12, 16, 0, Math.PI * 2);
+        ctx.fillStyle = '#FACC15';
+        ctx.fill();
+        ctx.lineWidth = 3.5;
+        ctx.strokeStyle = '#09090b';
+        ctx.stroke();
+
+        ctx.font = '800 32px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText('Yolk!', cardX + 120, footerY);
+
+        ctx.font = '600 24px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+        ctx.textAlign = 'right';
+        ctx.fillText(currentShareState.mode === 'lyrics' ? 'Synced Lyrics' : (currentShareState.mode === 'album' ? 'Full Album' : 'Music'), cardX + cardW - 72, footerY - 2);
+        ctx.restore();
+    }
+
+    function populateShareLyricsPicker() {
+        if (!shareLyricsPickerList) return;
+        shareLyricsPickerList.innerHTML = '';
+
+        const lines = currentShareState.lyricLines;
+        if (!lines || lines.length === 0) {
+            shareLyricsPickerList.innerHTML = `<div class="py-4 text-center text-xs text-zinc-400 font-medium">No lyrics available for this track.</div>`;
+            if (shareLyricsSelectedCount) shareLyricsSelectedCount.textContent = '0/4 selected';
+            return;
+        }
+
+        if (shareLyricsSelectedCount) {
+            shareLyricsSelectedCount.textContent = `${currentShareState.selectedLyricIndices.length}/4 selected`;
+        }
+
+        lines.forEach((lineText, idx) => {
+            const isSelected = currentShareState.selectedLyricIndices.includes(idx);
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                isSelected
+                    ? 'bg-[#FDE047] text-zinc-900 border border-[#FACC15] shadow-2xs'
+                    : 'bg-white/80 text-zinc-700 hover:bg-zinc-100 border border-zinc-200/60'
+            }`;
+            btn.innerHTML = `
+                <span class="truncate">${escapeHtml(lineText)}</span>
+                <span class="text-[10px] font-extrabold shrink-0">${isSelected ? '✓' : '+'}</span>
+            `;
+            btn.addEventListener('click', () => {
+                triggerHaptic('selection');
+                const pos = currentShareState.selectedLyricIndices.indexOf(idx);
+                if (pos > -1) {
+                    currentShareState.selectedLyricIndices.splice(pos, 1);
+                } else {
+                    if (currentShareState.selectedLyricIndices.length >= 4) {
+                        currentShareState.selectedLyricIndices.shift();
+                    }
+                    currentShareState.selectedLyricIndices.push(idx);
+                    currentShareState.selectedLyricIndices.sort((a, b) => a - b);
+                }
+                populateShareLyricsPicker();
+                renderShareCardCanvas();
+            });
+            shareLyricsPickerList.appendChild(btn);
+        });
+    }
+
+    function setShareModalTab(mode) {
+        currentShareState.mode = mode;
+        if (shareTabSong && shareTabLyrics) {
+            const isSong = mode === 'song';
+            shareTabSong.className = isSong
+                ? 'py-1.5 px-3 rounded-xl text-xs font-bold bg-zinc-900 text-white shadow-xs transition-all cursor-pointer'
+                : 'py-1.5 px-3 rounded-xl text-xs font-bold text-zinc-600 hover:text-zinc-900 transition-all cursor-pointer';
+            shareTabLyrics.className = !isSong
+                ? 'py-1.5 px-3 rounded-xl text-xs font-bold bg-zinc-900 text-white shadow-xs transition-all cursor-pointer'
+                : 'py-1.5 px-3 rounded-xl text-xs font-bold text-zinc-600 hover:text-zinc-900 transition-all cursor-pointer';
+        }
+        if (shareLyricsPickerSection) {
+            shareLyricsPickerSection.classList.toggle('hidden', mode !== 'lyrics');
+            shareLyricsPickerSection.classList.toggle('flex', mode === 'lyrics');
+        }
+        renderShareCardCanvas();
+    }
+
+    function openShareModal(initialMode = 'song') {
+        if (!shareCardModal) return;
+        triggerHaptic('medium');
+
+        if (initialMode === 'album') {
+            if (!currentAlbumData) {
+                showToast('No album loaded to share');
+                return;
+            }
+            const tracks = Array.isArray(currentAlbumData.tracks) ? currentAlbumData.tracks : [];
+            const artwork = currentAlbumData.artwork_url || (tracks[0]?.artwork_url) || '';
+            currentShareState = {
+                mode: 'album',
+                title: currentAlbumData.name || 'Unknown Album',
+                artist: currentAlbumData.artist_name || 'Unknown Artist',
+                subtitle: `Album • ${tracks.length} ${tracks.length === 1 ? 'Track' : 'Tracks'}`,
+                artworkUrl: getProxyUrl(artwork, '500x500'),
+                shareUrl: '',
+                lyricLines: [],
+                selectedLyricIndices: [],
+                palette: null,
+                loadedCoverImg: null
+            };
+            currentShareState.shareUrl = getShareDeepLinkUrl();
+            if (shareModalTitle) shareModalTitle.textContent = 'Share Album';
+            if (shareModalSubtitle) shareModalSubtitle.textContent = `${currentShareState.title} • ${currentShareState.artist}`;
+            if (shareModeTabs) shareModeTabs.classList.add('hidden');
+            if (shareLyricsPickerSection) {
+                shareLyricsPickerSection.classList.add('hidden');
+                shareLyricsPickerSection.classList.remove('flex');
+            }
+        } else {
+            if (!currentTrack) {
+                showToast('Play a song first to share');
+                return;
+            }
+            const cleanLines = (parsedLyrics || [])
+                .filter(p => p.type === 'line' && p.text && p.text.trim())
+                .map(p => p.text.trim());
+
+            // Pre-select active lyric line + next line
+            let defaultSelected = [0];
+            const container = document.getElementById('lyrics-container');
+            if (container && typeof container._lastActiveIndex === 'number' && container._lastActiveIndex >= 0) {
+                const activeItem = parsedLyrics[container._lastActiveIndex];
+                if (activeItem && activeItem.text) {
+                    const foundIdx = cleanLines.indexOf(activeItem.text.trim());
+                    if (foundIdx > -1) {
+                        defaultSelected = cleanLines[foundIdx + 1] ? [foundIdx, foundIdx + 1] : [foundIdx];
+                    }
+                }
+            } else if (cleanLines.length >= 2) {
+                defaultSelected = [0, 1];
+            }
+
+            const artUrl = currentTrack._offlineArtUrl || getProxyUrl(currentTrack.artwork_url || currentTrack.image, '500x500');
+            currentShareState = {
+                mode: (initialMode === 'lyrics' && cleanLines.length > 0) ? 'lyrics' : 'song',
+                title: currentTrack.title || currentTrack.name || 'Unknown Title',
+                artist: currentTrack.artist_name || currentTrack.artist || 'Unknown Artist',
+                subtitle: 'Song',
+                artworkUrl: artUrl,
+                shareUrl: '',
+                lyricLines: cleanLines,
+                selectedLyricIndices: cleanLines.length > 0 ? defaultSelected : [],
+                palette: null,
+                loadedCoverImg: null
+            };
+            currentShareState.shareUrl = getShareDeepLinkUrl();
+            if (shareModalTitle) shareModalTitle.textContent = 'Share Song & Lyrics';
+            if (shareModalSubtitle) shareModalSubtitle.textContent = `${currentShareState.title} • ${currentShareState.artist}`;
+            if (shareModeTabs) shareModeTabs.classList.remove('hidden');
+
+            populateShareLyricsPicker();
+            setShareModalTab(currentShareState.mode);
+        }
+
+        renderShareCardCanvas();
+
+        // Load artwork & palette for canvas card
+        if (currentShareState.artworkUrl) {
+            extractArtworkPalette(currentShareState.artworkUrl, (colors) => {
+                currentShareState.palette = colors;
+                renderShareCardCanvas();
+            });
+            const coverImg = new Image();
+            const isLocal = currentShareState.artworkUrl.startsWith('data:') || currentShareState.artworkUrl.startsWith('blob:');
+            if (!isLocal) coverImg.crossOrigin = 'Anonymous';
+            let retried = false;
+            coverImg.onload = () => {
+                currentShareState.loadedCoverImg = coverImg;
+                renderShareCardCanvas();
+            };
+            coverImg.onerror = () => {
+                if (!isLocal && !retried) {
+                    retried = true;
+                    coverImg.src = `/api/proxy?url=${encodeURIComponent(currentShareState.artworkUrl)}`;
+                }
+            };
+            coverImg.src = currentShareState.artworkUrl;
+        }
+
+        shareCardModal.classList.add('active');
+    }
+    window.openShareModal = openShareModal;
+
+    function closeShareModal() {
+        if (shareCardModal) shareCardModal.classList.remove('active');
+    }
+
+    if (shareModalCloseBtn) shareModalCloseBtn.addEventListener('click', closeShareModal);
+    if (shareCardModal) {
+        shareCardModal.addEventListener('click', (e) => {
+            if (e.target === shareCardModal) closeShareModal();
+        });
+    }
+    if (shareTabSong) {
+        shareTabSong.addEventListener('click', () => {
+            triggerHaptic('selection');
+            setShareModalTab('song');
+        });
+    }
+    if (shareTabLyrics) {
+        shareTabLyrics.addEventListener('click', () => {
+            triggerHaptic('selection');
+            setShareModalTab('lyrics');
+        });
+    }
+
+    // Wire Share buttons across Now Playing, Lyrics, Bottom Player, and Album Page
+    const npShareBtn = document.getElementById('np-share-btn');
+    const npShareLyricsBtn = document.getElementById('np-share-lyrics-btn');
+    const npMobileMoreShareBtn = document.getElementById('np-mobile-more-share-btn');
+    const lyricsMoreShareLyricsBtn = document.getElementById('lyrics-more-share-lyrics-btn');
+    const bpMoreShareBtn = document.getElementById('bp-more-share-btn');
+    const albumShareBtn = document.getElementById('album-share-btn');
+
+    if (npShareBtn) npShareBtn.addEventListener('click', () => openShareModal(isLyricsUserEnabled ? 'lyrics' : 'song'));
+    if (npShareLyricsBtn) npShareLyricsBtn.addEventListener('click', () => openShareModal('lyrics'));
+    if (npMobileMoreShareBtn) {
+        npMobileMoreShareBtn.addEventListener('click', () => {
+            if (npMobileMorePopover) npMobileMorePopover.classList.add('hidden');
+            openShareModal(isLyricsUserEnabled ? 'lyrics' : 'song');
+        });
+    }
+    if (lyricsMoreShareLyricsBtn) {
+        lyricsMoreShareLyricsBtn.addEventListener('click', () => {
+            if (lyricsBarMorePopover) lyricsBarMorePopover.classList.add('hidden');
+            openShareModal('lyrics');
+        });
+    }
+    if (bpMoreShareBtn) {
+        bpMoreShareBtn.addEventListener('click', () => {
+            if (bpMobileMorePopover) bpMobileMorePopover.classList.add('hidden');
+            openShareModal('song');
+        });
+    }
+    if (albumShareBtn) {
+        albumShareBtn.addEventListener('click', () => openShareModal('album'));
+    }
+
+    // Native iOS Share Sheet / Image Download / Copy Link Actions
+    if (shareNativeBtn) {
+        shareNativeBtn.addEventListener('click', async () => {
+            triggerHaptic('medium');
+            if (!shareCardCanvas) return;
+
+            const shareTitle = `${currentShareState.title} — ${currentShareState.artist}`;
+            let shareText = `Listen to "${currentShareState.title}" by ${currentShareState.artist} on Yolk!`;
+            if (currentShareState.mode === 'lyrics' && currentShareState.selectedLyricIndices.length > 0) {
+                const quote = currentShareState.selectedLyricIndices.map(i => currentShareState.lyricLines[i]).filter(Boolean).join('\n');
+                shareText = `"${quote}"\n— ${currentShareState.title} by ${currentShareState.artist}`;
+            } else if (currentShareState.mode === 'album') {
+                shareText = `Check out the album "${currentShareState.title}" by ${currentShareState.artist} on Yolk!`;
+            }
+
+            try {
+                const blob = await new Promise(resolve => shareCardCanvas.toBlob(resolve, 'image/png'));
+                if (blob && navigator.share) {
+                    const file = new File([blob], `yolk-${currentShareState.mode}-card.png`, { type: 'image/png' });
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                            files: [file],
+                            title: shareTitle,
+                            text: shareText,
+                            url: currentShareState.shareUrl
+                        });
+                        return;
+                    }
+                    await navigator.share({
+                        title: shareTitle,
+                        text: shareText,
+                        url: currentShareState.shareUrl
+                    });
+                    return;
+                }
+            } catch (err) {
+                if (err && err.name === 'AbortError') return;
+            }
+
+            // Fallback: copy link & trigger image download
+            if (shareDownloadImgBtn) shareDownloadImgBtn.click();
+        });
+    }
+
+    if (shareDownloadImgBtn) {
+        shareDownloadImgBtn.addEventListener('click', () => {
+            triggerHaptic('light');
+            if (!shareCardCanvas) return;
+            const link = document.createElement('a');
+            const safeName = (currentShareState.title || 'yolk-card').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            link.download = `${safeName}-${currentShareState.mode}.png`;
+            link.href = shareCardCanvas.toDataURL('image/png');
+            link.click();
+            showToast('Saved Share Card image!');
+        });
+    }
+
+    if (shareCopyLinkBtn) {
+        shareCopyLinkBtn.addEventListener('click', async () => {
+            triggerHaptic('light');
+            const url = currentShareState.shareUrl || window.location.href;
+            try {
+                await navigator.clipboard.writeText(url);
+                showToast('Share link copied to clipboard!');
+            } catch (_) {
+                showToast(url);
+            }
+        });
+    }
+
+    // Deep Link Receiver (#song=<id>&t=<title>&a=<artist> or #album=<id>)
+    window.handleYolkDeepLink = async function (rawHash) {
+        if (!rawHash) return;
+        if (rawHash.startsWith('album=')) {
+            const albumId = decodeURIComponent(rawHash.replace('album=', '').split('&')[0]);
+            if (albumId) {
+                loadAlbumView(albumId);
+            }
+            return;
+        }
+        if (rawHash.startsWith('song=')) {
+            const params = new URLSearchParams(rawHash);
+            const songId = params.get('song') || '';
+            const title = params.get('t') || 'Shared Song';
+            const artist = params.get('a') || 'Artist';
+            window.location.hash = '#now-playing';
+            if (songId) {
+                const trackObj = {
+                    id: `ytm-${songId}`,
+                    youtube_id: songId,
+                    videoId: songId,
+                    title,
+                    artist_name: artist,
+                    artwork_url: `https://i.ytimg.com/vi/${songId}/hqdefault.jpg`
+                };
+                currentQueue = [trackObj];
+                currentQueueIndex = 0;
+                playTrack(trackObj);
+            }
+        }
+    };
+
+    // Check if opened directly via a shared #song= or #album= deep link
+    const initialRawHash = window.location.hash.replace('#', '');
+    if (initialRawHash.startsWith('song=') || initialRawHash.startsWith('album=')) {
+        setTimeout(() => window.handleYolkDeepLink(initialRawHash), 150);
     }
 
     // Initialize saved theme mode on startup
