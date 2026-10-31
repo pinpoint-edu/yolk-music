@@ -264,7 +264,7 @@
             width: 100% !important;
             height: 100dvh !important;
             max-height: 100dvh !important;
-            transition: opacity 0.4s ease;
+            transition: opacity 0.15s ease-out;
             background-color: #FCFBF8;
         }
         body.dark-mode .page {
@@ -767,7 +767,7 @@
             stroke: #ffffff !important;
         }
 
-        /* Downloaded Offline Badge: Solid Black/White Circle behind Checkmark */
+        /* Downloaded Offline Badge: Solid Black in Light Mode, Dark Emerald Green in Dark Mode */
         .downloaded-badge-icon .dl-circle {
             fill: #18181b !important;
         }
@@ -775,10 +775,10 @@
             stroke: #ffffff !important;
         }
         body.dark-mode .downloaded-badge-icon .dl-circle {
-            fill: #ffffff !important;
+            fill: #065f46 !important;
         }
         body.dark-mode .downloaded-badge-icon .dl-check {
-            stroke: #18181b !important;
+            stroke: #ffffff !important;
         }
 
         /* Desktop Bottom Bar Theme Colors — Solid Black in Light Mode, Solid White in Dark Mode (No Grey!) */
@@ -974,6 +974,8 @@
 
         @media (max-width: 639px) {
             #bottom-player.is-loading {
+                left: 1.25rem !important;
+                transform: none !important;
                 width: 56px !important;
                 max-width: 56px !important;
                 min-width: 56px !important;
@@ -984,7 +986,6 @@
                 align-items: center !important;
                 overflow: hidden !important;
                 box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
-                transform: translate(-50%, 0) !important;
             }
             #bottom-player.is-loading #bottom-player-content {
                 opacity: 0 !important;
@@ -994,6 +995,39 @@
                 opacity: 1 !important;
                 pointer-events: auto !important;
             }
+        }
+
+        /* While track is loading / cycling, only Next & Prev buttons are active; disable other UI so user doesn't get stuck */
+        #bottom-player.is-track-loading #bottom-player-info,
+        #bottom-player.is-track-loading #bottom-player-play-pause,
+        #bottom-player.is-track-loading #bottom-player-fav-btn,
+        #bottom-player.is-track-loading #bottom-player-add-btn,
+        #bottom-player.is-track-loading #bottom-player-download-btn,
+        #bottom-player.is-track-loading #bp-queue-btn,
+        #bottom-player.is-track-loading #bottom-player-progress-bar,
+        #bottom-player.is-track-loading .bp-more-btn-wrapper,
+        #page-now-playing.is-track-loading #now-playing-play-pause,
+        #page-now-playing.is-track-loading #now-playing-fav-btn,
+        #page-now-playing.is-track-loading #np-lyrics-btn,
+        #page-now-playing.is-track-loading #np-download-btn,
+        #page-now-playing.is-track-loading #np-save-btn,
+        #page-now-playing.is-track-loading #now-playing-progress-bar,
+        #np-lyrics-floating-bar.is-track-loading #lyrics-bar-play-pause,
+        #np-lyrics-floating-bar.is-track-loading #lyrics-bar-fav-btn,
+        #np-lyrics-floating-bar.is-track-loading #lyrics-bar-info {
+            pointer-events: none !important;
+            opacity: 0.6;
+        }
+
+        #bottom-player.is-track-loading #bottom-player-next,
+        #bottom-player.is-track-loading #bottom-player-prev,
+        #page-now-playing.is-track-loading #now-playing-next,
+        #page-now-playing.is-track-loading #now-playing-prev,
+        #np-lyrics-floating-bar.is-track-loading #lyrics-bar-next,
+        #np-lyrics-floating-bar.is-track-loading #lyrics-bar-prev {
+            pointer-events: auto !important;
+            cursor: pointer !important;
+            opacity: 1 !important;
         }
 
         @media (min-width: 640px) {
@@ -1761,20 +1795,30 @@
             color: #fca5a5 !important;
             border-color: rgba(239, 68, 68, 0.35) !important;
         }
-        /* Translucent More (•••) Popovers matching Bottom Bar */
+        /* Translucent More (•••) Popovers with Opening/Closing Animation & Background Blur */
         .more-glass-popover {
-            background-color: rgba(255, 255, 255, 0.65) !important;
-            backdrop-filter: blur(28px) saturate(180%) !important;
-            -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
-            border: 1px solid rgba(255, 255, 255, 0.72) !important;
-            box-shadow: 0 20px 44px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+            background-color: rgba(255, 255, 255, 0.76) !important;
+            backdrop-filter: blur(32px) saturate(190%) !important;
+            -webkit-backdrop-filter: blur(32px) saturate(190%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.82) !important;
+            box-shadow: 0 20px 48px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+            transform-origin: bottom right;
+            transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+            opacity: 0;
+            transform: scale(0.92) translateY(8px);
+            pointer-events: none;
+        }
+        .more-glass-popover.popover-open {
+            opacity: 1 !important;
+            transform: scale(1) translateY(0) !important;
+            pointer-events: auto !important;
         }
         body.dark-mode .more-glass-popover {
-            background-color: rgba(20, 20, 25, 0.68) !important;
-            backdrop-filter: blur(28px) saturate(180%) !important;
-            -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
-            border: 1px solid rgba(255, 255, 255, 0.14) !important;
-            box-shadow: 0 20px 48px rgba(0, 0, 0, 0.55) !important;
+            background-color: rgba(20, 20, 25, 0.82) !important;
+            backdrop-filter: blur(32px) saturate(190%) !important;
+            -webkit-backdrop-filter: blur(32px) saturate(190%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.16) !important;
+            box-shadow: 0 20px 52px rgba(0, 0, 0, 0.65) !important;
         }
         body.dark-mode .more-glass-popover button {
             color: #f4f4f5 !important;
@@ -2105,7 +2149,7 @@
                         <button id="np-mobile-more-btn" class="sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="More options">
                             <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
                         </button>
-                        <div id="np-mobile-more-popover" class="more-glass-popover hidden absolute right-0 bottom-full mb-4 w-56 rounded-2xl p-2 flex flex-col gap-1 z-50">
+                        <div id="np-mobile-more-popover" class="more-glass-popover hidden absolute -right-2 sm:right-0 bottom-full mb-3 w-56 rounded-2xl p-2 flex flex-col gap-1 z-50">
                             <button id="np-mobile-more-share-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
                                 <span>Share Song / Lyrics</span>
@@ -2159,12 +2203,14 @@
 
         <!-- Floating Lyrics Bottom Bar (Active during lyrics mode on phone only) -->
         <div id="np-lyrics-floating-bar" class="fixed bottom-6 left-1/2 w-[calc(100%-2rem)] max-w-2xl h-[60px] border border-white/70 shadow-[0_16px_40px_rgba(0,0,0,0.12)] rounded-full px-4 box-border flex justify-between items-center z-40 hidden md:!hidden">
-            <!-- Left: Mini Cover + Title + Artist -->
-            <div class="flex items-center gap-3 min-w-0 flex-1 cursor-pointer" id="lyrics-bar-info">
-                <img id="lyrics-bar-thumb" src="" alt="Cover" class="w-10 h-10 rounded-xl object-cover border border-black/10 shrink-0">
-                <div class="min-w-0 flex flex-col justify-center">
-                    <span id="lyrics-bar-title" class="text-xs font-black text-black truncate leading-tight">Title</span>
-                    <span id="lyrics-bar-artist" class="text-[11px] font-semibold text-black/70 truncate">Artist</span>
+            <!-- Left: Mini Cover + Title + Artist (Clamped strictly inside container during swipe) -->
+            <div class="flex items-center gap-3 min-w-0 flex-1 cursor-pointer overflow-hidden h-full" id="lyrics-bar-info-container">
+                <div class="flex items-center gap-3 w-full h-full" id="lyrics-bar-info">
+                    <img id="lyrics-bar-thumb" src="" alt="Cover" class="w-10 h-10 rounded-xl object-cover border border-black/10 shrink-0">
+                    <div class="min-w-0 flex flex-col justify-center">
+                        <span id="lyrics-bar-title" class="text-xs font-black text-black truncate leading-tight">Title</span>
+                        <span id="lyrics-bar-artist" class="text-[11px] font-semibold text-black/70 truncate">Artist</span>
+                    </div>
                 </div>
             </div>
 
@@ -2198,7 +2244,7 @@
                     </button>
 
                     <!-- More Popover Container -->
-                    <div id="lyrics-bar-more-popover" class="more-glass-popover hidden absolute right-0 bottom-full mb-4 w-56 rounded-2xl p-2 flex flex-col gap-1 z-50">
+                    <div id="lyrics-bar-more-popover" class="more-glass-popover hidden absolute -right-2 sm:right-0 bottom-full mb-3 w-56 rounded-2xl p-2 flex flex-col gap-1 z-50">
                         <button id="lyrics-more-share-lyrics-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
                             <span>Share Lyrics Card</span>
@@ -2266,22 +2312,34 @@
                     </div>
                 </div>
 
-                <!-- Artist Albums Section -->
+                <!-- Artist Albums Section (Appears before songs; top 4 with redirect button in top right) -->
                 <div id="artist-albums-section" class="bg-white/80 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-4 sm:p-7 shadow-sm mb-5 sm:mb-6 hidden">
                     <div class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-3.5 px-2 flex justify-between items-center border-b border-zinc-100 pb-2">
                         <span>Albums & Releases</span>
-                        <span id="artist-albums-count" class="text-[10px] font-semibold text-zinc-400"></span>
+                        <div class="flex items-center gap-2">
+                            <span id="artist-albums-count" class="text-[10px] font-semibold text-zinc-400"></span>
+                            <button id="artist-albums-redirect-btn" class="hidden items-center gap-1 text-[11px] font-bold text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-colors cursor-pointer py-0.5 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10" title="View all albums">
+                                <span id="artist-albums-redirect-text">See All Albums</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                            </button>
+                        </div>
                     </div>
                     <div id="artist-albums-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-4">
                         <!-- Populated by JS -->
                     </div>
                 </div>
 
-                <!-- Artist Tracks Container -->
+                <!-- Artist Tracks Container (Top 10 songs with redirect button in top right) -->
                 <div class="bg-white/80 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-4 sm:p-7 shadow-sm">
                     <div class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-4 px-3 flex justify-between items-center border-b border-zinc-100 pb-2">
                         <span>Popular Tracks</span>
-                        <span id="artist-tracks-header-count" class="hidden"></span>
+                        <div class="flex items-center gap-2">
+                            <span id="artist-tracks-header-count" class="hidden"></span>
+                            <button id="artist-tracks-redirect-btn" class="hidden items-center gap-1 text-[11px] font-bold text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-colors cursor-pointer py-0.5 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10" title="View all songs">
+                                <span id="artist-tracks-redirect-text">See All Songs</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                            </button>
+                        </div>
                     </div>
                     <div id="artist-track-list" class="flex flex-col gap-1.5">
                         <!-- Populated by JS -->
@@ -2621,17 +2679,19 @@
                 </a>
             </nav>
 
-            <!-- Track info (Always shows artist on desktop & mobile) -->
-            <div class="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0 sm:min-w-[180px] h-full cursor-pointer pr-1" id="bottom-player-info">
-                <div class="bottom-thumb w-10 h-10 bg-zinc-100 border border-zinc-200 rounded-[12px] shrink-0 flex items-center justify-center shadow-inner overflow-hidden relative">
-                    <img id="bottom-player-img" src="" alt="Cover" class="w-full h-full object-cover hidden" referrerpolicy="no-referrer">
-                    <div id="bottom-player-placeholder" class="flex items-center justify-center text-zinc-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+            <!-- Track info (Always shows artist on desktop & mobile, clamped strictly in container during swipe) -->
+            <div class="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0 sm:min-w-[180px] h-full cursor-pointer pr-1 overflow-hidden" id="bottom-player-info-container">
+                <div class="flex items-center gap-2.5 sm:gap-3 w-full h-full" id="bottom-player-info">
+                    <div class="bottom-thumb w-10 h-10 bg-zinc-100 border border-zinc-200 rounded-[12px] shrink-0 flex items-center justify-center shadow-inner overflow-hidden relative">
+                        <img id="bottom-player-img" src="" alt="Cover" class="w-full h-full object-cover hidden" referrerpolicy="no-referrer">
+                        <div id="bottom-player-placeholder" class="flex items-center justify-center text-zinc-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                        </div>
                     </div>
-                </div>
-                <div class="flex flex-col justify-center min-w-0 pr-1">
-                    <span id="bottom-player-title" class="text-xs sm:text-sm font-semibold text-zinc-800 leading-none truncate">Not Playing</span>
-                    <span id="bottom-player-artist" class="player-artist text-[10px] sm:text-[11px] font-medium text-zinc-500 leading-none truncate mt-0.5 hover:text-zinc-900 hover:underline">Select a song to start</span>
+                    <div class="flex flex-col justify-center min-w-0 pr-1">
+                        <span id="bottom-player-title" class="text-xs sm:text-sm font-semibold text-zinc-800 leading-none truncate">Not Playing</span>
+                        <span id="bottom-player-artist" class="player-artist text-[10px] sm:text-[11px] font-medium text-zinc-500 leading-none truncate mt-0.5 hover:text-zinc-900 hover:underline">Select a song to start</span>
+                    </div>
                 </div>
             </div>
 
@@ -2667,7 +2727,7 @@
                     <button id="bp-mobile-more-btn" class="sleek-hover text-zinc-600 hover:text-zinc-950 p-2 rounded-full hover:bg-black/5 cursor-pointer shrink-0" title="More options">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
                     </button>
-                    <div id="bp-mobile-more-popover" class="more-glass-popover hidden absolute right-0 bottom-full mb-4 w-56 rounded-2xl p-2 flex flex-col gap-1 z-50">
+                    <div id="bp-mobile-more-popover" class="more-glass-popover hidden absolute -right-2 sm:right-0 bottom-full mb-3 w-56 rounded-2xl p-2 flex flex-col gap-1 z-50">
                         <button id="bp-more-share-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
                             <span>Share Song / Lyrics</span>
@@ -3095,6 +3155,9 @@
                 'now-playing': document.getElementById('bp-nav-now-playing')
             };
 
+            let currentNavHash = null;
+            let lastLibrarySubPage = null;
+
             function navigate() {
                 window.scrollTo(0, 0);
                 let rawHash = window.location.hash.replace('#', '') || 'search';
@@ -3113,8 +3176,29 @@
                     }, 60);
                     return;
                 }
+
+                // If navigating to Library from Now Playing, preserve active album or artist view
+                if (rawHash === 'library' && currentNavHash === 'now-playing') {
+                    if (lastLibrarySubPage === 'album' && document.getElementById('album-hero-name')?.textContent && document.getElementById('album-hero-name').textContent !== 'Loading Album...') {
+                        window.location.hash = '#album';
+                        return;
+                    } else if (lastLibrarySubPage === 'artist' && document.getElementById('artist-hero-name')?.textContent && document.getElementById('artist-hero-name').textContent !== 'Artist Name') {
+                        window.location.hash = '#artist';
+                        return;
+                    }
+                }
+
                 let hash = rawHash;
                 if (!pages[hash]) hash = 'search';
+
+                if (hash === 'album') {
+                    lastLibrarySubPage = 'album';
+                } else if (hash === 'artist') {
+                    lastLibrarySubPage = 'artist';
+                } else if (hash === 'library' && currentNavHash !== 'now-playing') {
+                    lastLibrarySubPage = null;
+                }
+                currentNavHash = hash;
 
                 if (hash === 'settings' && typeof window.refreshStorageManagerUI === 'function') {
                     window.refreshStorageManagerUI();
@@ -3150,9 +3234,11 @@
                 if (hash === 'now-playing') {
                     const npTintEl = document.getElementById('now-playing-bg-tint');
                     if (npTintEl && npTintEl.style.background) npTintEl.style.opacity = '1';
-                    if (typeof window.updateNowPlayingBgArt === 'function') window.updateNowPlayingBgArt();
-                    if (typeof window.syncLyricsOnNavigate === 'function') window.syncLyricsOnNavigate();
-                    if (typeof window.updateLyricsVisibilityUI === 'function') window.updateLyricsVisibilityUI();
+                    requestAnimationFrame(() => {
+                        if (typeof window.updateNowPlayingBgArt === 'function') window.updateNowPlayingBgArt();
+                        if (typeof window.syncLyricsOnNavigate === 'function') window.syncLyricsOnNavigate();
+                        if (typeof window.updateLyricsVisibilityUI === 'function') window.updateLyricsVisibilityUI();
+                    });
                 } else {
                     const npTintEl = document.getElementById('now-playing-bg-tint');
                     if (npTintEl) npTintEl.style.opacity = '0';
@@ -3194,15 +3280,14 @@
                     window.updateTopNavTint();
                 }
 
-                // Update pages
+                // Update pages instantaneously without frame delays
                 Object.keys(pages).forEach(key => {
                     if (key === hash) {
                         pages[key].classList.add('active');
-                        // Small delay to allow display:block to apply before opacity transitions
-                        setTimeout(() => pages[key].style.opacity = 1, 10);
+                        pages[key].style.opacity = '1';
                     } else {
                         pages[key].classList.remove('active');
-                        pages[key].style.opacity = 0;
+                        pages[key].style.opacity = '0';
                     }
                 });
             }
@@ -3247,6 +3332,24 @@
                             window.triggerHaptic('selection');
                         }
                         const currentHash = window.location.hash.replace('#', '') || 'search';
+                        if (key === 'library') {
+                            if (currentHash === 'now-playing') {
+                                if (lastLibrarySubPage === 'album' && document.getElementById('album-hero-name')?.textContent && document.getElementById('album-hero-name').textContent !== 'Loading Album...') {
+                                    e.preventDefault();
+                                    window.location.hash = '#album';
+                                    return;
+                                } else if (lastLibrarySubPage === 'artist' && document.getElementById('artist-hero-name')?.textContent && document.getElementById('artist-hero-name').textContent !== 'Artist Name') {
+                                    e.preventDefault();
+                                    window.location.hash = '#artist';
+                                    return;
+                                }
+                            } else if (currentHash === 'album' || currentHash === 'artist') {
+                                e.preventDefault();
+                                lastLibrarySubPage = null;
+                                window.location.hash = '#library';
+                                return;
+                            }
+                        }
                         if (currentHash === key) {
                             e.preventDefault();
                             if (key === 'search' && window.innerWidth < 640) {
