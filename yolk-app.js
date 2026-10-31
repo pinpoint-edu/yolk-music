@@ -8628,6 +8628,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return '';
     }
 
+    let pipLastRenderedTitle = '';
+
     function ensurePipCoverLoaded() {
         const src = currentTrack
             ? (currentTrack._offlineArtUrl || getProxyUrl(currentTrack.artwork_url || currentTrack.image, '300x300'))
@@ -8647,6 +8649,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!pipWindowRef || pipWindowRef.closed) return;
         const doc = pipWindowRef.document;
         const titleEl = doc.getElementById('pip-title');
+        const titleWrap = doc.getElementById('pip-title-wrap');
         const artistEl = doc.getElementById('pip-artist');
         const lyricEl = doc.getElementById('pip-lyric');
         const imgEl = doc.getElementById('pip-cover');
@@ -8664,7 +8667,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const dur = getPlaybackDuration();
         const pct = dur > 0 ? Math.max(0, Math.min(100, (cur / dur) * 100)) : 0;
 
-        if (titleEl && titleEl.textContent !== tTitle) titleEl.textContent = tTitle;
+        if (titleEl && (titleEl.textContent !== tTitle || tTitle !== pipLastRenderedTitle)) {
+            pipLastRenderedTitle = tTitle;
+            titleEl.textContent = tTitle;
+            if (titleWrap) {
+                // Determine whether title overflows and compute parabola marquee parameters
+                const overflowDist = titleEl.scrollWidth - titleWrap.clientWidth;
+                if (overflowDist > 4) {
+                    const panDist = overflowDist + 10;
+                    titleEl.style.setProperty('--pan-dist', `${panDist}px`);
+                    // Average reading speed ~24px/sec; duration scaled so mid-point parabola is comfortable to read
+                    const oneWayPanSec = Math.max(2.6, panDist / 24);
+                    const totalCycleSec = (oneWayPanSec / 0.34).toFixed(2);
+                    titleEl.style.setProperty('--pan-duration', `${totalCycleSec}s`);
+                    if (!titleEl.classList.contains('pip-title-marquee')) {
+                        titleEl.classList.add('pip-title-marquee');
+                    }
+                } else {
+                    titleEl.classList.remove('pip-title-marquee');
+                    titleEl.style.transform = 'none';
+                }
+            }
+        }
         if (artistEl && artistEl.textContent !== tArtist) artistEl.textContent = tArtist;
         if (imgEl && coverSrc && imgEl.getAttribute('data-src') !== coverSrc) {
             imgEl.setAttribute('data-src', coverSrc);
@@ -8679,16 +8703,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (durEl) durEl.textContent = formatTime(dur);
         if (playBtn) {
             playBtn.innerHTML = isPlaying
-                ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`
-                : `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="margin-left:2px"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
+                ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`
+                : `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="margin-left:2px"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
         }
         if (favBtn && currentTrack) {
             const fav = isFavorite(currentTrack.id);
-            favBtn.style.color = fav ? '#FACC15' : '#ffffff';
+            favBtn.style.color = fav ? '#FACC15' : 'rgba(255,255,255,0.7)';
         }
         if (bodyEl && currentCoverColor) {
             const { r, g, b } = currentCoverColor;
-            bodyEl.style.background = `linear-gradient(160deg, rgb(${Math.round(r * 0.55)}, ${Math.round(g * 0.55)}, ${Math.round(b * 0.55)}) 0%, #111115 100%)`;
+            bodyEl.style.background = `linear-gradient(135deg, rgb(${Math.round(r * 0.45)}, ${Math.round(g * 0.45)}, ${Math.round(b * 0.45)}) 0%, #111115 100%)`;
         }
 
         const pipVizCanvas = doc.getElementById('pip-viz-canvas');
@@ -8707,17 +8731,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const c = currentCoverColor || { r: 36, g: 36, b: 44 };
         const grad = ctx.createLinearGradient(0, 0, W, H);
-        grad.addColorStop(0, `rgb(${Math.round(c.r * 0.65)}, ${Math.round(c.g * 0.65)}, ${Math.round(c.b * 0.65)})`);
+        grad.addColorStop(0, `rgb(${Math.round(c.r * 0.55)}, ${Math.round(c.g * 0.55)}, ${Math.round(c.b * 0.55)})`);
         grad.addColorStop(1, '#0e0e12');
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, W, H);
 
-        // Cover Art
-        const artSize = 230;
-        const artX = (W - artSize) / 2;
-        const artY = 38;
+        // Horizontal Layout: Cover art on the left
+        const artSize = 130;
+        const artX = 20;
+        const artY = 20;
         ctx.save();
-        drawRoundedRectPath(ctx, artX, artY, artSize, artSize, 28);
+        drawRoundedRectPath(ctx, artX, artY, artSize, artSize, 16);
         ctx.clip();
         if (pipCoverImage && pipCoverImage.complete && pipCoverImage.naturalWidth > 0) {
             ctx.drawImage(pipCoverImage, artX, artY, artSize, artSize);
@@ -8727,54 +8751,132 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         ctx.restore();
 
-        // Title & Artist
+        // Right side info & controls: Title in top right, play/prev/next controls below
+        const contentX = 168;
+        const contentW = W - contentX - 20; // 352px
         const tTitle = currentTrack ? (currentTrack.title || currentTrack.name || 'Not Playing') : 'Not Playing';
         const tArtist = currentTrack ? (currentTrack.artist_name || currentTrack.artist || 'Yolk!') : 'Yolk!';
-        ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'center';
-        ctx.font = '800 28px -apple-system, BlinkMacSystemFont, Inter, sans-serif';
-        ctx.fillText(tTitle.slice(0, 32), W / 2, 312);
 
+        ctx.font = '800 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        const titleMeasure = ctx.measureText(tTitle).width;
+
+        // Marquee animation with parabola panning speed if title is long
+        if (titleMeasure > contentW) {
+            const panDist = titleMeasure - contentW + 16;
+            const cycleSec = Math.max(7, (panDist / 24) / 0.34);
+            const phase = ((performance.now() / 1000) % cycleSec) / cycleSec;
+            let panX = 0;
+            // Parabola velocity profile / smoothstep position: 3p^2 - 2p^3
+            if (phase < 0.14) {
+                panX = 0;
+            } else if (phase < 0.48) {
+                const p = (phase - 0.14) / 0.34;
+                panX = -panDist * (3 * p * p - 2 * p * p * p);
+            } else if (phase < 0.62) {
+                panX = -panDist;
+            } else if (phase < 0.96) {
+                const p = (phase - 0.62) / 0.34;
+                panX = -panDist * (1 - (3 * p * p - 2 * p * p * p));
+            } else {
+                panX = 0;
+            }
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(contentX, 16, contentW, 34);
+            ctx.clip();
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'left';
+            ctx.fillText(tTitle, contentX + panX, 42);
+            ctx.restore();
+        } else {
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'left';
+            ctx.fillText(tTitle, contentX, 42);
+        }
+
+        // Artist Name
         ctx.fillStyle = 'rgba(255,255,255,0.72)';
-        ctx.font = '600 20px -apple-system, BlinkMacSystemFont, Inter, sans-serif';
-        ctx.fillText(tArtist.slice(0, 38), W / 2, 342);
-
-        // Synced Lyric Line
-        const lyric = getActiveLyricTextForPiP();
-        if (lyric) {
-            ctx.fillStyle = '#FDE047';
-            ctx.font = '700 22px -apple-system, BlinkMacSystemFont, Inter, sans-serif';
-            ctx.fillText(lyric.slice(0, 40), W / 2, 386);
-        }
-
-        // Visualizer Bars inside PiP
-        const numBars = 24;
-        const barW = 8;
-        const gap = 5;
-        const totalW = numBars * barW + (numBars - 1) * gap;
-        const startX = (W - totalW) / 2;
-        const baseMidY = 432;
-        ctx.fillStyle = 'rgba(253, 224, 71, 0.88)';
-        for (let i = 0; i < numBars; i++) {
-            const v = _vizSmoothBins[i] || 0.1;
-            const bH = Math.max(5, v * 36);
-            drawRoundedRectPath(ctx, startX + i * (barW + gap), baseMidY - bH / 2, barW, bH, 4);
-            ctx.fill();
-        }
+        ctx.font = '600 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(tArtist.slice(0, 42), contentX, 66);
 
         // Progress Bar
         const cur = getPlaybackCurrentTime();
         const dur = getPlaybackDuration();
         const pct = dur > 0 ? Math.max(0, Math.min(1, cur / dur)) : 0;
-        const barX = 56, barY = 478, barLen = W - 112;
-        ctx.fillStyle = 'rgba(255,255,255,0.22)';
-        drawRoundedRectPath(ctx, barX, barY, barLen, 8, 4);
+        const progY = 88;
+        ctx.fillStyle = 'rgba(255,255,255,0.2)';
+        drawRoundedRectPath(ctx, contentX, progY, contentW, 4, 2);
         ctx.fill();
         if (pct > 0) {
             ctx.fillStyle = '#ffffff';
-            drawRoundedRectPath(ctx, barX, barY, Math.max(8, barLen * pct), 8, 4);
+            drawRoundedRectPath(ctx, contentX, progY, Math.max(4, contentW * pct), 4, 2);
             ctx.fill();
         }
+
+        // Controls Row below title: Previous, Play/Pause, Next Track
+        const ctrlY = 126;
+
+        // Previous Button
+        ctx.fillStyle = 'rgba(255,255,255,0.14)';
+        ctx.beginPath();
+        ctx.arc(contentX + 16, ctrlY, 16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(contentX + 22, ctrlY - 6);
+        ctx.lineTo(contentX + 15, ctrlY);
+        ctx.lineTo(contentX + 22, ctrlY + 6);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(contentX + 12, ctrlY - 6);
+        ctx.lineTo(contentX + 12, ctrlY + 6);
+        ctx.stroke();
+
+        // Play / Pause Center Button
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(contentX + 58, ctrlY, 18, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#09090b';
+        if (isPlaying) {
+            ctx.fillRect(contentX + 53, ctrlY - 6.5, 3.5, 13);
+            ctx.fillRect(contentX + 59.5, ctrlY - 6.5, 3.5, 13);
+        } else {
+            ctx.beginPath();
+            ctx.moveTo(contentX + 55, ctrlY - 7);
+            ctx.lineTo(contentX + 65, ctrlY);
+            ctx.lineTo(contentX + 55, ctrlY + 7);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Next Button
+        ctx.fillStyle = 'rgba(255,255,255,0.14)';
+        ctx.beginPath();
+        ctx.arc(contentX + 100, ctrlY, 16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(contentX + 94, ctrlY - 6);
+        ctx.lineTo(contentX + 101, ctrlY);
+        ctx.lineTo(contentX + 94, ctrlY + 6);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(contentX + 104, ctrlY - 6);
+        ctx.lineTo(contentX + 104, ctrlY + 6);
+        ctx.stroke();
+
+        // Time display on the right
+        ctx.fillStyle = 'rgba(255,255,255,0.65)';
+        ctx.font = '700 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(`${formatTime(cur)} / ${formatTime(dur)}`, contentX + contentW, ctrlY + 4);
     }
 
     async function togglePictureInPicture() {
@@ -8793,42 +8895,74 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
                 const pipWin = await window.documentPictureInPicture.requestWindow({
-                    width: 340,
-                    height: 430
+                    width: 380,
+                    height: 125
                 });
                 pipWindowRef = pipWin;
                 const doc = pipWin.document;
                 doc.head.innerHTML = `
                     <style>
-                        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; font-family: -apple-system, BlinkMacSystemFont, 'Geist', sans-serif; }
+                        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; font-family: -apple-system, BlinkMacSystemFont, 'Geist', 'Inter', sans-serif; }
                         body {
                             width: 100vw; height: 100vh; overflow: hidden;
-                            background: linear-gradient(160deg, #27272a 0%, #09090b 100%);
-                            color: #ffffff; display: flex; flex-direction: column;
-                            align-items: center; justify-content: space-between;
-                            padding: 16px 18px;
+                            background: linear-gradient(135deg, #27272a 0%, #09090b 100%);
+                            color: #ffffff; display: flex; flex-direction: row;
+                            align-items: center; justify-content: flex-start;
+                            padding: 12px 14px; gap: 14px;
                         }
                         .cover-wrap {
-                            width: 148px; height: 148px; border-radius: 22px; overflow: hidden;
-                            box-shadow: 0 14px 34px rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.22);
-                            background: rgba(255,255,255,0.08); flex-shrink: 0;
+                            width: 86px; height: 86px; border-radius: 14px; overflow: hidden;
+                            box-shadow: 0 10px 24px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.18);
+                            background: rgba(255,255,255,0.08); flex-shrink: 0; position: relative;
                         }
                         .cover-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
-                        .meta { width: 100%; text-align: center; margin-top: 8px; }
-                        #pip-title { font-size: 16px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-                        #pip-artist { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.72); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-                        #pip-lyric {
-                            font-size: 12px; font-weight: 700; color: #FDE047; margin-top: 6px;
-                            min-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+                        .pip-right-col {
+                            flex: 1; min-width: 0; display: flex; flex-direction: column;
+                            justify-content: space-between; height: 86px;
                         }
-                        .prog-wrap { width: 100%; margin-top: 6px; }
+                        .pip-title-wrap {
+                            width: 100%; overflow: hidden; white-space: nowrap; position: relative;
+                            mask-image: linear-gradient(to right, black calc(100% - 12px), transparent 100%);
+                            -webkit-mask-image: linear-gradient(to right, black calc(100% - 12px), transparent 100%);
+                        }
+                        #pip-title {
+                            font-size: 15px; font-weight: 800; display: inline-block; white-space: nowrap; color: #ffffff;
+                            will-change: transform;
+                        }
+                        /* Marquee animation with parabola panning speed: slowly speeds up, fastest in middle, slows down when reaching start */
+                        @keyframes pipMarqueeParabola {
+                            0%, 14% {
+                                transform: translateX(0px);
+                            }
+                            48% {
+                                transform: translateX(calc(-1 * var(--pan-dist, 0px)));
+                            }
+                            62% {
+                                transform: translateX(calc(-1 * var(--pan-dist, 0px)));
+                            }
+                            96%, 100% {
+                                transform: translateX(0px);
+                            }
+                        }
+                        .pip-title-marquee {
+                            animation: pipMarqueeParabola var(--pan-duration, 8s) cubic-bezier(0.37, 0, 0.63, 1) infinite;
+                        }
+                        #pip-artist {
+                            font-size: 11.5px; font-weight: 600; color: rgba(255,255,255,0.72);
+                            margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+                        }
+                        .prog-wrap { width: 100%; margin: 2px 0; }
                         #pip-prog-bar {
-                            width: 100%; height: 6px; background: rgba(255,255,255,0.2);
+                            width: 100%; height: 4px; background: rgba(255,255,255,0.2);
                             border-radius: 999px; overflow: hidden; cursor: pointer; position: relative;
                         }
                         #pip-prog-fill { height: 100%; width: 0%; background: #ffffff; border-radius: 999px; }
-                        .times { display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.65); margin-top: 4px; }
-                        .controls { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 6px; width: 100%; }
+                        .pip-bottom-row {
+                            display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 2px;
+                        }
+                        .pip-controls {
+                            display: flex; align-items: center; gap: 8px;
+                        }
                         button {
                             background: none; border: none; color: #ffffff; cursor: pointer;
                             display: flex; align-items: center; justify-content: center;
@@ -8836,30 +8970,45 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         button:hover { transform: scale(1.1); }
                         button:active { transform: scale(0.94); }
+                        .icon-btn {
+                            width: 30px; height: 30px; border-radius: 999px; background: rgba(255,255,255,0.12);
+                        }
+                        .icon-btn:hover { background: rgba(255,255,255,0.22); }
                         #pip-play {
-                            width: 46px; height: 46px; border-radius: 999px;
+                            width: 34px; height: 34px; border-radius: 999px;
                             background: #ffffff; color: #09090b;
-                            box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+                            box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+                        }
+                        #pip-fav {
+                            width: 26px; height: 26px; border-radius: 999px; background: transparent; color: #ffffff;
+                        }
+                        .times {
+                            font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.65);
+                            white-space: nowrap; margin-left: 6px;
                         }
                     </style>
                 `;
                 doc.body.innerHTML = `
                     <div class="cover-wrap"><img id="pip-cover" src="" alt="Cover"></div>
-                    <canvas id="pip-viz-canvas" width="220" height="24" style="width:220px;height:24px;margin-top:6px;"></canvas>
-                    <div class="meta">
-                        <div id="pip-title">Not Playing</div>
-                        <div id="pip-artist">Yolk!</div>
-                        <div id="pip-lyric"></div>
-                    </div>
-                    <div class="prog-wrap">
-                        <div id="pip-prog-bar"><div id="pip-prog-fill"></div></div>
-                        <div class="times"><span id="pip-cur">0:00</span><span id="pip-dur">0:00</span></div>
-                    </div>
-                    <div class="controls">
-                        <button id="pip-fav" title="Favorite"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
-                        <button id="pip-prev" title="Previous"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg></button>
-                        <button id="pip-play" title="Play/Pause"></button>
-                        <button id="pip-next" title="Next"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg></button>
+                    <div class="pip-right-col">
+                        <div>
+                            <div class="pip-title-wrap">
+                                <span id="pip-title">Not Playing</span>
+                            </div>
+                            <div id="pip-artist">Yolk!</div>
+                        </div>
+                        <div class="prog-wrap">
+                            <div id="pip-prog-bar"><div id="pip-prog-fill"></div></div>
+                        </div>
+                        <div class="pip-bottom-row">
+                            <div class="pip-controls">
+                                <button id="pip-prev" class="icon-btn" title="Previous Track"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg></button>
+                                <button id="pip-play" title="Play/Pause"></button>
+                                <button id="pip-next" class="icon-btn" title="Next Track"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg></button>
+                                <button id="pip-fav" title="Favorite"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+                            </div>
+                            <div class="times"><span id="pip-cur">0:00</span> / <span id="pip-dur">0:00</span></div>
+                        </div>
                     </div>
                 `;
                 doc.getElementById('pip-play').onclick = () => togglePlayPause();
@@ -8875,6 +9024,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const dur = getPlaybackDuration();
                     if (dur > 0) seekToSeconds(ratio * dur);
                 };
+                pipLastRenderedTitle = '';
                 updateDocumentPipDOM();
                 return;
             } catch (err) {
@@ -8890,9 +9040,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (!pipStreamCanvas) {
                 pipStreamCanvas = document.createElement('canvas');
-                pipStreamCanvas.width = 520;
-                pipStreamCanvas.height = 520;
             }
+            pipStreamCanvas.width = 540;
+            pipStreamCanvas.height = 170;
             renderFallbackVideoPipCanvas();
             if (!pipVideoEl) {
                 pipVideoEl = document.createElement('video');

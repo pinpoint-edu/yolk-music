@@ -473,17 +473,24 @@
                 background: transparent !important;
             }
             #smallLogo {
-                padding: 6px 14px 6px 10px;
-                border-radius: 9999px;
+                padding: 0 !important;
                 border: none !important;
+                background: transparent !important;
+                box-shadow: none !important;
                 backdrop-filter: none !important;
                 -webkit-backdrop-filter: none !important;
-                background: radial-gradient(ellipse 110% 90% at 45% 50%, rgba(255, 253, 245, 0.90) 0%, rgba(255, 252, 240, 0.58) 45%, rgba(255, 252, 240, 0.18) 75%, rgba(255, 252, 240, 0) 100%) !important;
-                box-shadow: 0 0 35px 15px rgba(255, 253, 245, 0.72) !important;
             }
             body.dark-mode #smallLogo {
-                background: radial-gradient(ellipse 110% 90% at 45% 50%, rgba(255, 253, 245, 0.20) 0%, rgba(255, 252, 240, 0.09) 50%, rgba(255, 252, 240, 0) 100%) !important;
-                box-shadow: 0 0 35px 12px rgba(255, 253, 245, 0.14) !important;
+                background: transparent !important;
+                box-shadow: none !important;
+            }
+            #smallLogo-icon-glow {
+                background: radial-gradient(circle, rgba(255, 253, 245, 0.95) 0%, rgba(255, 252, 240, 0.55) 50%, rgba(255, 252, 240, 0) 100%) !important;
+                box-shadow: 0 0 22px 8px rgba(255, 253, 245, 0.75) !important;
+            }
+            body.dark-mode #smallLogo-icon-glow {
+                background: radial-gradient(circle, rgba(255, 253, 245, 0.30) 0%, rgba(255, 252, 240, 0.10) 50%, rgba(255, 252, 240, 0) 100%) !important;
+                box-shadow: 0 0 18px 6px rgba(255, 253, 245, 0.18) !important;
             }
         }
 
@@ -896,34 +903,42 @@
             cursor: none !important;
         }
 
-        /* Now Playing Icon Contrast & Subtle Halos:
-           - On Light Backgrounds: small subtle black radial gradients behind every icon.
-           - On Dark Backgrounds in Light Mode: subtle white glows behind dark icons to ensure high contrast.
-           - On Dark Backgrounds in Dark Mode: white icons already have high contrast against dark bg, so no white glow.
-        */
-        #now-playing-container.np-bg-light .np-left-col button.sleek-hover:not(#now-playing-play-pause):not(.lyrics-glossy-btn),
-        #now-playing-container.np-bg-light #np-lyrics-btn {
-            background: radial-gradient(circle, rgba(0, 0, 0, 0.16) 0%, rgba(0, 0, 0, 0.05) 55%, transparent 75%) !important;
+        /* Now Playing Icon Buttons: Frosted, slightly lighter translucent backgrounds with blur matching the bottom bar */
+        #now-playing-container .np-left-col button.sleek-hover:not(#now-playing-play-pause):not(.lyrics-glossy-btn) {
+            background: rgba(255, 255, 255, 0.65) !important;
+            backdrop-filter: blur(16px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.55) !important;
             border-radius: 9999px !important;
-            box-shadow: 0 0 12px 3px rgba(0, 0, 0, 0.08) !important;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06) !important;
         }
-        #now-playing-container.np-bg-light #now-playing-play-pause {
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22), 0 0 16px 4px rgba(0, 0, 0, 0.12) !important;
+        #now-playing-container #np-lyrics-btn {
+            background: rgba(255, 255, 255, 0.72) !important;
+            backdrop-filter: blur(16px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.65) !important;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06) !important;
+        }
+        #now-playing-container #now-playing-play-pause {
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22), 0 0 16px 4px rgba(0, 0, 0, 0.08) !important;
         }
 
-        body:not(.dark-mode) #now-playing-container.np-bg-dark .np-left-col button.sleek-hover:not(#now-playing-play-pause):not(.lyrics-glossy-btn),
-        body:not(.dark-mode) #now-playing-container.np-bg-dark #np-lyrics-btn {
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.12) 55%, transparent 75%) !important;
-            border-radius: 9999px !important;
-            box-shadow: 0 0 16px 6px rgba(255, 255, 255, 0.22) !important;
+        /* In Dark Mode: Lighter translucent surface matching dark mode bottom bar */
+        body.dark-mode #now-playing-container .np-left-col button.sleek-hover:not(#now-playing-play-pause):not(.lyrics-glossy-btn) {
+            background: rgba(39, 39, 42, 0.65) !important;
+            backdrop-filter: blur(16px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+            color: #f4f4f5 !important;
         }
-        body:not(.dark-mode) #now-playing-container.np-bg-dark #now-playing-play-pause {
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 18px 6px rgba(255, 255, 255, 0.18) !important;
-        }
-
-        body.dark-mode #now-playing-container.np-bg-dark .np-left-col button.sleek-hover:not(#now-playing-play-pause):not(.lyrics-glossy-btn) {
-            background: transparent !important;
-            box-shadow: none !important;
+        body.dark-mode #now-playing-container #np-lyrics-btn {
+            background: rgba(39, 39, 42, 0.72) !important;
+            backdrop-filter: blur(16px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.14) !important;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+            color: #f4f4f5 !important;
         }
 
         /* Bottom Player Morphing Animation & Hover Expansion */
@@ -1882,9 +1897,12 @@
         <p class="text-xs font-medium text-zinc-500 mt-1 max-w-xs">Rotate your phone back to portrait to view Yolk!</p>
     </div>
 
-    <!-- Small Top-Left Logo -->
-    <div id="smallLogo" class="fixed top-5 left-4 sm:top-7 sm:left-8 z-40 flex items-center gap-2 cursor-pointer pointer-events-auto select-none transition-transform hover:scale-105 active:scale-95" title="Return to Home">
-        <img src="/yolk-circle.png" alt="" class="w-6 h-6 object-contain shrink-0 pointer-events-none select-none">
+    <!-- Small Top-Left Logo (Glow only behind the icon, no gradient around the entire container) -->
+    <div id="smallLogo" class="fixed top-5 left-4 sm:top-7 sm:left-8 z-40 flex items-center gap-2.5 cursor-pointer pointer-events-auto select-none transition-transform hover:scale-105 active:scale-95" title="Return to Home">
+        <div class="relative flex items-center justify-center shrink-0 w-7 h-7">
+            <div id="smallLogo-icon-glow" class="absolute inset-0 -m-1 rounded-full pointer-events-none"></div>
+            <img src="/yolk-circle.png" alt="" class="w-6 h-6 object-contain relative z-10 pointer-events-none select-none">
+        </div>
         <span class="text-xl font-bold text-black tracking-tight">Yolk!</span>
     </div>
 
@@ -2673,14 +2691,14 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                     <span class="text-xs font-bold hidden md:inline">Settings</span>
                 </a>
-                <a href="#now-playing" id="bp-nav-now-playing" title="Now Playing" aria-label="Now Playing" class="sleek-hover nav-hidden px-3 h-9 shrink-0 flex items-center justify-center gap-1.5 rounded-full text-zinc-600 sleek-transition">
+                <a href="#now-playing" id="bp-nav-now-playing" title="Now Playing" aria-label="Now Playing" class="sleek-hover nav-hidden px-3 h-9 shrink-0 flex items-center justify-center gap-1.5 rounded-full text-zinc-600 sleek-transition whitespace-nowrap">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10v3"></path><path d="M6 6v11"></path><path d="M10 3v18"></path><path d="M14 8v7"></path><path d="M18 5v13"></path><path d="M22 10v3"></path></svg>
-                    <span class="text-xs font-bold hidden md:inline">Now Playing</span>
+                    <span class="text-xs font-bold whitespace-nowrap">Now Playing</span>
                 </a>
             </nav>
 
             <!-- Track info (Always shows artist on desktop & mobile, clamped strictly in container during swipe) -->
-            <div class="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0 sm:min-w-[180px] h-full cursor-pointer pr-1 overflow-hidden" id="bottom-player-info-container">
+            <div class="flex items-center gap-2.5 sm:gap-3 flex-initial min-w-0 max-w-[280px] sm:max-w-[380px] md:max-w-[480px] shrink h-full cursor-pointer pr-1 overflow-hidden" id="bottom-player-info-container">
                 <div class="flex items-center gap-2.5 sm:gap-3 w-full h-full" id="bottom-player-info">
                     <div class="bottom-thumb w-10 h-10 bg-zinc-100 border border-zinc-200 rounded-[12px] shrink-0 flex items-center justify-center shadow-inner overflow-hidden relative">
                         <img id="bottom-player-img" src="" alt="Cover" class="w-full h-full object-cover hidden" referrerpolicy="no-referrer">
@@ -2694,6 +2712,9 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Adjustable negative space between song info on the left and controls/queue on the right -->
+            <div id="bp-negative-spacer" class="flex-1 min-w-2 sm:min-w-4 pointer-events-none"></div>
 
             <!-- Center & Right: Unified Controls & Audio Cluster (No awkward gaps! Download button and Audio Bar pushed together) -->
             <div class="flex items-center justify-end gap-1 sm:gap-2.5 shrink-0">
