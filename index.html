@@ -854,6 +854,78 @@
             }
         }
 
+        /* Now Playing Idle Inactivity Mode — Fades peripheral UI when cursor / touch is inactive */
+        #bottom-player,
+        #top-nav-bar,
+        #np-lyrics-floating-bar,
+        #np-lyrics-header-row,
+        #np-share-lyrics-btn,
+        #lyrics-badge {
+            transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
+
+        body[data-page="now-playing"].np-user-idle #bottom-player {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transform: translate(-50%, 16px) !important;
+        }
+
+        body[data-page="now-playing"].np-user-idle #top-nav-bar {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transform: translateY(-16px) !important;
+        }
+
+        body[data-page="now-playing"].np-user-idle #np-lyrics-floating-bar {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transform: translateX(-50%) translateY(20px) !important;
+        }
+
+        body[data-page="now-playing"].np-user-idle #np-lyrics-header-row,
+        body[data-page="now-playing"].np-user-idle #np-share-lyrics-btn,
+        body[data-page="now-playing"].np-user-idle #lyrics-badge {
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
+        body[data-page="now-playing"].np-user-idle #page-now-playing {
+            cursor: none !important;
+        }
+        body[data-page="now-playing"].np-user-idle #page-now-playing * {
+            cursor: none !important;
+        }
+
+        /* Now Playing Icon Contrast & Subtle Halos:
+           - On Light Backgrounds: small subtle black radial gradients behind every icon.
+           - On Dark Backgrounds in Light Mode: subtle white glows behind dark icons to ensure high contrast.
+           - On Dark Backgrounds in Dark Mode: white icons already have high contrast against dark bg, so no white glow.
+        */
+        #now-playing-container.np-bg-light .np-left-col button.sleek-hover:not(#now-playing-play-pause):not(.lyrics-glossy-btn),
+        #now-playing-container.np-bg-light #np-lyrics-btn {
+            background: radial-gradient(circle, rgba(0, 0, 0, 0.16) 0%, rgba(0, 0, 0, 0.05) 55%, transparent 75%) !important;
+            border-radius: 9999px !important;
+            box-shadow: 0 0 12px 3px rgba(0, 0, 0, 0.08) !important;
+        }
+        #now-playing-container.np-bg-light #now-playing-play-pause {
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22), 0 0 16px 4px rgba(0, 0, 0, 0.12) !important;
+        }
+
+        body:not(.dark-mode) #now-playing-container.np-bg-dark .np-left-col button.sleek-hover:not(#now-playing-play-pause):not(.lyrics-glossy-btn),
+        body:not(.dark-mode) #now-playing-container.np-bg-dark #np-lyrics-btn {
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.12) 55%, transparent 75%) !important;
+            border-radius: 9999px !important;
+            box-shadow: 0 0 16px 6px rgba(255, 255, 255, 0.22) !important;
+        }
+        body:not(.dark-mode) #now-playing-container.np-bg-dark #now-playing-play-pause {
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 18px 6px rgba(255, 255, 255, 0.18) !important;
+        }
+
+        body.dark-mode #now-playing-container.np-bg-dark .np-left-col button.sleek-hover:not(#now-playing-play-pause):not(.lyrics-glossy-btn) {
+            background: transparent !important;
+            box-shadow: none !important;
+        }
+
         /* Bottom Player Morphing Animation & Hover Expansion */
         #bottom-player {
             translate: none !important;
@@ -2065,7 +2137,7 @@
 
             <!-- Right Side: Invisible, Expansive Synced Lyrics Container -->
             <div id="np-lyrics-col" class="np-right-col">
-                <div class="flex items-center justify-between mb-3 shrink-0 select-none px-2">
+                <div id="np-lyrics-header-row" class="flex items-center justify-between mb-3 shrink-0 select-none px-2">
                     <span class="text-[11px] uppercase font-black tracking-widest text-black/70">Lyrics</span>
                     <div class="flex items-center gap-2">
                         <button id="np-share-lyrics-btn" type="button" class="bubbly-hover inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-white/55 backdrop-blur-md text-black border border-white/75 shadow-xs hover:bg-white/80 cursor-pointer transition-all" title="Share Lyrics Card">
@@ -3157,6 +3229,10 @@
                     const lyricsEl = document.getElementById('lyrics-container');
                     if (lyricsEl) lyricsEl.scrollTo({ top: 0, behavior: 'smooth' });
                     window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+
+                if (typeof window.resetNowPlayingIdleTimer === 'function') {
+                    window.resetNowPlayingIdleTimer();
                 }
             }
 

@@ -885,8 +885,9 @@ const YolkOfflineDB = {
             try {
                 const trackName = track.title || track.name || '';
                 const artistName = track.artist_name || track.artist || '';
+                const albumName = track.album_name || track.album || '';
                 const durSec = track.duration ? (track.duration > 1000 ? track.duration / 1000 : track.duration) : 0;
-                const lyrUrl = `/api/music-api?endpoint=lyrics&id=${encodeURIComponent(videoId)}&title=${encodeURIComponent(trackName)}&artist=${encodeURIComponent(artistName)}&duration=${Math.round(durSec)}`;
+                const lyrUrl = `/api/music-api?endpoint=lyrics&id=${encodeURIComponent(videoId)}&title=${encodeURIComponent(trackName)}&artist=${encodeURIComponent(artistName)}&duration=${Math.round(durSec)}&album=${encodeURIComponent(albumName)}`;
                 const lyrRes = await fetch(lyrUrl);
                 if (lyrRes.ok) {
                     const lyrData = await lyrRes.json();
@@ -4142,6 +4143,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 tintEl.style.opacity = '1';
             }
         }
+        updateNowPlayingIconContrast(r, g, b);
         updateTopNavTint();
     }
 
@@ -4322,10 +4324,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const lyricsId = track.youtube_id || track.videoId || (track.id ? String(track.id).replace('ytm-', '') : '');
         const trackName = track.title || track.name || '';
         const artistName = track.artist_name || track.artist || '';
+        const albumName = track.album_name || track.album || '';
         const durSec = track.duration ? (track.duration > 1000 ? track.duration / 1000 : track.duration) : 0;
 
         try {
-            const url = `${API_BASE}?endpoint=lyrics&id=${encodeURIComponent(lyricsId)}&title=${encodeURIComponent(trackName)}&artist=${encodeURIComponent(artistName)}&duration=${Math.round(durSec)}`;
+            const url = `${API_BASE}?endpoint=lyrics&id=${encodeURIComponent(lyricsId)}&title=${encodeURIComponent(trackName)}&artist=${encodeURIComponent(artistName)}&duration=${Math.round(durSec)}&album=${encodeURIComponent(albumName)}`;
             const res = await fetch(url);
             if (currentLyricsTrackId !== uid) return;
 
@@ -5119,6 +5122,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 meshEl.style.background = '';
                 if (fadeEl) fadeEl.style.opacity = '0';
                 if (bgWrapper) bgWrapper.style.backgroundColor = defaultBg;
+                updateNowPlayingIconContrast();
                 return;
             }
         }
@@ -5159,10 +5163,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         currentCoverColor = { r: blendR, g: blendG, b: blendB };
+        updateNowPlayingIconContrast(blendR, blendG, blendB);
         if (typeof updateTopNavTint === 'function') {
             updateTopNavTint();
         }
     }
+
+    function updateNowPlayingIconContrast(r, g, b) {
+        const npContainer = document.getElementById('now-playing-container');
+        if (!npContainer) return;
+        const isDark = document.body.classList.contains('dark-mode');
+        let lum;
+        if (r !== undefined && g !== undefined && b !== undefined) {
+            lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        } else {
+            lum = isDark ? 0.08 : 0.95;
+        }
+
+        if (lum >= 0.52) {
+            npContainer.classList.add('np-bg-light');
+            npContainer.classList.remove('np-bg-dark');
+        } else {
+            npContainer.classList.add('np-bg-dark');
+            npContainer.classList.remove('np-bg-light');
+        }
+    }
+    window.updateNowPlayingIconContrast = updateNowPlayingIconContrast;
 
     function applyPlaylistMultiTint(colors) {
         if (!currentPlaylistContextId || currentPlaylistContextId === 'favorites' || currentPlaylistContextId === 'downloaded') {
@@ -7178,6 +7204,13 @@ document.addEventListener('DOMContentLoaded', () => {
         updateLibraryButtons();
         updateNowPlayingBgArt();
         updateTopNavTint();
+        if (typeof updateNowPlayingIconContrast === 'function') {
+            if (currentCoverColor) {
+                updateNowPlayingIconContrast(currentCoverColor.r, currentCoverColor.g, currentCoverColor.b);
+            } else {
+                updateNowPlayingIconContrast();
+            }
+        }
 
         if (currentPlaylistTintRgb && currentPlaylistContextId && currentPlaylistContextId !== 'favorites') {
             applyPlaylistThemeUI(currentPlaylistTintRgb.r, currentPlaylistTintRgb.g, currentPlaylistTintRgb.b);
@@ -8783,6 +8816,43 @@ document.addEventListener('DOMContentLoaded', () => {
     renderLibrary();
     updateLibraryButtons();
     updateNowPlayingNavVisibility(!!currentTrack);
+
+    // Now Playing Inactivity / Idle Auto-Hide
+    let nowPlayingIdleTimeout = null;
+
+    function resetNowPlayingIdleTimer() {
+        const page = document.body.getAttribute('data-page');
+        if (page !== 'now-playing') {
+            if (document.body.classList.contains('np-user-idle')) {
+                document.body.classList.remove('np-user-idle');
+            }
+            if (nowPlayingIdleTimeout) {
+                clearTimeout(nowPlayingIdleTimeout);
+                nowPlayingIdleTimeout = null;
+            }
+            return;
+        }
+
+        if (document.body.classList.contains('np-user-idle')) {
+            document.body.classList.remove('np-user-idle');
+        }
+
+        if (nowPlayingIdleTimeout) {
+            clearTimeout(nowPlayingIdleTimeout);
+        }
+
+        nowPlayingIdleTimeout = setTimeout(() => {
+            if (document.body.getAttribute('data-page') === 'now-playing') {
+                document.body.classList.add('np-user-idle');
+            }
+        }, 3500);
+    }
+    window.resetNowPlayingIdleTimer = resetNowPlayingIdleTimer;
+
+    ['mousemove', 'mousedown', 'keydown', 'touchstart', 'touchmove', 'wheel', 'pointermove'].forEach(evt => {
+        window.addEventListener(evt, resetNowPlayingIdleTimer, { passive: true });
+    });
+    resetNowPlayingIdleTimer();
 
     // Automatically ensure all tracks in Library (Favorites + Playlists) are downloaded offline
     setTimeout(() => {
