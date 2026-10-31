@@ -76,6 +76,16 @@ dynamicStyle.innerHTML = `
         transform: translateY(0) !important;
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
     }
+    body.dark-mode .song-row-card {
+        background-color: #16161a !important;
+        border-color: rgba(63, 63, 70, 0.55) !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
+    }
+    body.dark-mode .song-row-card:hover {
+        background-color: #1c1c22 !important;
+        border-color: rgba(82, 82, 91, 0.85) !important;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+    }
 
     .hidden-force {
         opacity: 0 !important;
@@ -458,9 +468,10 @@ function showToast(msg) {
         iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
     }
 
+    const isDark = document.body.classList.contains('dark-mode');
     toast.innerHTML = `
         ${iconSvg}
-        <span class="text-xs font-bold text-zinc-900 tracking-tight select-none">${escapeHtml(msg)}</span>
+        <span class="text-xs font-bold tracking-tight select-none" style="color: ${isDark ? '#f4f4f5' : '#18181b'};">${escapeHtml(msg)}</span>
     `;
 
     toast.style.cssText = `
@@ -469,14 +480,14 @@ function showToast(msg) {
         left: 50%;
         transform: translate(-50%, -24px) scale(0.92);
         opacity: 0;
-        background: rgba(255, 255, 255, 0.90);
+        background: ${isDark ? 'rgba(24, 24, 29, 0.92)' : 'rgba(255, 255, 255, 0.90)'};
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
-        color: #18181b;
+        color: ${isDark ? '#f4f4f5' : '#18181b'};
         padding: 9px 18px;
         border-radius: 9999px;
-        border: 1px solid rgba(228, 228, 231, 0.85);
-        box-shadow: 0 14px 34px -4px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.04);
+        border: 1px solid ${isDark ? 'rgba(63, 63, 70, 0.85)' : 'rgba(228, 228, 231, 0.85)'};
+        box-shadow: ${isDark ? '0 14px 34px -4px rgba(0, 0, 0, 0.55)' : '0 14px 34px -4px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.04)'};
         z-index: 9999;
         pointer-events: none;
         display: flex;
@@ -527,6 +538,8 @@ let downloadProgressDismissTimeout = null;
 function updateDownloadProgressUI({ title, percent, receivedBytes, totalBytes, statusText, isDone, isError, errorMessage }) {
     const isNowPlaying = document.body.dataset.page === 'now-playing' || window.location.hash === '#now-playing';
     const bottomPos = isNowPlaying ? '20px' : '90px';
+    const isDark = document.body.classList.contains('dark-mode');
+    const textCol = isDark ? '#f4f4f5' : '#18181b';
 
     if (!downloadProgressEl) {
         downloadProgressEl = document.createElement('div');
@@ -537,15 +550,15 @@ function updateDownloadProgressUI({ title, percent, receivedBytes, totalBytes, s
             right: 20px;
             left: auto;
             z-index: 9999;
-            background: rgba(255, 255, 255, 0.92);
+            background: ${isDark ? 'rgba(24, 24, 29, 0.94)' : 'rgba(255, 255, 255, 0.92)'};
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(228, 228, 231, 0.9);
+            border: 1px solid ${isDark ? 'rgba(63, 63, 70, 0.85)' : 'rgba(228, 228, 231, 0.9)'};
             border-radius: 9999px;
             padding: 8px 14px;
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04);
+            box-shadow: ${isDark ? '0 12px 30px rgba(0, 0, 0, 0.5)' : '0 12px 30px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04)'};
             max-width: calc(100vw - 32px);
-            color: #18181b;
+            color: ${textCol};
             display: inline-flex;
             align-items: center;
             gap: 8px;
@@ -567,6 +580,9 @@ function updateDownloadProgressUI({ title, percent, receivedBytes, totalBytes, s
         downloadProgressEl.style.bottom = bottomPos;
         downloadProgressEl.style.right = '20px';
         downloadProgressEl.style.left = 'auto';
+        downloadProgressEl.style.background = isDark ? 'rgba(24, 24, 29, 0.94)' : 'rgba(255, 255, 255, 0.92)';
+        downloadProgressEl.style.borderColor = isDark ? 'rgba(63, 63, 70, 0.85)' : 'rgba(228, 228, 231, 0.9)';
+        downloadProgressEl.style.color = textCol;
     }
 
     if (downloadProgressDismissTimeout) {
@@ -592,8 +608,8 @@ function updateDownloadProgressUI({ title, percent, receivedBytes, totalBytes, s
             <svg style="width: 15px; height: 15px; color: #10b981; flex-shrink: 0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>
             </svg>
-            <span style="max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #18181b;">${escapeHtml(title)}</span>
-            <span style="font-size: 11px; font-weight: 700; color: #059669; flex-shrink: 0;">✓ Saved</span>
+            <span style="max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: ${textCol};">${escapeHtml(title)}</span>
+            <span style="font-size: 11px; font-weight: 700; color: #10b981; flex-shrink: 0;">✓ Saved</span>
         `;
         downloadProgressDismissTimeout = setTimeout(() => {
             dismissDownloadProgressUI();
@@ -606,16 +622,16 @@ function updateDownloadProgressUI({ title, percent, receivedBytes, totalBytes, s
     const barWidth = pct !== null ? `${pct}%` : '50%';
 
     downloadProgressEl.innerHTML = `
-        <svg style="width: 14px; height: 14px; color: #0284c7; flex-shrink: 0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <svg style="width: 14px; height: 14px; color: #38bdf8; flex-shrink: 0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
             <line x1="12" y1="15" x2="12" y2="3"></line>
         </svg>
-        <span style="max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #18181b;">${escapeHtml(title)}</span>
-        <div style="width: 36px; background: rgba(0, 0, 0, 0.08); border-radius: 9999px; height: 4px; overflow: hidden; flex-shrink: 0;">
+        <span style="max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: ${textCol};">${escapeHtml(title)}</span>
+        <div style="width: 36px; background: ${isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(0, 0, 0, 0.08)'}; border-radius: 9999px; height: 4px; overflow: hidden; flex-shrink: 0;">
             <div style="background: linear-gradient(90deg, #0284c7, #38bdf8); height: 100%; border-radius: 9999px; width: ${barWidth}; transition: width 0.15s ease;"></div>
         </div>
-        <span style="font-family: monospace; font-size: 11px; font-weight: 700; color: #0284c7; flex-shrink: 0;">${pctLabel}</span>
+        <span style="font-family: monospace; font-size: 11px; font-weight: 700; color: #38bdf8; flex-shrink: 0;">${pctLabel}</span>
     `;
 }
 
@@ -1346,7 +1362,7 @@ document.addEventListener('DOMContentLoaded', () => {
             bpVolumeIcon.innerHTML = getVolumeIconSvg(currentVolume, 'currentColor', '2');
         }
         if (npVolumeIcon) {
-            npVolumeIcon.innerHTML = getVolumeIconSvg(currentVolume, '#000000', '2.2');
+            npVolumeIcon.innerHTML = getVolumeIconSvg(currentVolume, 'currentColor', '2.2');
         }
     }
 
@@ -1672,6 +1688,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 clearCollapseTimeout = setTimeout(() => {
                     if (searchInput && !searchInput.value.trim()) {
                         document.body.classList.remove('is-searching');
+                        const ps = document.getElementById('page-search');
+                        if (ps) ps.scrollTop = 0;
+                        window.scrollTo(0, 0);
                         if (searchTabsContainer) {
                             searchTabsContainer.classList.add('hidden');
                             searchTabsContainer.classList.remove('flex');
@@ -1685,9 +1704,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Click outside search block collapses search state back to center immediately
         document.addEventListener('click', (e) => {
-            if (searchInput && !searchInput.value.trim() && !e.target.closest('#search-block')) {
+            if (
+                searchInput &&
+                !searchInput.value.trim() &&
+                !currentSearchQuery &&
+                !e.target.closest('#search-block') &&
+                !e.target.closest('#main-header') &&
+                !e.target.closest('#bottom-player') &&
+                !e.target.closest('.modal-overlay')
+            ) {
                 clearTimeout(clearCollapseTimeout);
                 document.body.classList.remove('is-searching');
+                const ps = document.getElementById('page-search');
+                if (ps) ps.scrollTop = 0;
+                window.scrollTo(0, 0);
                 hideRecentSearches();
                 if (searchTabsContainer) {
                     searchTabsContainer.classList.add('hidden');
@@ -2255,7 +2285,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
                 </button>
                 <button class="favorite-btn text-zinc-900 hover:scale-110 transition-transform p-1.5 rounded-full hover:bg-zinc-100 cursor-pointer" title="Favorite">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="${isFavorite(track.id) ? '#18181b' : 'none'}" stroke="#18181b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="${isFavorite(track.id) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                 </button>
                 ${onRemoveClick ? `
                 <button class="remove-btn text-zinc-400 hover:text-red-500 transition-colors p-1.5 rounded-full hover:bg-red-50 cursor-pointer" title="Remove from playlist">
@@ -2726,6 +2756,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (offlineItem && offlineItem.audioBlob) {
                 if (offlineItem.artworkBlob) {
                     const localCoverUrl = URL.createObjectURL(offlineItem.artworkBlob);
+                    track._offlineArtUrl = localCoverUrl;
                     const npImgEl = document.getElementById('now-playing-img');
                     const bpImgEl = document.getElementById('bottom-player-img');
                     const bgArtEl = document.getElementById('now-playing-bg-art');
@@ -3276,16 +3307,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateNowPlayingFavButton() {
         if (!npFavBtn || !currentTrack) return;
         const fav = isFavorite(currentTrack.id);
+        const strokeCol = document.body.classList.contains('dark-mode') ? '#f4f4f5' : '#18181b';
         const svg = npFavBtn.querySelector('svg');
         if (svg) {
-            svg.setAttribute('fill', fav ? '#18181b' : 'none');
-            svg.setAttribute('stroke', '#18181b');
+            svg.setAttribute('fill', fav ? strokeCol : 'none');
+            svg.setAttribute('stroke', strokeCol);
         }
         if (lyricsBarFavBtn) {
             const lsvg = lyricsBarFavBtn.querySelector('svg');
             if (lsvg) {
-                lsvg.setAttribute('fill', fav ? '#18181b' : 'none');
-                lsvg.setAttribute('stroke', '#18181b');
+                lsvg.setAttribute('fill', fav ? strokeCol : 'none');
+                lsvg.setAttribute('stroke', strokeCol);
             }
         }
     }
@@ -3293,18 +3325,19 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateBottomPlayerFavButton() {
         if (!currentTrack) return;
         const fav = isFavorite(currentTrack.id);
+        const strokeCol = document.body.classList.contains('dark-mode') ? '#f4f4f5' : '#18181b';
         if (bpFavBtn) {
             const svg = bpFavBtn.querySelector('svg');
             if (svg) {
-                svg.setAttribute('fill', fav ? '#18181b' : 'none');
-                svg.setAttribute('stroke', '#18181b');
+                svg.setAttribute('fill', fav ? strokeCol : 'none');
+                svg.setAttribute('stroke', strokeCol);
             }
         }
         if (bpMoreFavBtn) {
             const msvg = bpMoreFavBtn.querySelector('svg');
             if (msvg) {
-                msvg.setAttribute('fill', fav ? '#18181b' : 'none');
-                msvg.setAttribute('stroke', '#18181b');
+                msvg.setAttribute('fill', fav ? strokeCol : 'none');
+                msvg.setAttribute('stroke', strokeCol);
             }
         }
     }
@@ -3351,12 +3384,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const metaTheme = document.getElementById('meta-theme-color') || document.querySelector('meta[name="theme-color"]');
         const shimEl = document.getElementById('safari-top-color-shim');
         const page = document.body.getAttribute('data-page');
+        const isDark = document.body.classList.contains('dark-mode');
+        const defaultBg = isDark ? '#0c0c0e' : '#FCFBF8';
         if (r === null || r === undefined || page !== 'now-playing') {
             if (r === null || r === undefined) currentActivePageTint = null;
-            if (metaTheme) metaTheme.setAttribute('content', '#FCFBF8');
-            if (shimEl) shimEl.style.backgroundColor = '#FCFBF8';
-            document.documentElement.style.backgroundColor = '#FCFBF8';
-            document.body.style.backgroundColor = '#FCFBF8';
+            if (metaTheme) metaTheme.setAttribute('content', defaultBg);
+            if (shimEl) shimEl.style.backgroundColor = defaultBg;
+            document.documentElement.style.backgroundColor = defaultBg;
+            document.body.style.backgroundColor = defaultBg;
             return;
         }
 
@@ -3369,9 +3404,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const clB = Math.max(0, Math.min(255, Math.round(b)));
             hex = `#${clR.toString(16).padStart(2, '0')}${clG.toString(16).padStart(2, '0')}${clB.toString(16).padStart(2, '0')}`;
         } else {
-            const topR = Math.round(r * alpha + 252 * (1 - alpha));
-            const topG = Math.round(g * alpha + 251 * (1 - alpha));
-            const topB = Math.round(b * alpha + 248 * (1 - alpha));
+            const baseR = isDark ? 12 : 252;
+            const baseG = isDark ? 12 : 251;
+            const baseB = isDark ? 14 : 248;
+            const topR = Math.round(r * alpha + baseR * (1 - alpha));
+            const topG = Math.round(g * alpha + baseG * (1 - alpha));
+            const topB = Math.round(b * alpha + baseB * (1 - alpha));
             hex = `#${topR.toString(16).padStart(2, '0')}${topG.toString(16).padStart(2, '0')}${topB.toString(16).padStart(2, '0')}`;
         }
 
@@ -3385,37 +3423,40 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateTopNavTint() {
         const topNav = document.getElementById('top-nav-bar');
         const page = document.body.getAttribute('data-page');
+        const isDark = document.body.classList.contains('dark-mode');
         const navSearch = document.getElementById('nav-search');
         const navLibrary = document.getElementById('nav-library');
+        const navSettings = document.getElementById('nav-settings');
         const navNowPlaying = document.getElementById('nav-now-playing');
+        const allTopNavBtns = [navSearch, navLibrary, navSettings, navNowPlaying];
 
         if (page === 'now-playing' && currentCoverColor) {
             const { r, g, b } = currentCoverColor;
             if (topNav) {
-                topNav.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.18)`;
-                topNav.style.borderColor = `rgba(${r}, ${g}, ${b}, 0.35)`;
-                topNav.style.boxShadow = `0 8px 25px rgba(${r}, ${g}, ${b}, 0.12)`;
+                topNav.style.backgroundColor = isDark ? `rgba(${r}, ${g}, ${b}, 0.28)` : `rgba(${r}, ${g}, ${b}, 0.22)`;
+                topNav.style.borderColor = `rgba(${r}, ${g}, ${b}, 0.42)`;
+                topNav.style.boxShadow = `0 8px 25px rgba(${r}, ${g}, ${b}, 0.16)`;
             }
             updateSafariThemeTint(r, g, b, 1.0);
 
-            // Adaptive contrast for Search & Library buttons on dynamic background
+            // Adaptive contrast for top nav icon buttons on dynamic background
             const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-            const textColor = lum < 0.45 ? '#FFFFFF' : '#18181b';
-            if (navSearch) {
-                if (navSearch.classList.contains('yolk-active')) navSearch.style.color = '#ffffff';
-                else navSearch.style.color = textColor;
-            }
-            if (navLibrary) {
-                if (navLibrary.classList.contains('yolk-active')) navLibrary.style.color = '#ffffff';
-                else navLibrary.style.color = textColor;
-            }
-            if (navNowPlaying && navNowPlaying.classList.contains('yolk-active')) {
-                navNowPlaying.style.color = '#ffffff';
-            }
+            const inactiveColor = (isDark || lum < 0.48) ? '#f4f4f5' : '#18181b';
+            const activeTextCol = isDark ? '#18181b' : '#ffffff';
+            allTopNavBtns.forEach(btn => {
+                if (!btn) return;
+                if (btn.classList.contains('yolk-active')) {
+                    btn.style.color = activeTextCol;
+                } else {
+                    btn.style.color = inactiveColor;
+                }
+            });
         } else {
-            if (navSearch) navSearch.style.color = navSearch.classList.contains('yolk-active') ? '#ffffff' : '';
-            if (navLibrary) navLibrary.style.color = navLibrary.classList.contains('yolk-active') ? '#ffffff' : '';
-            if (navNowPlaying) navNowPlaying.style.color = navNowPlaying.classList.contains('yolk-active') ? '#ffffff' : '';
+            const activeTextCol = isDark ? '#18181b' : '#ffffff';
+            allTopNavBtns.forEach(btn => {
+                if (!btn) return;
+                btn.style.color = btn.classList.contains('yolk-active') ? activeTextCol : '';
+            });
             if (topNav) {
                 topNav.style.backgroundColor = '';
                 topNav.style.borderColor = '';
@@ -3446,12 +3487,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateLibraryButtons() {
         const inLib = isTrackInLibrary(currentTrack);
+        const strokeCol = document.body.classList.contains('dark-mode') ? '#f4f4f5' : '#18181b';
         [npAddBtn, bpAddBtn].forEach(btn => {
             if (!btn) return;
             const svg = btn.querySelector('svg');
             if (svg) {
-                svg.setAttribute('fill', inLib ? '#18181b' : 'none');
-                svg.setAttribute('stroke', '#18181b');
+                svg.setAttribute('fill', inLib ? strokeCol : 'none');
+                svg.setAttribute('stroke', strokeCol);
             }
             btn.classList.toggle('text-zinc-900', inLib);
             btn.classList.toggle('text-zinc-400', !inLib);
@@ -3467,7 +3509,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let coverSrc = null;
         if (currentTrack) {
-            coverSrc = getProxyUrl(currentTrack.artwork_url || currentTrack.image);
+            coverSrc = currentTrack._offlineArtUrl || getProxyUrl(currentTrack.artwork_url || currentTrack.image);
         }
 
         if (coverSrc) {
@@ -3713,14 +3755,14 @@ document.addEventListener('DOMContentLoaded', () => {
             favorites.splice(favIndex, 1);
             if (svgElement) {
                 svgElement.setAttribute('fill', 'none');
-                svgElement.setAttribute('stroke', '#18181b');
+                svgElement.setAttribute('stroke', 'currentColor');
             }
             showToast('Removed from Favorites');
         } else {
             favorites.push(track);
             if (svgElement) {
-                svgElement.setAttribute('fill', '#18181b');
-                svgElement.setAttribute('stroke', '#18181b');
+                svgElement.setAttribute('fill', 'currentColor');
+                svgElement.setAttribute('stroke', 'currentColor');
             }
             showToast('Saved to Favorites');
             // Automatically download when added to Library
@@ -3818,32 +3860,43 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!detailView) return;
         const { h, s, l } = rgbToHsl(r, g, b);
         const effS = Math.max(0.28, Math.min(0.92, s));
+        const isDark = document.body.classList.contains('dark-mode');
 
         // Shift icon/button colors lighter or darker by a margin depending on the tint's brightness
-        let iconRgb, playBgRgb, playIconRgb;
-        if (l > 0.52) {
+        let iconRgb, playBgRgb, playIconRgb, borderRgb, surfaceRgb, badgeRgb;
+        if (isDark) {
+            // In Dark Mode, make tinted playlist icons luminous and surfaces richly dark-tinted
+            iconRgb = hslToRgb(h, Math.min(0.92, effS + 0.1), l > 0.55 ? Math.min(0.84, l + 0.16) : Math.max(0.68, l + 0.34));
+            playBgRgb = hslToRgb(h, Math.min(0.90, effS + 0.08), Math.max(0.56, Math.min(0.74, l + 0.22)));
+            playIconRgb = hslToRgb(h, Math.min(0.65, effS), 0.10);
+            borderRgb = hslToRgb(h, Math.min(0.65, effS), 0.34);
+            surfaceRgb = hslToRgb(h, Math.min(0.45, effS), 0.13);
+            badgeRgb = hslToRgb(h, Math.min(0.55, effS), 0.20);
+        } else if (l > 0.52) {
             // Bright tint -> make icons darker by a clear margin
             iconRgb = hslToRgb(h, effS, Math.max(0.20, l - 0.34));
             playBgRgb = hslToRgb(h, effS, Math.max(0.24, l - 0.30));
             playIconRgb = hslToRgb(h, Math.min(0.85, effS), Math.min(0.96, l + 0.32));
+            borderRgb = hslToRgb(h, Math.min(0.65, effS), 0.76);
+            surfaceRgb = hslToRgb(h, Math.min(0.45, effS), 0.96);
+            badgeRgb = hslToRgb(h, Math.min(0.60, effS), 0.90);
         } else {
             // Darker tint -> keep action icons rich in that hue and make primary play icon lighter by a margin
             iconRgb = hslToRgb(h, effS, Math.min(0.42, Math.max(0.24, l + 0.08)));
             playBgRgb = hslToRgb(h, effS, Math.max(0.22, Math.min(0.38, l)));
             playIconRgb = hslToRgb(h, Math.min(0.90, effS + 0.1), Math.min(0.94, l + 0.42));
+            borderRgb = hslToRgb(h, Math.min(0.65, effS), 0.76);
+            surfaceRgb = hslToRgb(h, Math.min(0.45, effS), 0.96);
+            badgeRgb = hslToRgb(h, Math.min(0.60, effS), 0.90);
         }
-
-        const borderRgb = hslToRgb(h, Math.min(0.65, effS), 0.76);
-        const surfaceRgb = hslToRgb(h, Math.min(0.45, effS), 0.96);
-        const badgeRgb = hslToRgb(h, Math.min(0.60, effS), 0.90);
 
         detailView.classList.add('has-playlist-tint');
         detailView.style.setProperty('--pl-icon-color', `rgb(${iconRgb.r}, ${iconRgb.g}, ${iconRgb.b})`);
         detailView.style.setProperty('--pl-play-bg', `rgb(${playBgRgb.r}, ${playBgRgb.g}, ${playBgRgb.b})`);
         detailView.style.setProperty('--pl-play-icon', `rgb(${playIconRgb.r}, ${playIconRgb.g}, ${playIconRgb.b})`);
-        detailView.style.setProperty('--pl-border-color', `rgba(${borderRgb.r}, ${borderRgb.g}, ${borderRgb.b}, 0.65)`);
-        detailView.style.setProperty('--pl-surface-bg', `rgba(${surfaceRgb.r}, ${surfaceRgb.g}, ${surfaceRgb.b}, 0.86)`);
-        detailView.style.setProperty('--pl-badge-bg', `rgba(${badgeRgb.r}, ${badgeRgb.g}, ${badgeRgb.b}, 0.78)`);
+        detailView.style.setProperty('--pl-border-color', `rgba(${borderRgb.r}, ${borderRgb.g}, ${borderRgb.b}, ${isDark ? '0.55' : '0.65'})`);
+        detailView.style.setProperty('--pl-surface-bg', `rgba(${surfaceRgb.r}, ${surfaceRgb.g}, ${surfaceRgb.b}, ${isDark ? '0.88' : '0.86'})`);
+        detailView.style.setProperty('--pl-badge-bg', `rgba(${badgeRgb.r}, ${badgeRgb.g}, ${badgeRgb.b}, ${isDark ? '0.82' : '0.78'})`);
     }
 
     function applyPlaylistTint(r, g, b) {
@@ -4215,10 +4268,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         const img = new Image();
-        if (!imgUrl.startsWith('data:')) {
+        const isLocal = imgUrl.startsWith('data:') || imgUrl.startsWith('blob:');
+        if (!isLocal) {
             img.crossOrigin = 'Anonymous';
         }
-        img.src = imgUrl.startsWith('data:') ? imgUrl : getProxyUrl(imgUrl, '120x120');
+        let retriedWithProxy = false;
+        const targetSrc = isLocal ? imgUrl : getProxyUrl(imgUrl, '120x120');
+        img.src = targetSrc;
         img.onload = () => {
             try {
                 const canvas = document.createElement('canvas');
@@ -4330,10 +4386,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 vibrantColors.topRowColor = topRowColor;
                 callback(vibrantColors);
             } catch (_) {
+                if (!isLocal && !retriedWithProxy && !img.src.includes('/api/proxy')) {
+                    retriedWithProxy = true;
+                    img.src = `/api/proxy?url=${encodeURIComponent(targetSrc)}`;
+                    return;
+                }
                 callback(null);
             }
         };
-        img.onerror = () => callback(null);
+        img.onerror = () => {
+            if (!isLocal && !retriedWithProxy && !img.src.includes('/api/proxy')) {
+                retriedWithProxy = true;
+                img.src = `/api/proxy?url=${encodeURIComponent(targetSrc)}`;
+                return;
+            }
+            callback(null);
+        };
     }
 
     function applyAppleMusicNowPlayingBg(colors) {
@@ -4342,40 +4410,49 @@ document.addEventListener('DOMContentLoaded', () => {
         const bgWrapper = document.getElementById('now-playing-bg-wrapper');
         if (!meshEl) return;
 
+        const isDark = document.body.classList.contains('dark-mode');
+        const defaultBg = isDark ? '#0c0c0e' : '#FCFBF8';
+
         if (!colors || colors.length === 0) {
             meshEl.style.opacity = '0';
             meshEl.style.background = '';
             if (fadeEl) fadeEl.style.opacity = '0';
-            if (bgWrapper) bgWrapper.style.backgroundColor = '#FCFBF8';
+            if (bgWrapper) bgWrapper.style.backgroundColor = defaultBg;
             return;
         }
 
         const [c1, c2, c3, c4] = colors;
         meshEl.style.background = `
-            radial-gradient(circle at 18% 20%, rgba(${c1.r}, ${c1.g}, ${c1.b}, 0.50) 0%, transparent 60%),
-            radial-gradient(circle at 82% 16%, rgba(${c2.r}, ${c2.g}, ${c2.b}, 0.46) 0%, transparent 56%),
-            radial-gradient(circle at 78% 82%, rgba(${c3.r}, ${c3.g}, ${c3.b}, 0.42) 0%, transparent 58%),
-            radial-gradient(circle at 20% 82%, rgba(${c4.r}, ${c4.g}, ${c4.b}, 0.40) 0%, transparent 56%),
-            radial-gradient(circle at 50% 50%, rgba(${c1.r}, ${c1.g}, ${c1.b}, 0.25) 0%, transparent 64%)
+            radial-gradient(circle at 18% 20%, rgba(${c1.r}, ${c1.g}, ${c1.b}, ${isDark ? '0.42' : '0.52'}) 0%, transparent 60%),
+            radial-gradient(circle at 82% 16%, rgba(${c2.r}, ${c2.g}, ${c2.b}, ${isDark ? '0.38' : '0.48'}) 0%, transparent 56%),
+            radial-gradient(circle at 78% 82%, rgba(${c3.r}, ${c3.g}, ${c3.b}, ${isDark ? '0.34' : '0.42'}) 0%, transparent 58%),
+            radial-gradient(circle at 20% 82%, rgba(${c4.r}, ${c4.g}, ${c4.b}, ${isDark ? '0.32' : '0.40'}) 0%, transparent 56%),
+            radial-gradient(circle at 50% 50%, rgba(${c1.r}, ${c1.g}, ${c1.b}, ${isDark ? '0.20' : '0.26'}) 0%, transparent 64%)
         `;
         meshEl.style.opacity = '1';
 
-        // Calculate top bar color: prefer exact sampled top-row color if available, or blend c1 and c2
-        const topR = colors.topRowColor ? colors.topRowColor.r : Math.round(c1.r * 0.55 + c2.r * 0.45);
-        const topG = colors.topRowColor ? colors.topRowColor.g : Math.round(c1.g * 0.55 + c2.g * 0.45);
-        const topB = colors.topRowColor ? colors.topRowColor.b : Math.round(c1.b * 0.55 + c2.b * 0.45);
+        // Use vibrant dominant artwork palette (c1/c2) for the Now Playing top tint so letterboxed thumbnails never wash out to grey/black
+        const topR = Math.round(c1.r * 0.72 + c2.r * 0.28);
+        const topG = Math.round(c1.g * 0.72 + c2.g * 0.28);
+        const topB = Math.round(c1.b * 0.72 + c2.b * 0.28);
 
-        // Soften slightly with #FCFBF8 so the Now Playing top edge and Safari status bar match seamlessly
-        const blendR = Math.round(topR * 0.62 + 252 * 0.38);
-        const blendG = Math.round(topG * 0.62 + 251 * 0.38);
-        const blendB = Math.round(topB * 0.62 + 248 * 0.38);
+        let blendR, blendG, blendB;
+        if (isDark) {
+            blendR = Math.round(topR * 0.55 + 12 * 0.45);
+            blendG = Math.round(topG * 0.55 + 12 * 0.45);
+            blendB = Math.round(topB * 0.55 + 14 * 0.45);
+        } else {
+            blendR = Math.round(topR * 0.72 + 252 * 0.28);
+            blendG = Math.round(topG * 0.72 + 251 * 0.28);
+            blendB = Math.round(topB * 0.72 + 248 * 0.28);
+        }
 
         if (bgWrapper) {
             bgWrapper.style.backgroundColor = `rgb(${blendR}, ${blendG}, ${blendB})`;
         }
 
         if (fadeEl) {
-            fadeEl.style.background = `linear-gradient(180deg, rgb(${blendR}, ${blendG}, ${blendB}) 0%, rgba(${blendR}, ${blendG}, ${blendB}, 0.55) 45%, transparent 100%)`;
+            fadeEl.style.background = `linear-gradient(180deg, rgb(${blendR}, ${blendG}, ${blendB}) 0%, rgba(${blendR}, ${blendG}, ${blendB}, 0.78) 42%, transparent 100%)`;
             fadeEl.style.opacity = '1';
         }
 
@@ -4502,8 +4579,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const favCard = document.createElement('div');
         favCard.className = 'group cursor-pointer bubbly-hover text-left';
         favCard.innerHTML = `
-            <div class="w-full aspect-square bg-[#F4F4F5] rounded-2xl border border-zinc-200/80 mb-2 relative overflow-hidden flex items-center justify-center shadow-sm group-hover:shadow-md transition-all">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="#18181b" stroke="#18181b" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+            <div class="w-full aspect-square bg-[#F4F4F5] rounded-2xl border border-zinc-200/80 mb-2 relative overflow-hidden flex items-center justify-center shadow-sm group-hover:shadow-md transition-all text-zinc-900">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
             </div>
             <h3 class="font-semibold text-xs sm:text-sm text-zinc-900 truncate">Favorites</h3>
             <p class="text-[11px] text-zinc-500 mt-0.5">${favorites.length} ${favorites.length === 1 ? 'song' : 'songs'}</p>
@@ -4576,7 +4653,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             detailArtImg.classList.add('hidden');
             detailArtIcon.classList.remove('hidden');
-            detailArtIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="#18181b" stroke="#18181b" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
+            detailArtIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" class="text-zinc-900"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
             editBtn.classList.add('hidden');
             deleteBtn.classList.add('hidden');
         } else {
@@ -6272,6 +6349,79 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // ==== SETTINGS PAGE: DARK MODE (BETA) VS LIGHT MODE ====
+    const themeToggleBtn = document.getElementById('theme-mode-toggle-btn');
+    const themeToggleKnob = document.getElementById('theme-mode-toggle-knob');
+    const themeLightBtn = document.getElementById('theme-mode-light-btn');
+    const themeDarkBtn = document.getElementById('theme-mode-dark-btn');
+    const themeLightDot = document.getElementById('theme-light-active-dot');
+    const themeDarkDot = document.getElementById('theme-dark-active-dot');
+
+    function applyThemeMode(mode, notify = false) {
+        const isDark = (mode === 'dark');
+        document.documentElement.classList.toggle('dark-mode', isDark);
+        document.body.classList.toggle('dark-mode', isDark);
+        localStorage.setItem('yolk_theme_mode', isDark ? 'dark' : 'light');
+
+        if (themeToggleBtn) {
+            themeToggleBtn.setAttribute('aria-checked', isDark ? 'true' : 'false');
+            themeToggleBtn.style.backgroundColor = isDark ? '#FDE047' : '';
+            themeToggleBtn.style.borderColor = isDark ? '#FACC15' : '';
+        }
+        if (themeToggleKnob) {
+            themeToggleKnob.style.transform = isDark ? 'translateX(24px)' : 'translateX(0px)';
+            themeToggleKnob.style.backgroundColor = isDark ? '#18181b' : '#ffffff';
+        }
+        if (themeLightDot) themeLightDot.classList.toggle('hidden', isDark);
+        if (themeDarkDot) themeDarkDot.classList.toggle('hidden', !isDark);
+
+        if (themeLightBtn) {
+            themeLightBtn.style.borderColor = !isDark ? '#18181b' : 'rgba(63, 63, 70, 0.7)';
+        }
+        if (themeDarkBtn) {
+            themeDarkBtn.style.borderColor = isDark ? '#FDE047' : 'rgba(228, 228, 231, 0.8)';
+        }
+
+        updateNowPlayingFavButton();
+        updateBottomPlayerFavButton();
+        updateLibraryButtons();
+        updateNowPlayingBgArt();
+        updateTopNavTint();
+
+        if (currentPlaylistTintRgb && currentPlaylistContextId && currentPlaylistContextId !== 'favorites') {
+            applyPlaylistThemeUI(currentPlaylistTintRgb.r, currentPlaylistTintRgb.g, currentPlaylistTintRgb.b);
+        }
+
+        if (notify) {
+            showToast(isDark ? 'Dark Mode (Beta) enabled' : 'Light Mode enabled');
+        }
+    }
+    window.applyThemeMode = applyThemeMode;
+
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', () => {
+            const isCurrentlyDark = document.body.classList.contains('dark-mode');
+            applyThemeMode(isCurrentlyDark ? 'light' : 'dark', true);
+        });
+    }
+    if (themeLightBtn) {
+        themeLightBtn.addEventListener('click', () => {
+            if (document.body.classList.contains('dark-mode')) {
+                applyThemeMode('light', true);
+            }
+        });
+    }
+    if (themeDarkBtn) {
+        themeDarkBtn.addEventListener('click', () => {
+            if (!document.body.classList.contains('dark-mode')) {
+                applyThemeMode('dark', true);
+            }
+        });
+    }
+
+    // Initialize saved theme mode on startup
+    applyThemeMode(localStorage.getItem('yolk_theme_mode') === 'dark' ? 'dark' : 'light', false);
 
     // Initial render of library and controls
     renderLibrary();
