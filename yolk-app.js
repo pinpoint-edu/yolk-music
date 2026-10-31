@@ -114,6 +114,42 @@ function formatTime(seconds) {
 // ==========================================
 let hapticsEnabled = localStorage.getItem('yolk_haptics') !== 'false';
 let _lastHapticTs = 0;
+let _hapticAudioCtx = null;
+
+function playTactileAudioPulse(style = 'light') {
+    try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        if (!_hapticAudioCtx) {
+            _hapticAudioCtx = new AudioCtx();
+        }
+        if (_hapticAudioCtx.state === 'suspended') {
+            _hapticAudioCtx.resume().catch(() => {});
+        }
+        const now = _hapticAudioCtx.currentTime;
+
+        // Low-frequency chassis-coupled tactile transient (58Hz–68Hz sub-bass micro-thump)
+        const osc = _hapticAudioCtx.createOscillator();
+        const gain = _hapticAudioCtx.createGain();
+        osc.type = 'sine';
+
+        const dur = style === 'heavy' ? 0.018 : (style === 'medium' ? 0.014 : 0.010);
+        const peakGain = style === 'heavy' ? 0.24 : (style === 'medium' ? 0.17 : 0.11);
+        const startFreq = style === 'heavy' ? 68 : (style === 'medium' ? 62 : 58);
+
+        osc.frequency.setValueAtTime(startFreq, now);
+        osc.frequency.exponentialRampToValueAtTime(36, now + dur);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(peakGain, now + 0.002);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+        osc.connect(gain);
+        gain.connect(_hapticAudioCtx.destination);
+        osc.start(now);
+        osc.stop(now + dur + 0.002);
+    } catch (_) {}
+}
 
 function triggerHaptic(style = 'light') {
     if (!hapticsEnabled) return;
@@ -122,12 +158,12 @@ function triggerHaptic(style = 'light') {
     _lastHapticTs = now;
 
     try {
-        // 1. iOS 18+ Safari Native Taptic Engine via <input type="checkbox" switch> label click
+        // 1. iOS 18+ Safari Native Taptic Engine via in-viewport <input type="checkbox" switch> label click
         const iosSwitchLabel = document.getElementById('yolk-ios-haptic-label');
         if (iosSwitchLabel) {
             iosSwitchLabel.click();
         }
-        // 2. Web Vibration API fallback (Android / supported mobile browsers)
+        // 2. Web Vibration API (Android / supported browsers)
         if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
             if (style === 'heavy') {
                 navigator.vibrate([14, 28, 18]);
@@ -137,9 +173,25 @@ function triggerHaptic(style = 'light') {
                 navigator.vibrate(8);
             }
         }
+        // 3. Tactile Web Audio sub-bass micro-pulse fallback for iOS standalone PWA & iOS < 18
+        playTactileAudioPulse(style);
     } catch (_) {}
 }
 window.triggerHaptic = triggerHaptic;
+
+// Fire haptic synchronously on pointerdown (inside WebKit's strict user-gesture activation window)
+document.addEventListener('pointerdown', (e) => {
+    if (!hapticsEnabled) return;
+    const target = e.target;
+    if (!target || typeof target.closest !== 'function') return;
+    if (target.id === 'yolk-ios-haptic-input' || target.id === 'yolk-ios-haptic-label' || target.closest('#yolk-ios-haptic-label')) {
+        return;
+    }
+    const interactive = target.closest('button, a[href^="#"], .song-row-card, .lyric-line, .bubbly-hover, .sleek-hover, [role="switch"], input[type="range"]');
+    if (interactive) {
+        triggerHaptic('light');
+    }
+}, { passive: true });
 
 function getTrackUid(track) {
     if (!track) return '';
@@ -3426,6 +3478,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateSafariThemeTint(r, g, b, alpha = 0.38) {
         const metaTheme = document.getElementById('meta-theme-color') || document.querySelector('meta[name="theme-color"]');
         const shimEl = document.getElementById('safari-top-color-shim');
+        const topFadeBar = document.getElementById('top-white-fade-bar');
         const page = document.body.getAttribute('data-page');
         const isDark = document.body.classList.contains('dark-mode');
         const defaultBg = isDark ? '#0c0c0e' : '#FCFBF8';
@@ -3433,33 +3486,40 @@ document.addEventListener('DOMContentLoaded', () => {
             if (r === null || r === undefined) currentActivePageTint = null;
             if (metaTheme) metaTheme.setAttribute('content', defaultBg);
             if (shimEl) shimEl.style.backgroundColor = defaultBg;
-            document.documentElement.style.backgroundColor = defaultBg;
-            document.body.style.backgroundColor = defaultBg;
+            if (topFadeBar) {
+                topFadeBar.style.background = '';
+                topFadeBar.style.opacity = '';
+            }
+            document.documentElement.style.setProperty('background-color', defaultBg, 'important');
+            document.body.style.setProperty('background-color', defaultBg, 'important');
             return;
         }
 
         currentActivePageTint = { r, g, b, alpha };
-        let hex;
+        let clR, clG, clB;
         if (alpha >= 0.95) {
             // Match true color directly for Safari top row status bar blend
-            const clR = Math.max(0, Math.min(255, Math.round(r)));
-            const clG = Math.max(0, Math.min(255, Math.round(g)));
-            const clB = Math.max(0, Math.min(255, Math.round(b)));
-            hex = `#${clR.toString(16).padStart(2, '0')}${clG.toString(16).padStart(2, '0')}${clB.toString(16).padStart(2, '0')}`;
+            clR = Math.max(0, Math.min(255, Math.round(r)));
+            clG = Math.max(0, Math.min(255, Math.round(g)));
+            clB = Math.max(0, Math.min(255, Math.round(b)));
         } else {
             const baseR = isDark ? 12 : 252;
             const baseG = isDark ? 12 : 251;
             const baseB = isDark ? 14 : 248;
-            const topR = Math.round(r * alpha + baseR * (1 - alpha));
-            const topG = Math.round(g * alpha + baseG * (1 - alpha));
-            const topB = Math.round(b * alpha + baseB * (1 - alpha));
-            hex = `#${topR.toString(16).padStart(2, '0')}${topG.toString(16).padStart(2, '0')}${topB.toString(16).padStart(2, '0')}`;
+            clR = Math.max(0, Math.min(255, Math.round(r * alpha + baseR * (1 - alpha))));
+            clG = Math.max(0, Math.min(255, Math.round(g * alpha + baseG * (1 - alpha))));
+            clB = Math.max(0, Math.min(255, Math.round(b * alpha + baseB * (1 - alpha))));
         }
+        const hex = `#${clR.toString(16).padStart(2, '0')}${clG.toString(16).padStart(2, '0')}${clB.toString(16).padStart(2, '0')}`;
 
         if (metaTheme) metaTheme.setAttribute('content', hex);
         if (shimEl) shimEl.style.backgroundColor = hex;
-        document.documentElement.style.backgroundColor = hex;
-        document.body.style.backgroundColor = hex;
+        if (topFadeBar) {
+            topFadeBar.style.opacity = '1';
+            topFadeBar.style.background = `linear-gradient(180deg, ${hex} 0%, ${hex} 48%, rgba(${clR}, ${clG}, ${clB}, 0.72) 76%, rgba(${clR}, ${clG}, ${clB}, 0) 100%)`;
+        }
+        document.documentElement.style.setProperty('background-color', hex, 'important');
+        document.body.style.setProperty('background-color', hex, 'important');
     }
     window.updateSafariThemeTint = updateSafariThemeTint;
 
@@ -4317,7 +4377,9 @@ document.addEventListener('DOMContentLoaded', () => {
             img.crossOrigin = 'Anonymous';
         }
         let retriedWithProxy = false;
-        const targetSrc = isLocal ? imgUrl : getProxyUrl(imgUrl, '120x120');
+        const baseSrc = isLocal ? imgUrl : getProxyUrl(imgUrl, '120x120');
+        // Append cors=1 for external URLs so iOS Safari never reuses a non-CORS cached <img> response from song lists
+        const targetSrc = isLocal ? baseSrc : (baseSrc + (baseSrc.includes('?') ? '&' : '?') + 'cors=1');
         img.src = targetSrc;
         img.onload = () => {
             try {
@@ -4458,11 +4520,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const defaultBg = isDark ? '#0c0c0e' : '#FCFBF8';
 
         if (!colors || colors.length === 0) {
-            meshEl.style.opacity = '0';
-            meshEl.style.background = '';
-            if (fadeEl) fadeEl.style.opacity = '0';
-            if (bgWrapper) bgWrapper.style.backgroundColor = defaultBg;
-            return;
+            if (currentTrack) {
+                colors = [
+                    { r: 245, g: 158, b: 11 },
+                    { r: 234, g: 88, b: 12 },
+                    { r: 217, g: 119, b: 6 },
+                    { r: 251, g: 191, b: 36 }
+                ];
+            } else {
+                meshEl.style.opacity = '0';
+                meshEl.style.background = '';
+                if (fadeEl) fadeEl.style.opacity = '0';
+                if (bgWrapper) bgWrapper.style.backgroundColor = defaultBg;
+                return;
+            }
         }
 
         const [c1, c2, c3, c4] = colors;
@@ -7269,7 +7340,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     coverImg.src = `/api/proxy?url=${encodeURIComponent(currentShareState.artworkUrl)}`;
                 }
             };
-            coverImg.src = currentShareState.artworkUrl;
+            const corsArtUrl = isLocal
+                ? currentShareState.artworkUrl
+                : (currentShareState.artworkUrl + (currentShareState.artworkUrl.includes('?') ? '&' : '?') + 'cors=1');
+            coverImg.src = corsArtUrl;
         }
 
         shareCardModal.classList.add('active');
