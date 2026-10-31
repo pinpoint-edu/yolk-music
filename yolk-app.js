@@ -12,8 +12,10 @@ let playlists = JSON.parse(localStorage.getItem('yolk_playlists') || '[]').map(p
 });
 let currentAudio = document.getElementById('yolk-audio-player') || new Audio();
 currentAudio.preload = 'auto';
+currentAudio.crossOrigin = 'anonymous';
 let preloadedNextAudio = new Audio();
 preloadedNextAudio.preload = 'auto';
+preloadedNextAudio.crossOrigin = 'anonymous';
 let preloadedNextTrackUid = null;
 let activeSource = 'audio'; // 'audio' or 'youtube'
 let ytPlayer = null;
@@ -1091,14 +1093,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
                 if (npLyricsBtn) {
-                    npLyricsBtn.className = 'flex items-center justify-center w-9 h-9 rounded-full bg-black text-white shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0';
+                    npLyricsBtn.classList.add('is-active');
+                    npLyricsBtn.className = 'flex items-center justify-center w-9 h-9 rounded-full bg-black text-white shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0 is-active';
+                    const npLyricsSvg = npLyricsBtn.querySelector('svg');
+                    if (npLyricsSvg) {
+                        npLyricsSvg.classList.remove('text-black');
+                        npLyricsSvg.classList.add('text-white');
+                        npLyricsSvg.style.color = '#ffffff';
+                        npLyricsSvg.style.stroke = '#ffffff';
+                    }
                 }
             } else {
                 nowPlayingContainer.classList.remove('lyrics-active');
                 nowPlayingContainer.classList.add('lyrics-hidden');
                 if (npLyricsFloatingBar) npLyricsFloatingBar.classList.add('hidden');
                 if (npLyricsBtn) {
+                    npLyricsBtn.classList.remove('is-active');
                     npLyricsBtn.className = 'lyrics-glossy-btn flex items-center justify-center w-9 h-9 rounded-full bg-white/50 backdrop-blur-md border border-white/80 shadow-xs hover:bg-white/80 hover:scale-105 active:scale-95 transition-all text-black cursor-pointer shrink-0';
+                    const npLyricsSvg = npLyricsBtn.querySelector('svg');
+                    if (npLyricsSvg) {
+                        npLyricsSvg.classList.remove('text-white');
+                        npLyricsSvg.style.color = '';
+                        npLyricsSvg.style.stroke = '';
+                    }
                 }
             }
         }
@@ -1213,54 +1230,74 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function updateAlbumButtonsVisibility(hasAlbum) {
+        const albumBtns = [
+            document.getElementById('now-playing-album-btn'),
+            document.getElementById('np-mobile-more-album-btn'),
+            document.getElementById('lyrics-more-album-btn'),
+            document.getElementById('bp-more-album-btn')
+        ];
+        albumBtns.forEach(btn => {
+            if (!btn) return;
+            btn.classList.toggle('hidden', !hasAlbum);
+            btn.classList.toggle('!hidden', !hasAlbum);
+        });
+    }
+
+    async function checkCurrentTrackAlbum() {
+        if (!currentTrack) {
+            updateAlbumButtonsVisibility(false);
+            return;
+        }
+        if (currentTrack.album_id) {
+            updateAlbumButtonsVisibility(true);
+            return;
+        }
+        const vid = getYoutubeIdSync(currentTrack) || (currentTrack.id || '').replace('ytm-', '');
+        if (!vid) {
+            updateAlbumButtonsVisibility(false);
+            return;
+        }
+        try {
+            const res = await fetch(`${API_BASE}?endpoint=song-album&id=${encodeURIComponent(vid)}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.has_album && data.album_id) {
+                    currentTrack.album_id = data.album_id;
+                    currentTrack.album_name = data.album_name || currentTrack.album_name;
+                    updateAlbumButtonsVisibility(true);
+                    return;
+                }
+            }
+        } catch (_) {}
+        updateAlbumButtonsVisibility(false);
+    }
+
     async function navigateToTrackAlbum() {
         if (!currentTrack) return;
         if (currentTrack.album_id && typeof window.loadAlbumView === 'function') {
             window.loadAlbumView(currentTrack.album_id);
             return;
         }
-        const albumName = (currentTrack.album_name || currentTrack.album || '').trim();
-        const title = (currentTrack.title || currentTrack.name || '').trim();
-        const artist = (currentTrack.artist_name || currentTrack.artist || '').trim();
-        const query = (albumName && albumName !== 'Yolk Music') ? `${albumName} ${artist}`.trim() : `${title} ${artist}`.trim();
-        if (!query) return;
+        const vid = getYoutubeIdSync(currentTrack) || (currentTrack.id || '').replace('ytm-', '');
+        if (!vid) return;
 
         showSpinner(true);
         try {
-            const res = await fetch(`${API_BASE}?endpoint=search&q=${encodeURIComponent(query)}&limit=10`);
+            const res = await fetch(`${API_BASE}?endpoint=song-album&id=${encodeURIComponent(vid)}`);
             if (res.ok) {
                 const data = await res.json();
-                if (data && Array.isArray(data.tracks)) {
-                    const matchTrack = data.tracks.find(t => t.album_id && (t.youtube_id === currentTrack.youtube_id || (t.title || '').toLowerCase() === title.toLowerCase()));
-                    if (matchTrack && matchTrack.album_id && typeof window.loadAlbumView === 'function') {
-                        currentTrack.album_id = matchTrack.album_id;
-                        showSpinner(false);
-                        window.loadAlbumView(matchTrack.album_id);
-                        return;
-                    }
-                }
-                if (data && Array.isArray(data.albums) && data.albums.length > 0 && typeof window.loadAlbumView === 'function') {
-                    const bestAlbum = data.albums.find(a => artist && (a.artist_name || '').toLowerCase().includes(artist.toLowerCase())) || data.albums[0];
-                    if (bestAlbum && bestAlbum.id) {
-                        currentTrack.album_id = bestAlbum.id;
-                        showSpinner(false);
-                        window.loadAlbumView(bestAlbum.id);
-                        return;
-                    }
+                if (data && data.has_album && data.album_id && typeof window.loadAlbumView === 'function') {
+                    currentTrack.album_id = data.album_id;
+                    window.loadAlbumView(data.album_id);
+                    return;
                 }
             }
-        } catch (_) {}
-        showSpinner(false);
-
-        window.location.hash = '#search';
-        const sInput = document.getElementById('searchInput');
-        if (sInput) {
-            sInput.value = albumName || query;
-            if (typeof handleSearch === 'function') handleSearch(sInput.value);
-            setTimeout(() => {
-                const albumsTab = document.querySelector('.search-tab-pill[data-tab="albums"]');
-                if (albumsTab) albumsTab.click();
-            }, 350);
+            showToast('No album found for this song');
+        } catch (_) {
+            showToast('Unable to open album');
+        } finally {
+            showSpinner(false);
         }
     }
 
@@ -2828,7 +2865,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (npCurrentTime) npCurrentTime.textContent = formatTime(cur);
         if (bpCurrentTime) bpCurrentTime.textContent = formatTime(cur);
 
-        if (npDuration && dur > 0) npDuration.textContent = formatTime(dur);
+        if (npDuration) {
+            if (dur > 0) {
+                const remainingSec = Math.max(0, Math.round(dur - cur));
+                npDuration.textContent = `-${remainingSec}s`;
+            } else {
+                npDuration.textContent = '0s';
+            }
+        }
         if (bpDuration && dur > 0) bpDuration.textContent = formatTime(dur);
     }
 
@@ -3954,16 +3998,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const metaTheme = document.getElementById('meta-theme-color') || document.querySelector('meta[name="theme-color"]');
         const shimEl = document.getElementById('safari-top-color-shim');
         const topFadeBar = document.getElementById('top-white-fade-bar');
+        const nowPlayingTopFade = document.getElementById('now-playing-top-safari-fade');
         const page = document.body.getAttribute('data-page');
         const isDark = document.body.classList.contains('dark-mode');
         const defaultBg = isDark ? '#0c0c0e' : '#FCFBF8';
         if (r === null || r === undefined || page !== 'now-playing') {
             if (r === null || r === undefined) currentActivePageTint = null;
             if (metaTheme) metaTheme.setAttribute('content', defaultBg);
+            document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', defaultBg));
             if (shimEl) shimEl.style.backgroundColor = defaultBg;
             if (topFadeBar) {
                 topFadeBar.style.background = '';
                 topFadeBar.style.opacity = '';
+            }
+            if (nowPlayingTopFade) {
+                nowPlayingTopFade.style.opacity = '0';
             }
             document.documentElement.style.setProperty('background-color', defaultBg, 'important');
             document.body.style.setProperty('background-color', defaultBg, 'important');
@@ -3988,10 +4037,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const hex = `#${clR.toString(16).padStart(2, '0')}${clG.toString(16).padStart(2, '0')}${clB.toString(16).padStart(2, '0')}`;
 
         if (metaTheme) metaTheme.setAttribute('content', hex);
+        document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', hex));
         if (shimEl) shimEl.style.backgroundColor = hex;
         if (topFadeBar) {
             topFadeBar.style.opacity = '1';
             topFadeBar.style.background = `linear-gradient(180deg, ${hex} 0%, ${hex} 48%, rgba(${clR}, ${clG}, ${clB}, 0.72) 76%, rgba(${clR}, ${clG}, ${clB}, 0) 100%)`;
+        }
+        if (nowPlayingTopFade) {
+            nowPlayingTopFade.style.background = `linear-gradient(180deg, ${hex} 0%, rgba(${clR}, ${clG}, ${clB}, 0.82) 55%, transparent 100%)`;
+            nowPlayingTopFade.style.opacity = '1';
         }
         document.documentElement.style.setProperty('background-color', hex, 'important');
         document.body.style.setProperty('background-color', hex, 'important');
@@ -4091,6 +4145,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (coverSrc) {
+            const cacheKey = getProxyUrl(coverSrc, '128x128') || coverSrc;
+            if (_artworkPaletteCache.has(cacheKey)) {
+                applyAppleMusicNowPlayingBg(_artworkPaletteCache.get(cacheKey));
+            }
             bgArt.onerror = () => {
                 bgArt.removeAttribute('src');
                 bgArt.classList.add('opacity-0');
@@ -4134,6 +4192,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         updateNowPlayingBgArt();
         updateLibraryButtons();
+        if (typeof checkCurrentTrackAlbum === 'function') {
+            checkCurrentTrackAlbum();
+        }
 
         const coverUrl = getProxyUrl(track.artwork_url || track.image);
         if (lyricsBarThumb) {
@@ -4847,7 +4908,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!imgUrl) return '';
         if (imgUrl.startsWith('data:') || imgUrl.startsWith('blob:')) return imgUrl;
         const baseSrc = getProxyUrl(imgUrl, size);
-        if (baseSrc.includes('ytimg.com')) {
+        if (baseSrc.startsWith('http://') || baseSrc.startsWith('https://')) {
             return `/api/music-api?endpoint=proxy-image&url=${encodeURIComponent(baseSrc)}`;
         }
         return baseSrc;
@@ -7152,18 +7213,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let visualizerEnabled = localStorage.getItem('yolk_visualizer_enabled') !== 'false';
     let visualizerStyle = 'bars';
 
-    const isIOSOrMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '') ||
-        (navigator.maxTouchPoints > 1 && /Macintosh/i.test(navigator.userAgent || ''));
-
     function ensureWebAudioEqualizer(forceInit = false) {
-        // CRITICAL FOR iOS / iPHONE LOCK SCREEN & BACKGROUND PLAYBACK:
-        // On iOS Safari, routing an <audio> element through AudioContext.createMediaElementSource()
-        // mutes cross-origin streams and immediately suspends audio as soon as the user locks the screen
-        // or switches apps. Keeping currentAudio on the native hardware media pipeline guarantees
-        // uninterrupted background & lock-screen audio on iPhone.
-        if (isIOSOrMobileDevice) {
-            return;
-        }
         const hasNonZero = eqEnabled && eqBands.some(g => Math.abs(g) > 0.05);
         if (!yolkAudioCtx && !hasNonZero && !forceInit && !visualizerEnabled) {
             // Keep native HTMLAudioElement direct pipeline untouched when EQ and visualizer are off
@@ -7185,8 +7235,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     return filter;
                 });
                 yolkAnalyserNode = yolkAudioCtx.createAnalyser();
-                yolkAnalyserNode.fftSize = 128;
-                yolkAnalyserNode.smoothingTimeConstant = 0.82;
+                yolkAnalyserNode.fftSize = 256;
+                yolkAnalyserNode.smoothingTimeConstant = 0.80;
 
                 // Connect chain: source -> preGain -> filter0..4 -> analyser -> destination
                 yolkMediaSourceNode.connect(yolkEqPreGain);
@@ -7219,11 +7269,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     currentAudio.addEventListener('play', () => {
-        if (isIOSOrMobileDevice) return;
         if (yolkAudioCtx && yolkAudioCtx.state === 'suspended') {
             yolkAudioCtx.resume().catch(() => {});
         } else if ((eqEnabled && eqBands.some(g => Math.abs(g) > 0.05)) || visualizerEnabled) {
             ensureWebAudioEqualizer();
+        }
+    });
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && yolkAudioCtx && yolkAudioCtx.state === 'suspended' && isPlaying) {
+            yolkAudioCtx.resume().catch(() => {});
         }
     });
 
@@ -8119,7 +8174,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const visualizerToggleBtn = document.getElementById('visualizer-toggle-btn');
     const npArtBox = document.getElementById('now-playing-art');
 
-    const _vizFreqBins = new Uint8Array(64);
+    const _vizFreqBins = new Uint8Array(128);
     const _vizSmoothBins = new Float32Array(32);
 
     function updateVisualizerSettingsUI(notify = false) {
@@ -8163,8 +8218,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (yolkAnalyserNode && isPlaying) {
             try {
                 yolkAnalyserNode.getByteFrequencyData(_vizFreqBins);
-                for (let i = 0; i < numBars; i++) {
-                    if (_vizFreqBins[i] > 4) {
+                for (let i = 0; i < 48; i++) {
+                    if (_vizFreqBins[i] > 2) {
                         hasRealSignal = true;
                         break;
                     }
@@ -8174,22 +8229,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let bassEnergy = 0;
         for (let i = 0; i < numBars; i++) {
-            let target = 0.08;
+            let target = 0.06;
             if (isPlaying) {
                 if (hasRealSignal) {
-                    const binIdx = Math.min(_vizFreqBins.length - 1, Math.floor(i * 1.2) + 1);
-                    target = Math.max(0.08, Math.min(1, _vizFreqBins[binIdx] / 245));
+                    // True logarithmic spectrum mapping (lows to highs)
+                    const normIdx = i / (numBars - 1);
+                    const binIdx = Math.min(_vizFreqBins.length - 1, Math.floor(Math.pow(normIdx, 1.55) * 64) + 1);
+                    const trebleBoost = 1.0 + (normIdx * 0.70);
+                    const rawNorm = (_vizFreqBins[binIdx] / 240) * trebleBoost;
+                    target = Math.max(0.06, Math.min(1.0, rawNorm));
                 } else {
-                    // Musical harmonic fallback when Web Audio source is bypassed/unavailable (e.g., iOS native audio pipeline)
+                    // Smooth rhythmic simulation when audio buffer is loading
                     const centerDist = Math.abs(i - (numBars - 1) / 2) / (numBars / 2);
                     const env = Math.max(0.18, 1 - centerDist * 0.72);
                     const wave1 = Math.sin(nowSec * 7.8 + i * 0.52) * 0.5 + 0.5;
                     const wave2 = Math.cos(nowSec * 12.4 - i * 0.82) * 0.5 + 0.5;
                     const kick = Math.pow(Math.sin(nowSec * 4.2) * 0.5 + 0.5, 3);
-                    target = Math.max(0.10, Math.min(0.95, (wave1 * 0.45 + wave2 * 0.35 + kick * 0.35) * env));
+                    target = Math.max(0.08, Math.min(0.92, (wave1 * 0.45 + wave2 * 0.35 + kick * 0.35) * env));
                 }
             }
-            _vizSmoothBins[i] = _vizSmoothBins[i] * 0.70 + target * 0.30;
+            // Fast attack, smooth decay
+            const smoothFactor = target > _vizSmoothBins[i] ? 0.45 : 0.22;
+            _vizSmoothBins[i] = _vizSmoothBins[i] * (1 - smoothFactor) + target * smoothFactor;
             if (i < 6) bassEnergy += _vizSmoothBins[i];
         }
         return bassEnergy / 6;

@@ -455,9 +455,29 @@
         body:not(.is-searching)[data-page="search"] #top-white-fade-bar {
             opacity: 0;
         }
-        @media (min-width: 640px) {
-            #top-white-fade-bar {
-                height: 100px;
+        body[data-page="now-playing"] #top-white-fade-bar {
+            display: none !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+        @media (min-width: 768px) {
+            #top-white-fade-bar,
+            #main-header {
+                display: none !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+            }
+            #smallLogo {
+                padding: 6px 14px 6px 10px;
+                border-radius: 9999px;
+                background: radial-gradient(ellipse at 40% 50%, rgba(254, 249, 195, 0.65) 0%, rgba(254, 240, 138, 0.28) 55%, transparent 80%);
+                box-shadow: 0 0 24px 8px rgba(254, 243, 199, 0.55), 0 0 8px 2px rgba(250, 204, 21, 0.20);
+                backdrop-filter: blur(8px);
+                -webkit-backdrop-filter: blur(8px);
+            }
+            body.dark-mode #smallLogo {
+                background: radial-gradient(ellipse at 40% 50%, rgba(254, 240, 138, 0.16) 0%, rgba(250, 204, 21, 0.08) 55%, transparent 80%);
+                box-shadow: 0 0 28px 8px rgba(250, 204, 21, 0.15), 0 0 10px 2px rgba(254, 240, 138, 0.10);
             }
         }
 
@@ -668,7 +688,7 @@
             }
         }
 
-        /* Desktop Wide Bottom Navbar + Music Player */
+        /* Desktop Wide Bottom Navbar + Music Player — Translucent Frosted Glass */
         @media (min-width: 640px) {
             #bottom-player,
             #bottom-player.hidden-force,
@@ -683,15 +703,36 @@
                 opacity: 1 !important;
                 pointer-events: auto !important;
                 z-index: 45 !important;
+                background: rgba(255, 255, 255, 0.28) !important;
+                backdrop-filter: blur(38px) saturate(165%) !important;
+                -webkit-backdrop-filter: blur(38px) saturate(165%) !important;
+                border: 1px solid rgba(255, 255, 255, 0.48) !important;
+                box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
+            }
+            body.dark-mode #bottom-player,
+            body.dark-mode #bottom-player.hidden-force,
+            body.dark-mode[data-page="now-playing"] #bottom-player {
+                background: rgba(18, 18, 22, 0.42) !important;
+                backdrop-filter: blur(38px) saturate(165%) !important;
+                -webkit-backdrop-filter: blur(38px) saturate(165%) !important;
+                border: 1px solid rgba(255, 255, 255, 0.12) !important;
+                box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
             }
             #bottom-player:not(.is-loading):hover {
                 height: 70px !important;
                 padding-left: 16px !important;
                 padding-right: 22px !important;
                 transform: translate(-50%, -3px) !important;
-                box-shadow: 0 20px 45px rgba(0, 0, 0, 0.12), 0 4px 14px rgba(0, 0, 0, 0.05);
-                border-color: rgba(212, 212, 216, 0.95);
+                box-shadow: 0 20px 48px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.65) !important;
             }
+        }
+
+        /* Quote Lyrics Button Icon — Always crisp white when active */
+        #np-lyrics-btn.is-active svg,
+        .now-playing-container.lyrics-active #np-lyrics-btn svg,
+        #lyrics-bar-lyrics-toggle svg {
+            color: #ffffff !important;
+            stroke: #ffffff !important;
         }
 
         /* Bottom Player Morphing Animation & Hover Expansion */
@@ -1823,11 +1864,9 @@
                     </div>
                 </div>
 
-                <!-- Controls Cluster (Buttons on Left) -->
+                <!-- Controls Cluster (Buttons on Left: favorite, download, rewind/skip and play/pause, and save and lyrics and audio) -->
                 <div class="flex items-center justify-center gap-2.5 sm:gap-3 mt-2 shrink-0 flex-nowrap relative">
-                    <button id="np-queue-btn" class="hidden sm:inline-flex sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="Play Queue">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
-                    </button>
+                    <button id="np-queue-btn" class="hidden !hidden" title="Play Queue"></button>
                     <button id="now-playing-fav-btn" class="sleek-hover text-black transition-transform hover:scale-110 p-2 cursor-pointer shrink-0" title="Favorite">
                         <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                     </button>
@@ -1843,13 +1882,13 @@
                     <button id="now-playing-next" class="sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="Next Track">
                         <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
                     </button>
-                    <button id="now-playing-add-btn" class="hidden sm:inline-flex sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="Add to Playlist">
+                    <button id="now-playing-add-btn" class="sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="Add to Playlist">
                         <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
                     </button>
 
                     <!-- Integrated Lyrics Button (Frosted Translucent) -->
                     <button id="np-lyrics-btn" class="lyrics-glossy-btn flex items-center justify-center w-9 h-9 rounded-full bg-white/45 backdrop-blur-xl border border-white/70 shadow-xs hover:bg-white/75 hover:scale-105 active:scale-95 transition-all text-black cursor-pointer shrink-0" title="Lyrics">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" class="text-black"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" class="text-current transition-colors"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path></svg>
                     </button>
 
                     <!-- Volume Bar (Small Button until Hovered -> Expands outside container restrictions) -->
@@ -1865,20 +1904,10 @@
                         <button id="np- volume-btn-placeholder" class="hidden"></button>
                     </div>
 
-                    <!-- Share Song Button (Desktop & Tablet) -->
-                    <button id="np-share-btn" class="hidden sm:inline-flex sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="Share Song or Lyrics">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
-                    </button>
-
-                    <!-- Go to Album Button (Desktop & Tablet) -->
-                    <button id="now-playing-album-btn" class="hidden sm:inline-flex sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="Go to Album">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
-                    </button>
-
-                    <!-- Floating PiP Mini-Player Button (Desktop Only) -->
-                    <button id="np-pip-btn" class="hidden sm:inline-flex sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="Floating Mini-Player (Picture-in-Picture)">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 9V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h4"></path><rect width="10" height="7" x="12" y="13" rx="2"></rect></svg>
-                    </button>
+                    <!-- Hidden from Now Playing cluster on desktop (Moved to bottom bar) -->
+                    <button id="np-share-btn" class="hidden !hidden" title="Share Song or Lyrics"></button>
+                    <button id="now-playing-album-btn" class="hidden !hidden" title="Go to Album"></button>
+                    <button id="np-pip-btn" class="hidden !hidden" title="Floating Mini-Player (Picture-in-Picture)"></button>
 
                     <!-- Mobile More Button & Popover (Accessible on phone format in standard Now Playing) -->
                     <div class="relative sm:hidden flex items-center shrink-0">
@@ -2381,19 +2410,23 @@
     <!-- Bottom Player Bar (On Desktop: Wide Navbar + Music Player; On Mobile: Floating Player) -->
     <div id="bottom-player" class="fixed bottom-6 left-1/2 w-[calc(100%-1.5rem)] sm:w-[calc(100%-3rem)] max-w-4xl sm:max-w-[1440px] h-[60px] sm:h-[68px] bg-white/85 backdrop-blur-lg border border-zinc-200/90 shadow-[0_8px_30px_rgb(0,0,0,0.06)] rounded-full px-3.5 sm:px-5 box-border flex justify-between items-center z-20 group hidden-force">
         <div id="bottom-player-content" class="w-full h-full flex justify-between items-center">
-            <!-- Desktop Left Side: Icon-Only Navigation Buttons (Search, Library, Settings, Now Playing) -->
-            <nav id="bp-desktop-nav" class="hidden sm:flex items-center gap-1.5 pr-4 mr-3 border-r border-zinc-200/90 shrink-0 h-11">
-                <a href="#search" id="bp-nav-search" title="Search" aria-label="Search" class="yolk-active w-10 h-9 shrink-0 flex items-center justify-center rounded-full sleek-transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <!-- Desktop Left Side: Navigation Buttons with Text Labels (Search, Library, Settings, Now Playing) -->
+            <nav id="bp-desktop-nav" class="hidden sm:flex items-center gap-1.5 pr-4 mr-3 border-r border-zinc-200/90 dark:border-white/10 shrink-0 h-11">
+                <a href="#search" id="bp-nav-search" title="Search" aria-label="Search" class="yolk-active px-3 h-9 shrink-0 flex items-center justify-center gap-1.5 rounded-full sleek-transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <span class="text-xs font-bold hidden md:inline">Search</span>
                 </a>
-                <a href="#library" id="bp-nav-library" title="Library" aria-label="Library" class="sleek-hover w-10 h-9 shrink-0 flex items-center justify-center rounded-full text-zinc-600 sleek-transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                <a href="#library" id="bp-nav-library" title="Library" aria-label="Library" class="sleek-hover px-3 h-9 shrink-0 flex items-center justify-center gap-1.5 rounded-full text-zinc-600 sleek-transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                    <span class="text-xs font-bold hidden md:inline">Library</span>
                 </a>
-                <a href="#settings" id="bp-nav-settings" title="Settings" aria-label="Settings" class="sleek-hover w-10 h-9 shrink-0 flex items-center justify-center rounded-full text-zinc-600 sleek-transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                <a href="#settings" id="bp-nav-settings" title="Settings" aria-label="Settings" class="sleek-hover px-3 h-9 shrink-0 flex items-center justify-center gap-1.5 rounded-full text-zinc-600 sleek-transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    <span class="text-xs font-bold hidden md:inline">Settings</span>
                 </a>
-                <a href="#now-playing" id="bp-nav-now-playing" title="Now Playing" aria-label="Now Playing" class="sleek-hover nav-hidden w-10 h-9 shrink-0 flex items-center justify-center rounded-full text-zinc-600 sleek-transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10v3"></path><path d="M6 6v11"></path><path d="M10 3v18"></path><path d="M14 8v7"></path><path d="M18 5v13"></path><path d="M22 10v3"></path></svg>
+                <a href="#now-playing" id="bp-nav-now-playing" title="Now Playing" aria-label="Now Playing" class="sleek-hover nav-hidden px-3 h-9 shrink-0 flex items-center justify-center gap-1.5 rounded-full text-zinc-600 sleek-transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10v3"></path><path d="M6 6v11"></path><path d="M10 3v18"></path><path d="M14 8v7"></path><path d="M18 5v13"></path><path d="M22 10v3"></path></svg>
+                    <span class="text-xs font-bold hidden md:inline">Now Playing</span>
                 </a>
             </nav>
 

@@ -144,7 +144,13 @@ async function searchYTM(query) {
           if (title && videoId && !results.some(res => res.youtube_id === videoId)) {
             const parts = rawSubtitle.split(" • ").map(p => p.trim());
             const artistName = parts[0] || "Unknown Artist";
-            const albumName = parts.length > 2 ? parts[1] : null;
+            const artistRun = col1.find(x => x.navigationEndpoint?.browseEndpoint?.browseEndpointContextSupportedConfigs?.browseEndpointContextMusicConfig?.pageType === 'MUSIC_PAGE_TYPE_ARTIST' || x.navigationEndpoint?.browseEndpoint?.browseId?.startsWith('UC'));
+            const artistId = artistRun?.navigationEndpoint?.browseEndpoint?.browseId ? `ytm-${artistRun.navigationEndpoint.browseEndpoint.browseId}` : null;
+
+            const albumRun = col1.find(x => x.navigationEndpoint?.browseEndpoint?.browseEndpointContextSupportedConfigs?.browseEndpointContextMusicConfig?.pageType === 'MUSIC_PAGE_TYPE_ALBUM' || x.navigationEndpoint?.browseEndpoint?.browseId?.startsWith('MPREb_'));
+            const albumId = albumRun?.navigationEndpoint?.browseEndpoint?.browseId ? `ytm-${albumRun.navigationEndpoint.browseEndpoint.browseId}` : null;
+            const albumName = albumRun?.text || (parts.length > 2 && albumId ? parts[1] : null);
+
             const durationStr = parts[parts.length - 1];
             let duration = 0;
             if (durationStr && durationStr.includes(':')) {
@@ -159,6 +165,8 @@ async function searchYTM(query) {
               videoId: videoId,
               title: title,
               artist_name: artistName,
+              artist_id: artistId,
+              album_id: albumId,
               album_name: albumName,
               artwork_url: optimizeThumbnailUrl(thumb || `https://i.ytimg.com/vi/${videoId}/0.jpg`),
               duration: duration,
@@ -611,11 +619,16 @@ export default async function handler(req, res) {
 
               if (artist === 'YT Music Artist') return null;
 
+              const albumId = item.album?.id || item.album?.endpoint?.payload?.browseId || null;
+              const albumName = item.album?.name || item.album?.title || null;
+
               return {
                   id: trackId,
                   title: title,
                   artist_name: artist,
                   artist_id: artistId ? `ytm-${artistId}` : null,
+                  album_id: albumId ? (albumId.startsWith('ytm-') ? albumId : `ytm-${albumId}`) : null,
+                  album_name: albumName,
                   artwork_url: thumbnail,
                   duration: duration,
                   downloadUrl: rawId ? [{ quality: '320kbps', link: `/api/music-api?endpoint=stream&id=${encodeURIComponent(rawId)}` }] : [],
@@ -694,6 +707,50 @@ export default async function handler(req, res) {
         artists,
         playlists
       });
+    }
+
+    if (endpoint === 'song-album') {
+        const rawVideoId = (id || req.query.id || req.query.videoId || '').replace('ytm-', '');
+        if (!rawVideoId) return res.status(400).json({ error: 'Missing track id' });
+        try {
+            const searchRes = await fetchYTM("search", {
+                query: rawVideoId,
+                params: "EgWKAQIIAWoMEA4QChADEAQQCRAF"
+            });
+            const tabs = searchRes?.contents?.tabbedSearchResultsRenderer?.tabs || [];
+            const sectionList = tabs[0]?.tabRenderer?.content?.sectionListRenderer?.contents || [];
+            let foundAlbum = null;
+            for (const s of sectionList) {
+                const shelf = s.musicShelfRenderer || s.itemSectionRenderer;
+                if (!shelf) continue;
+                for (const it of (shelf.contents || [])) {
+                    const r = it.musicResponsiveListItemRenderer;
+                    if (!r) continue;
+                    const playWatchEndpoint = r.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint
+                        || r.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.title?.runs?.[0]?.navigationEndpoint?.watchEndpoint;
+                    const vId = r.playlistItemData?.videoId || playWatchEndpoint?.videoId;
+                    if (vId === rawVideoId) {
+                        const col1 = r.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.title?.runs || r.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
+                        const albumRun = col1.find(x => x.navigationEndpoint?.browseEndpoint?.browseEndpointContextSupportedConfigs?.browseEndpointContextMusicConfig?.pageType === 'MUSIC_PAGE_TYPE_ALBUM' || x.navigationEndpoint?.browseEndpoint?.browseId?.startsWith('MPREb_'));
+                        if (albumRun && albumRun.navigationEndpoint?.browseEndpoint?.browseId) {
+                            foundAlbum = {
+                                has_album: true,
+                                album_id: `ytm-${albumRun.navigationEndpoint.browseEndpoint.browseId}`,
+                                album_name: albumRun.text || 'Album'
+                            };
+                            break;
+                        }
+                    }
+                }
+                if (foundAlbum) break;
+            }
+            if (foundAlbum) {
+                return res.status(200).json(foundAlbum);
+            }
+            return res.status(200).json({ has_album: false });
+        } catch (e) {
+            return res.status(200).json({ has_album: false, error: e.message });
+        }
     }
 
     if (endpoint === 'artist-search' || endpoint === 'album-search') {
