@@ -132,7 +132,7 @@ function getDownloadUrl(item) {
     if (!item) return '';
     const rawYtId = item.youtube_id || item.videoId || (item.id && typeof item.id === 'string' && item.id.startsWith('ytm-') && !item.id.startsWith('ytm-gen-') ? item.id.replace('ytm-', '') : null);
     if (rawYtId && rawYtId.length === 11) {
-        return `${API_BASE}?endpoint=stream&id=${encodeURIComponent(rawYtId)}`;
+        return `${API_BASE}?endpoint=stream&id=${encodeURIComponent(rawYtId)}&v=2`;
     }
     if (item.downloadUrl && Array.isArray(item.downloadUrl) && item.downloadUrl.length > 0) {
         const b = item.downloadUrl.find(d => d.quality === '320kbps') || item.downloadUrl[0];
@@ -765,7 +765,7 @@ const YolkOfflineDB = {
             }
 
             const prefFormat = getSupportedAudioFormat();
-            const downloadUrl = `/api/music-api?endpoint=download&id=${encodeURIComponent(videoId)}&format=${prefFormat}`;
+            const downloadUrl = `/api/music-api?endpoint=download&id=${encodeURIComponent(videoId)}&format=${prefFormat}&v=2`;
 
             // Fetch binary audio blob directly from server stream proxy
             const audioRes = await fetch(downloadUrl);
@@ -2547,13 +2547,60 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {}
     }
 
+    async function extractMp4MvhdDuration(blob) {
+        try {
+            if (!blob || typeof blob.slice !== 'function') return null;
+            const buf = await blob.slice(0, 512).arrayBuffer();
+            const view = new DataView(buf);
+            const bytes = new Uint8Array(buf);
+            for (let i = 0; i + 32 < bytes.length; i++) {
+                // Look for 'mvhd' box signature (0x6d, 0x76, 0x68, 0x64)
+                if (bytes[i] === 0x6d && bytes[i + 1] === 0x76 && bytes[i + 2] === 0x68 && bytes[i + 3] === 0x64) {
+                    const version = bytes[i + 4];
+                    if (version === 0 && i + 24 <= bytes.length) {
+                        const timescale = view.getUint32(i + 16, false);
+                        const duration = view.getUint32(i + 20, false);
+                        if (timescale > 0 && duration > 0) {
+                            return duration / timescale;
+                        }
+                    }
+                    break;
+                }
+            }
+        } catch (_) {}
+        return null;
+    }
+
+    function getEffectiveAudioDuration() {
+        const metaDur = currentTrack?.duration
+            ? (currentTrack.duration > 1000 ? currentTrack.duration / 1000 : currentTrack.duration)
+            : 0;
+        const mvhdDur = (currentAudio && currentAudio._mvhdDuration > 0) ? currentAudio._mvhdDuration : 0;
+        const rawDur = (currentAudio && isFinite(currentAudio.duration) && currentAudio.duration > 0)
+            ? currentAudio.duration
+            : 0;
+
+        const refDur = mvhdDur || metaDur;
+        if (rawDur > 0 && refDur > 10) {
+            // Guard against 2x HE-AAC (mp4a.40.5) container duration doubling (adds 100% blank audio time at end)
+            if (rawDur > refDur * 1.45 && Math.abs((rawDur / 2) - refDur) <= 18) {
+                return mvhdDur || (rawDur / 2);
+            }
+            if (rawDur > refDur + 20) {
+                return refDur;
+            }
+        }
+        return rawDur || refDur || 0;
+    }
+
     function updateMediaSessionPosition() {
         if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession) {
-            if (currentAudio && isFinite(currentAudio.duration) && currentAudio.duration > 0) {
+            const effDur = getEffectiveAudioDuration();
+            if (currentAudio && effDur > 0) {
                 try {
-                    const curPos = Math.max(0, Math.min(currentAudio.currentTime || 0, currentAudio.duration));
+                    const curPos = Math.max(0, Math.min(currentAudio.currentTime || 0, effDur));
                     navigator.mediaSession.setPositionState({
-                        duration: currentAudio.duration,
+                        duration: effDur,
                         playbackRate: currentAudio.playbackRate || 1.0,
                         position: curPos
                     });
@@ -2584,7 +2631,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (videoId) {
                 const prefFormat = getSupportedAudioFormat();
-                const streamUrl = `/api/music-api?endpoint=stream&id=${encodeURIComponent(videoId)}&format=${prefFormat}`;
+                const streamUrl = `/api/music-api?endpoint=stream&id=${encodeURIComponent(videoId)}&format=${prefFormat}&v=2`;
                 preloadedNextAudio.removeAttribute('src');
                 preloadedNextAudio.src = streamUrl;
                 preloadedNextAudio.load();
@@ -2600,6 +2647,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showSpinner(true);
         stopYouTubeProgress();
         currentAudio._recovering = false;
+        currentAudio._mvhdDuration = 0;
 
         // Immediately update titles, covers, and fav status
         updateNowPlayingUI(track);
@@ -2651,6 +2699,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     currentLyricsTrackId = uid;
                     renderLyricsToUI(offlineItem.lyrics, uid);
                 }
+                const mvhdDur = await extractMp4MvhdDuration(offlineItem.audioBlob);
+                if (mvhdDur && mvhdDur > 0) {
+                    currentAudio._mvhdDuration = mvhdDur;
+                }
                 const objectUrl = URL.createObjectURL(offlineItem.audioBlob);
                 loadDirectAudioPlayer(objectUrl);
                 preloadNextQueueTrack();
@@ -2671,7 +2723,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentAudio._activeFormat = prefFormat;
             currentAudio._activeVideoId = syncVideoId;
             currentAudio._recovering = false;
-            const streamUrl = `/api/music-api?endpoint=stream&id=${encodeURIComponent(syncVideoId)}&format=${prefFormat}`;
+            const streamUrl = `/api/music-api?endpoint=stream&id=${encodeURIComponent(syncVideoId)}&format=${prefFormat}&v=2`;
             loadDirectAudioPlayer(streamUrl);
             preloadNextQueueTrack();
             return;
@@ -2684,7 +2736,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentAudio._activeFormat = prefFormat;
             currentAudio._activeVideoId = videoId;
             currentAudio._recovering = false;
-            const streamUrl = `/api/music-api?endpoint=stream&id=${encodeURIComponent(videoId)}&format=${prefFormat}`;
+            const streamUrl = `/api/music-api?endpoint=stream&id=${encodeURIComponent(videoId)}&format=${prefFormat}&v=2`;
             loadDirectAudioPlayer(streamUrl);
             preloadNextQueueTrack();
             return;
@@ -2823,12 +2875,60 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast('Offline mode: Playing downloaded songs');
     });
 
+    // iPhone / Mobile Lock Screen Redirect -> Automatically open Now Playing section
+    let wasAppBackgrounded = false;
+    window._yolkFilePickerOpen = false;
+
+    function handleReturnFromLockScreen() {
+        if (!wasAppBackgrounded) return;
+        wasAppBackgrounded = false;
+        if (window._yolkFilePickerOpen) {
+            setTimeout(() => { window._yolkFilePickerOpen = false; }, 1200);
+            return;
+        }
+        const isMobileDevice = window.innerWidth < 640 || /iPhone|iPod|Android/i.test(navigator.userAgent || '');
+        if (isMobileDevice && currentTrack) {
+            if (window.location.hash !== '#now-playing') {
+                window.location.hash = '#now-playing';
+            }
+        }
+    }
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+            wasAppBackgrounded = true;
+        } else if (document.visibilityState === 'visible') {
+            handleReturnFromLockScreen();
+        }
+    });
+
+    window.addEventListener('pagehide', () => {
+        wasAppBackgrounded = true;
+    });
+
+    window.addEventListener('pageshow', () => {
+        if (document.visibilityState === 'visible') {
+            handleReturnFromLockScreen();
+        }
+    });
+
+    window.addEventListener('focus', () => {
+        if (document.visibilityState === 'visible') {
+            handleReturnFromLockScreen();
+        }
+    });
+
     // Time & Progress Update
     let lastMediaSessionPosUpdate = 0;
     currentAudio.addEventListener('timeupdate', () => {
         if (activeSource !== 'audio') return;
         const cur = currentAudio.currentTime || 0;
-        const dur = currentAudio.duration || (currentTrack?.duration ? currentTrack.duration / 1000 : 0);
+        const dur = getEffectiveAudioDuration();
+        if (dur > 0 && cur >= dur - 0.15 && currentAudio.duration > dur + 2) {
+            // Reached true end of song: skip any trailing blank container padding immediately
+            playNext();
+            return;
+        }
         updateProgressUI(cur, dur);
         updateLyricsSync(cur);
 
@@ -2860,7 +2960,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const dur = currentAudio.duration || (currentTrack?.duration ? currentTrack.duration / 1000 : 0);
+            const dur = getEffectiveAudioDuration();
             if (dur > 0) {
                 currentAudio.currentTime = clickPos * dur;
                 updateMediaSessionPosition();
@@ -3010,7 +3110,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeSource === 'youtube' && ytPlayer && typeof ytPlayer.getDuration === 'function') {
             return ytPlayer.getDuration() || (currentTrack?.duration ? currentTrack.duration / 1000 : 0);
         }
-        return currentAudio.duration || (currentTrack?.duration ? currentTrack.duration / 1000 : 0);
+        return getEffectiveAudioDuration();
     }
 
     function getPlaybackCurrentTime() {
@@ -4556,11 +4656,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (playlistDetailArt && playlistDetailCoverInput) {
         playlistDetailArt.addEventListener('click', () => {
             if (currentPlaylistContextId && currentPlaylistContextId !== 'favorites') {
+                window._yolkFilePickerOpen = true;
                 playlistDetailCoverInput.click();
             }
         });
 
         playlistDetailCoverInput.addEventListener('change', (e) => {
+            window._yolkFilePickerOpen = false;
             const file = e.target.files[0];
             if (!file) return;
             const reader = new FileReader();
@@ -4978,10 +5080,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (modalCoverPreview && playlistModalCoverInput) {
-        modalCoverPreview.addEventListener('click', () => playlistModalCoverInput.click());
+        modalCoverPreview.addEventListener('click', () => {
+            window._yolkFilePickerOpen = true;
+            playlistModalCoverInput.click();
+        });
     }
     if (modalCoverUploadBtn && playlistModalCoverInput) {
-        modalCoverUploadBtn.addEventListener('click', () => playlistModalCoverInput.click());
+        modalCoverUploadBtn.addEventListener('click', () => {
+            window._yolkFilePickerOpen = true;
+            playlistModalCoverInput.click();
+        });
     }
     if (modalCoverRecropBtn) {
         modalCoverRecropBtn.addEventListener('click', () => {
@@ -5003,6 +5111,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (playlistModalCoverInput) {
         playlistModalCoverInput.addEventListener('change', (e) => {
+            window._yolkFilePickerOpen = false;
             const file = e.target.files[0];
             if (!file) return;
             const reader = new FileReader();

@@ -270,15 +270,25 @@ function rankTracksForQuery(trackList, query) {
   const q = (query || '').toLowerCase().trim();
   const cleanQ = q.replace(/[^\w\s]/g, '').trim();
 
-  // Deduplicate by youtube_id / videoId while tracking original order
-  const seen = new Set();
+  // Deduplicate by youtube_id / videoId while tracking original order and preserving duration metadata
+  const seen = new Map();
   const unique = [];
   let origIdx = 0;
   for (const t of trackList) {
     if (!t) continue;
     const vid = t.youtube_id || t.videoId || (t.id && typeof t.id === 'string' && t.id.startsWith('ytm-') ? t.id.replace('ytm-', '') : t.id);
-    if (!vid || seen.has(vid)) continue;
-    seen.add(vid);
+    if (!vid) continue;
+    if (seen.has(vid)) {
+      const existing = seen.get(vid);
+      if ((!existing.duration || existing.duration <= 0) && t.duration > 0) {
+        existing.duration = t.duration;
+      }
+      if (!existing.album_name && t.album_name) {
+        existing.album_name = t.album_name;
+      }
+      continue;
+    }
+    seen.set(vid, t);
     unique.push({ track: t, originalOrder: origIdx++ });
   }
 
@@ -1390,7 +1400,7 @@ async function resolveAudioStream(videoId, requestedFormat = 'auto') {
 
     for (const inst of streamInstances) {
         try {
-            const vidRes = await fetch(`${inst}/api/v1/videos/${videoId}?fields=adaptiveFormats,formatStreams`, {
+            const vidRes = await fetch(`${inst}/api/v1/videos/${videoId}?fields=adaptiveFormats,formatStreams,lengthSeconds`, {
                 headers: { 'Accept': 'application/json' },
                 signal: AbortSignal.timeout(4500)
             });
@@ -1399,22 +1409,36 @@ async function resolveAudioStream(videoId, requestedFormat = 'auto') {
 
             const adaptive = data.adaptiveFormats || [];
             const muxed = data.formatStreams || [];
+            const lengthSeconds = data.lengthSeconds ? parseInt(data.lengthSeconds, 10) : null;
+
+            const selectBestFormat = (list) => {
+                if (!Array.isArray(list) || list.length === 0) return null;
+                // Exclude itag 139 (mp4a.40.5 HE-AAC 22050Hz) whenever standard 44.1kHz/48kHz formats exist,
+                // because mp4a.40.5 has a 44100 timescale mvhd header with 22050Hz AAC core frames, causing
+                // HTML5 <audio> demuxers to report 2x duration (2 to 4.5 minutes of trailing blank silence).
+                const nonHeAac = list.filter(f => String(f.itag) !== '139' && !f.type?.includes('mp4a.40.5') && Number(f.audioSampleRate || 44100) >= 44100);
+                const pool = nonHeAac.length > 0 ? nonHeAac : list;
+                const sorted = [...pool].sort((a, b) => parseInt(b.bitrate || 0, 10) - parseInt(a.bitrate || 0, 10));
+
+                if (requestedFormat === 'webm') {
+                    return sorted.find(f => String(f.itag) === '251')
+                        || sorted.find(f => f.type?.includes('webm') || f.container === 'webm')
+                        || sorted[0];
+                }
+                if (requestedFormat === 'mp4') {
+                    return sorted.find(f => String(f.itag) === '140')
+                        || sorted.find(f => f.type?.includes('mp4a.40.2'))
+                        || sorted.find(f => f.type?.includes('mp4') || f.container === 'm4a')
+                        || sorted[0];
+                }
+                return sorted.find(f => String(f.itag) === '140')
+                    || sorted.find(f => String(f.itag) === '251')
+                    || sorted[0];
+            };
 
             // Tier 1: Clean audio-only adaptive formats directly hosted on googlevideo.com
             const directAudio = adaptive.filter(f => f.type?.includes('audio') && f.url && !f.url.includes('companion') && !f.url.includes('sabr-segment'));
-            
-            let chosenFormat = null;
-            if (directAudio.length > 0) {
-                if (requestedFormat === 'webm') {
-                    chosenFormat = directAudio.find(f => f.type?.includes('webm') || f.container === 'webm');
-                } else if (requestedFormat === 'mp4') {
-                    chosenFormat = directAudio.find(f => f.type?.includes('mp4') || f.container === 'm4a');
-                }
-                if (!chosenFormat) {
-                    directAudio.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-                    chosenFormat = directAudio[0];
-                }
-            }
+            let chosenFormat = selectBestFormat(directAudio);
 
             // Tier 2: Muxed direct googlevideo streams (itag 18 / 22)
             if (!chosenFormat && muxed.length > 0) {
@@ -1427,14 +1451,7 @@ async function resolveAudioStream(videoId, requestedFormat = 'auto') {
             // Tier 3: Companion-assisted audio formats
             if (!chosenFormat) {
                 const companionAudio = adaptive.filter(f => f.type?.includes('audio') && f.url);
-                if (companionAudio.length > 0) {
-                    if (requestedFormat === 'webm') {
-                        chosenFormat = companionAudio.find(f => f.type?.includes('webm') || f.container === 'webm');
-                    } else if (requestedFormat === 'mp4') {
-                        chosenFormat = companionAudio.find(f => f.type?.includes('mp4') || f.container === 'm4a');
-                    }
-                    if (!chosenFormat) chosenFormat = companionAudio[0];
-                }
+                chosenFormat = selectBestFormat(companionAudio);
             }
 
             if (!chosenFormat) throw new Error(`No usable audio streams on ${inst}`);
@@ -1469,7 +1486,8 @@ async function resolveAudioStream(videoId, requestedFormat = 'auto') {
                 isIpRestricted: isIpRestricted,
                 mimeType: chosenFormat.type?.split(';')[0]?.trim() || defaultMime,
                 clen: chosenFormat.clen ? parseInt(chosenFormat.clen, 10) : null,
-                itag: resolvedItag
+                itag: resolvedItag,
+                lengthSeconds: lengthSeconds
             };
 
             streamUrlCache.set(cacheKey, { streamInfo: info, expires: Date.now() + 25 * 60 * 1000 });
@@ -1490,7 +1508,8 @@ async function resolveAudioStream(videoId, requestedFormat = 'auto') {
         isIpRestricted: true,
         mimeType: defaultMime,
         clen: null,
-        itag: defaultItag
+        itag: defaultItag,
+        lengthSeconds: null
     };
 }
 
@@ -1563,8 +1582,11 @@ async function openUpstreamAudioStream(streamInfo, upstreamHeaders) {
             res.setHeader('Accept-Ranges', 'bytes');
             res.setHeader('Access-Control-Allow-Origin', '*');
             res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type');
-            res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
+            res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges, X-Track-Duration');
             res.setHeader('Cache-Control', 'public, max-age=3600');
+            if (streamInfo.lengthSeconds) {
+                res.setHeader('X-Track-Duration', String(streamInfo.lengthSeconds));
+            }
 
             if (audioStreamRes.headers.get('content-range')) {
                 res.setHeader('Content-Range', audioStreamRes.headers.get('content-range'));

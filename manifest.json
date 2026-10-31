@@ -4,6 +4,7 @@
   "description": "Minimalist Music Platform",
   "start_url": "/",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#FCFBF8",
   "theme_color": "#FCFBF8",
   "icons": [

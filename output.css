@@ -359,6 +359,9 @@
   .z-\[70\] {
     z-index: 70;
   }
+  .z-\[99999\] {
+    z-index: 99999;
+  }
   .col-span-full {
     grid-column: 1 / -1;
   }

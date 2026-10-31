@@ -1080,10 +1080,33 @@
             animation: appleMeshDrift 20s ease-in-out infinite;
             will-change: transform;
         }
+
+        /* Phone Portrait Lock: block unoptimized landscape view on mobile phones across all pages */
+        #portrait-lock-overlay {
+            display: none;
+        }
+        @media screen and (max-height: 540px) and (orientation: landscape) and (hover: none) and (pointer: coarse) {
+            #portrait-lock-overlay {
+                display: flex !important;
+            }
+        }
     </style>
 </head>
 <body class="text-zinc-800 h-screen w-screen overflow-hidden selection:bg-zinc-200 selection:text-zinc-900 relative" data-page="search">
     <div id="safari-top-color-shim" style="position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 40; pointer-events: none; background-color: #FCFBF8;"></div>
+
+    <!-- Phone Portrait Orientation Lock Overlay -->
+    <div id="portrait-lock-overlay" class="fixed inset-0 z-[99999] bg-[#FCFBF8] flex-col items-center justify-center p-6 text-center select-none">
+        <div class="flex items-center gap-2.5 mb-4">
+            <div class="w-7 h-7 rounded-full bg-[#FACC15] border-2 border-black shadow-sm shrink-0"></div>
+            <span class="text-2xl font-bold text-black tracking-tight">Yolk!</span>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-white border border-zinc-200 shadow-sm flex items-center justify-center mb-3 text-zinc-800">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+        </div>
+        <p class="text-sm font-bold text-zinc-900">Portrait Mode Locked</p>
+        <p class="text-xs font-medium text-zinc-500 mt-1 max-w-xs">Rotate your phone back to portrait to view Yolk!</p>
+    </div>
 
     <!-- Small Top-Left Logo -->
     <div id="smallLogo" class="fixed top-3 left-4 sm:top-6 sm:left-8 z-40 flex items-center gap-2 cursor-pointer pointer-events-auto select-none transition-transform hover:scale-105 active:scale-95" title="Return to Home">
@@ -2097,6 +2120,17 @@
                     });
                 });
             });
+
+            // Attempt native OS orientation lock to portrait on mobile devices
+            const tryLockPortrait = () => {
+                if (window.innerWidth < 900 && screen.orientation && typeof screen.orientation.lock === 'function') {
+                    screen.orientation.lock('portrait-primary').catch(() => {
+                        screen.orientation.lock('portrait').catch(() => {});
+                    });
+                }
+            };
+            tryLockPortrait();
+            window.addEventListener('touchstart', tryLockPortrait, { once: true, passive: true });
 
             window.addEventListener('hashchange', navigate);
             navigate(); // Trigger on initial load
