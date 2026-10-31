@@ -2336,10 +2336,217 @@ document.addEventListener('DOMContentLoaded', () => {
         return card;
     }
 
+    // Pointer/Touch Reordering Helper for Playlists & Up Next Queue
+    function enableListReordering(containerEl, onReorder) {
+        if (!containerEl || typeof onReorder !== 'function') return;
+        let dragRow = null;
+        let startIdx = -1;
+        let currentIdx = -1;
+        let activePointerId = null;
+
+        const getRows = () => Array.from(containerEl.querySelectorAll(':scope > [data-reorder-item="true"]'));
+
+        containerEl.addEventListener('pointerdown', (e) => {
+            const handle = e.target.closest('.reorder-grip-handle');
+            if (!handle) return;
+            const row = handle.closest('[data-reorder-item="true"]');
+            if (!row || !containerEl.contains(row)) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            const rows = getRows();
+            startIdx = rows.indexOf(row);
+            if (startIdx < 0) return;
+
+            currentIdx = startIdx;
+            dragRow = row;
+            activePointerId = e.pointerId;
+            dragRow.classList.add('dragging-reorder-row');
+            triggerHaptic('medium');
+
+            try {
+                handle.setPointerCapture(e.pointerId);
+            } catch (_) {}
+
+            const onPointerMove = (moveEv) => {
+                if (!dragRow || moveEv.pointerId !== activePointerId) return;
+                moveEv.preventDefault();
+                const allRows = getRows();
+                const y = moveEv.clientY;
+
+                for (let i = 0; i < allRows.length; i++) {
+                    const sibling = allRows[i];
+                    if (sibling === dragRow) continue;
+                    const rect = sibling.getBoundingClientRect();
+                    const midY = rect.top + rect.height / 2;
+                    if (y >= rect.top && y <= rect.bottom) {
+                        if (i < currentIdx && y < midY) {
+                            containerEl.insertBefore(dragRow, sibling);
+                            currentIdx = getRows().indexOf(dragRow);
+                            triggerHaptic('selection');
+                        } else if (i > currentIdx && y > midY) {
+                            containerEl.insertBefore(dragRow, sibling.nextSibling);
+                            currentIdx = getRows().indexOf(dragRow);
+                            triggerHaptic('selection');
+                        }
+                        break;
+                    }
+                }
+            };
+
+            const finishDrag = (endEv) => {
+                if (!dragRow || (endEv && endEv.pointerId !== undefined && endEv.pointerId !== activePointerId)) return;
+                window.removeEventListener('pointermove', onPointerMove);
+                window.removeEventListener('pointerup', finishDrag);
+                window.removeEventListener('pointercancel', finishDrag);
+                try {
+                    handle.releasePointerCapture(activePointerId);
+                } catch (_) {}
+
+                const finalRows = getRows();
+                const finalIdx = finalRows.indexOf(dragRow);
+                dragRow.classList.remove('dragging-reorder-row');
+                const from = startIdx;
+                const to = finalIdx;
+                dragRow = null;
+                startIdx = -1;
+                currentIdx = -1;
+                activePointerId = null;
+
+                if (from >= 0 && to >= 0 && from !== to) {
+                    triggerHaptic('medium');
+                    onReorder(from, to);
+                }
+            };
+
+            window.addEventListener('pointermove', onPointerMove, { passive: false });
+            window.addEventListener('pointerup', finishDrag);
+            window.addEventListener('pointercancel', finishDrag);
+        });
+    }
+
+    // Touch Swipe Gestures on Song Rows: Swipe Right -> Add to Queue, Swipe Left -> Favorite
+    function attachSongRowSwipeGestures(rowEl, track, getFavSvg) {
+        if (!rowEl || !track) return;
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let currentDx = 0;
+        let isSwipingRow = false;
+        let swipeLockedOut = false;
+        let thresholdCrossed = false;
+        let badgeEl = null;
+
+        rowEl.addEventListener('touchstart', (e) => {
+            if (e.touches.length !== 1) return;
+            if (e.target.closest('.reorder-grip-handle') || e.target.closest('button')) {
+                swipeLockedOut = true;
+                return;
+            }
+            swipeLockedOut = false;
+            isSwipingRow = false;
+            thresholdCrossed = false;
+            currentDx = 0;
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+
+        rowEl.addEventListener('touchmove', (e) => {
+            if (swipeLockedOut || e.touches.length !== 1) return;
+            const dx = e.touches[0].clientX - touchStartX;
+            const dy = e.touches[0].clientY - touchStartY;
+
+            if (!isSwipingRow) {
+                if (Math.abs(dy) > 14 && Math.abs(dy) >= Math.abs(dx)) {
+                    swipeLockedOut = true;
+                    return;
+                }
+                if (Math.abs(dx) > 18 && Math.abs(dx) > Math.abs(dy) * 1.65) {
+                    isSwipingRow = true;
+                    rowEl.style.transition = 'none';
+                    rowEl.style.position = 'relative';
+                    if (!badgeEl) {
+                        badgeEl = document.createElement('div');
+                        badgeEl.className = 'pointer-events-none absolute top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider shadow-sm z-20 transition-opacity duration-150';
+                        rowEl.appendChild(badgeEl);
+                    }
+                } else {
+                    return;
+                }
+            }
+
+            currentDx = Math.max(-84, Math.min(84, dx * 0.68));
+            rowEl.style.transform = `translateX(${currentDx}px)`;
+
+            if (badgeEl) {
+                if (currentDx > 12) {
+                    badgeEl.textContent = '＋ Queue';
+                    badgeEl.style.left = '10px';
+                    badgeEl.style.right = 'auto';
+                    badgeEl.style.backgroundColor = '#FDE047';
+                    badgeEl.style.color = '#18181b';
+                    badgeEl.style.opacity = String(Math.min(1, (currentDx - 12) / 42));
+                } else if (currentDx < -12) {
+                    const favNow = isFavorite(track.id);
+                    badgeEl.textContent = favNow ? '♡ Unfavorite' : '♥ Favorite';
+                    badgeEl.style.right = '10px';
+                    badgeEl.style.left = 'auto';
+                    badgeEl.style.backgroundColor = '#18181b';
+                    badgeEl.style.color = '#ffffff';
+                    badgeEl.style.opacity = String(Math.min(1, (Math.abs(currentDx) - 12) / 42));
+                } else {
+                    badgeEl.style.opacity = '0';
+                }
+            }
+
+            const overThreshold = Math.abs(currentDx) >= 54;
+            if (overThreshold && !thresholdCrossed) {
+                thresholdCrossed = true;
+                triggerHaptic('selection');
+            } else if (!overThreshold && thresholdCrossed) {
+                thresholdCrossed = false;
+            }
+        }, { passive: true });
+
+        const finishRowSwipe = () => {
+            if (!isSwipingRow) return;
+            const finalDx = currentDx;
+            isSwipingRow = false;
+            currentDx = 0;
+            rowEl.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)';
+            rowEl.style.transform = '';
+            if (badgeEl) {
+                badgeEl.style.opacity = '0';
+                setTimeout(() => {
+                    if (badgeEl && badgeEl.parentNode) badgeEl.parentNode.removeChild(badgeEl);
+                    badgeEl = null;
+                }, 220);
+            }
+
+            if (finalDx >= 54) {
+                rowEl._suppressNextClick = true;
+                setTimeout(() => { rowEl._suppressNextClick = false; }, 320);
+                triggerHaptic('medium');
+                addToQueue(track);
+            } else if (finalDx <= -54) {
+                rowEl._suppressNextClick = true;
+                setTimeout(() => { rowEl._suppressNextClick = false; }, 320);
+                const svg = typeof getFavSvg === 'function' ? getFavSvg() : null;
+                toggleFavorite(track, svg);
+            }
+        };
+
+        rowEl.addEventListener('touchend', finishRowSwipe, { passive: true });
+        rowEl.addEventListener('touchcancel', finishRowSwipe, { passive: true });
+    }
+
     // Creates track list item with Play, Add to Playlist, and Favorite buttons (compact desktop 16:9 ratio fit)
-    function createTrackElement(track, onPlayClick, onRemoveClick = null) {
+    function createTrackElement(track, onPlayClick, onRemoveClick = null, options = {}) {
         const div = document.createElement('div');
         div.className = 'group flex items-center justify-between p-2 sm:p-2.5 rounded-xl song-row-card mb-1.5 w-full max-w-full box-border cursor-pointer select-none';
+        if (options && options.reorderable) {
+            div.setAttribute('data-reorder-item', 'true');
+        }
         
         const artwork = getProxyUrl(track.artwork_url || track.image, '50x50');
         const title = track.title || track.name || 'Unknown Title';
@@ -2348,6 +2555,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         div.innerHTML = `
             <div class="flex items-center gap-2.5 min-w-0 flex-1 mr-2 overflow-hidden">
+                ${options && options.reorderable ? `
+                <button type="button" class="reorder-grip-handle text-zinc-400 hover:text-zinc-800 p-1 -ml-1 rounded-lg cursor-grab active:cursor-grabbing shrink-0 flex items-center justify-center" title="Drag to reorder">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>
+                </button>
+                ` : ''}
                 <div class="w-9 h-9 sm:w-10 sm:h-10 bg-zinc-100 rounded-lg overflow-hidden shrink-0 relative border border-zinc-200/60 shadow-2xs flex items-center justify-center">
                     ${artwork ? `<img src="${artwork}" alt="${escapeHtml(title)}" class="w-full h-full object-cover" referrerpolicy="no-referrer" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.classList.remove('hidden');">` : ''}
                     <div class="artwork-fallback ${artwork ? 'hidden' : ''} text-zinc-400 flex items-center justify-center">
@@ -2385,6 +2597,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
 
         div.addEventListener('click', (e) => {
+            if (div._suppressNextClick) return;
             if (e.target.closest('.artist-name-link')) {
                 e.stopPropagation();
                 if (typeof window.loadArtistView === 'function') {
@@ -2402,6 +2615,8 @@ document.addEventListener('DOMContentLoaded', () => {
             e.stopPropagation();
             toggleFavorite(track, favBtn.querySelector('svg'));
         });
+
+        attachSongRowSwipeGestures(div, track, () => favBtn ? favBtn.querySelector('svg') : null);
 
         const addPlBtn = div.querySelector('.add-to-pl-btn');
         addPlBtn.addEventListener('click', (e) => {
@@ -2588,8 +2803,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    let crossfadeSeconds = Math.max(0, Math.min(12, parseInt(localStorage.getItem('yolk_crossfade_sec') || '0', 10) || 0));
+    let _crossfadeFadeInTimer = null;
+
+    function clearCrossfadeTimers() {
+        if (_crossfadeFadeInTimer) {
+            clearInterval(_crossfadeFadeInTimer);
+            _crossfadeFadeInTimer = null;
+        }
+        try {
+            if (preloadedNextAudio && !preloadedNextAudio.paused) {
+                preloadedNextAudio.pause();
+                preloadedNextAudio.currentTime = 0;
+            }
+        } catch (_) {}
+    }
+
     function loadDirectAudioPlayer(streamUrl) {
         activeSource = 'audio';
+        const shouldCrossfadeIn = Boolean(crossfadeSeconds > 0 && currentAudio._didCrossfadeOut);
+        currentAudio._didCrossfadeOut = false;
+        clearCrossfadeTimers();
+
         if (ytPlayer && typeof ytPlayer.stopVideo === 'function') {
             try { ytPlayer.stopVideo(); } catch (_) {}
         }
@@ -2598,6 +2833,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentAudio.load();
         currentAudio._recovering = false;
         currentAudio.src = streamUrl;
+        currentAudio.volume = shouldCrossfadeIn ? Math.max(0.05, currentVolume * 0.16) : currentVolume;
         currentAudio.load();
         const playPromise = currentAudio.play();
         if (playPromise !== undefined) {
@@ -2607,6 +2843,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 isPlaying = true;
                 updatePlayPauseButtons();
                 updateNowPlayingNavVisibility(true);
+                if (shouldCrossfadeIn && crossfadeSeconds > 0) {
+                    const rampMs = Math.min(crossfadeSeconds * 650, 3500);
+                    const steps = 24;
+                    const stepTime = Math.max(30, Math.round(rampMs / steps));
+                    let step = 0;
+                    _crossfadeFadeInTimer = setInterval(() => {
+                        step++;
+                        if (step >= steps || currentAudio.paused) {
+                            currentAudio.volume = currentVolume;
+                            clearInterval(_crossfadeFadeInTimer);
+                            _crossfadeFadeInTimer = null;
+                            return;
+                        }
+                        const ratio = step / steps;
+                        currentAudio.volume = Math.min(1, Math.max(0, currentVolume * (0.16 + 0.84 * ratio)));
+                    }, stepTime);
+                } else {
+                    currentAudio.volume = currentVolume;
+                }
                 if ('mediaSession' in navigator) {
                     navigator.mediaSession.playbackState = 'playing';
                     updateMediaSessionPosition();
@@ -2615,6 +2870,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     bottomPlayer.classList.remove('hidden-force');
                 }
             }).catch(e => {
+                currentAudio.volume = currentVolume;
                 showSpinner(false);
                 if (e.name !== 'AbortError') {
                     console.warn('Audio playback notice:', e.message);
@@ -3101,6 +3357,29 @@ document.addEventListener('DOMContentLoaded', () => {
             playNext();
             return;
         }
+
+        // Crossfade Envelope: smoothly fade outgoing song & overlap preloaded next song during final crossfadeSeconds
+        if (crossfadeSeconds > 0 && dur > Math.max(18, crossfadeSeconds * 2) && isPlaying) {
+            const remaining = dur - cur;
+            if (remaining > 0.18 && remaining <= crossfadeSeconds) {
+                currentAudio._didCrossfadeOut = true;
+                const fadeRatio = Math.max(0.06, Math.min(1, remaining / crossfadeSeconds));
+                if (!_crossfadeFadeInTimer) {
+                    currentAudio.volume = Math.max(0, Math.min(1, currentVolume * fadeRatio));
+                }
+                if (preloadedNextAudio && preloadedNextAudio.src && preloadedNextTrackUid) {
+                    try {
+                        preloadedNextAudio.volume = Math.max(0, Math.min(1, currentVolume * (1 - fadeRatio) * 0.85));
+                        if (preloadedNextAudio.paused) {
+                            preloadedNextAudio.play().catch(() => {});
+                        }
+                    } catch (_) {}
+                }
+            } else if (remaining > crossfadeSeconds && !_crossfadeFadeInTimer && currentAudio.volume !== currentVolume) {
+                currentAudio.volume = currentVolume;
+            }
+        }
+
         updateProgressUI(cur, dur);
         updateLyricsSync(cur);
 
@@ -4925,8 +5204,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const el = createTrackElement(
                     track,
                     () => {
-                        currentQueue = [...trackList];
-                        currentQueueIndex = idx;
+                        const freshList = isFav ? favorites : (playlists.find(p => p.id === playlistId)?.tracks || trackList);
+                        const freshIdx = freshList.findIndex(t => getTrackUid(t) === getTrackUid(track));
+                        currentQueue = [...freshList];
+                        currentQueueIndex = freshIdx >= 0 ? freshIdx : idx;
                         currentPlayingPlaylistContextId = playlistId;
                         playTrack(track);
                     },
@@ -4941,9 +5222,28 @@ document.addEventListener('DOMContentLoaded', () => {
                         } else {
                             removeTrackFromPlaylist(playlistId, getTrackUid(track));
                         }
-                    }
+                    },
+                    { reorderable: true }
                 );
                 trackListContainer.appendChild(el);
+            });
+
+            enableListReordering(trackListContainer, (fromIdx, toIdx) => {
+                const listRef = isFav ? favorites : (playlists.find(p => p.id === playlistId)?.tracks || null);
+                if (!Array.isArray(listRef) || fromIdx < 0 || toIdx < 0 || fromIdx >= listRef.length || toIdx >= listRef.length) return;
+                const [moved] = listRef.splice(fromIdx, 1);
+                listRef.splice(toIdx, 0, moved);
+                if (isFav) {
+                    saveFavorites();
+                } else {
+                    savePlaylists();
+                }
+                if (currentPlayingPlaylistContextId === playlistId && currentTrack) {
+                    currentQueue = [...listRef];
+                    const newCurIdx = currentQueue.findIndex(t => getTrackUid(t) === getTrackUid(currentTrack));
+                    if (newCurIdx >= 0) currentQueueIndex = newCurIdx;
+                }
+                showToast('Playlist order updated');
             });
         }
 
@@ -4954,6 +5254,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const scrollContainer = document.getElementById('page-library-scroll');
         if (scrollContainer) scrollContainer.scrollTop = 0;
     }
+    window.openPlaylistDetail = openPlaylistDetail;
 
     // Cover upload from Playlist Detail Hero Art
     const playlistDetailArt = document.getElementById('playlist-detail-art');
@@ -5894,6 +6195,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
 
         div.addEventListener('click', (e) => {
+            if (div._suppressNextClick) return;
             if (e.target.closest('.artist-name-link')) {
                 e.stopPropagation();
                 if (typeof window.loadArtistView === 'function') {
@@ -5911,6 +6213,8 @@ document.addEventListener('DOMContentLoaded', () => {
             e.stopPropagation();
             toggleFavorite(track, favBtn.querySelector('svg'));
         });
+
+        attachSongRowSwipeGestures(div, track, () => favBtn ? favBtn.querySelector('svg') : null);
 
         const addPlBtn = div.querySelector('.add-to-pl-btn');
         addPlBtn.addEventListener('click', (e) => {
@@ -6401,14 +6705,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 upcomingTracks.forEach((track, offset) => {
                     const actualIdx = currentQueueIndex + 1 + offset;
                     const row = document.createElement('div');
-                    row.className = 'group flex items-center justify-between p-2 rounded-xl bg-zinc-50/70 hover:bg-zinc-100/90 border border-zinc-200/60 hover:border-zinc-300 transition-all cursor-pointer scroll-row-hover mb-1 w-full max-w-full box-border overflow-hidden';
+                    row.className = 'group flex items-center justify-between p-2 rounded-xl bg-zinc-50/70 hover:bg-zinc-100/90 border border-zinc-200/60 hover:border-zinc-300 transition-all cursor-pointer scroll-row-hover mb-1 w-full max-w-full box-border overflow-hidden select-none';
+                    row.setAttribute('data-reorder-item', 'true');
                     const artwork = getProxyUrl(track.artwork_url || track.image, '60x60');
                     const title = track.title || track.name || 'Unknown Title';
                     const artist = track.artist_name || track.artist || 'Unknown Artist';
                     const durStr = track.duration ? formatTime(track.duration > 1000 ? track.duration / 1000 : track.duration) : '';
 
                     row.innerHTML = `
-                        <div class="flex items-center gap-2.5 min-w-0 flex-1 mr-2 overflow-hidden">
+                        <div class="flex items-center gap-2 min-w-0 flex-1 mr-2 overflow-hidden">
+                            <button type="button" class="reorder-grip-handle text-zinc-400 hover:text-zinc-800 p-1 rounded-lg cursor-grab active:cursor-grabbing shrink-0 flex items-center justify-center" title="Drag to reorder queue">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>
+                            </button>
                             <span class="w-4 text-center text-[11px] font-bold text-zinc-400 group-hover:text-zinc-900 shrink-0">${offset + 1}</span>
                             <div class="w-9 h-9 bg-zinc-100 rounded-lg overflow-hidden shrink-0 border border-zinc-200/50 flex items-center justify-center">
                                 ${artwork ? `<img src="${artwork}" class="w-full h-full object-cover">` : ''}
@@ -6427,6 +6735,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     `;
 
                     row.addEventListener('click', (e) => {
+                        if (e.target.closest('.reorder-grip-handle')) return;
                         if (e.target.closest('.remove-queue-item-btn')) {
                             e.stopPropagation();
                             removeFromQueue(actualIdx);
@@ -6439,6 +6748,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     upNextList.appendChild(row);
                 });
+
+                if (!upNextList._reorderBound) {
+                    upNextList._reorderBound = true;
+                    enableListReordering(upNextList, (fromOffset, toOffset) => {
+                        const baseIdx = currentQueueIndex + 1;
+                        const fromActual = baseIdx + fromOffset;
+                        const toActual = baseIdx + toOffset;
+                        if (fromActual >= baseIdx && toActual >= baseIdx && fromActual < currentQueue.length && toActual < currentQueue.length) {
+                            const [movedTrack] = currentQueue.splice(fromActual, 1);
+                            currentQueue.splice(toActual, 0, movedTrack);
+                            preloadedNextTrackUid = null;
+                            preloadNextQueueTrack();
+                            updateQueueModalUI();
+                            showToast('Queue order updated');
+                        }
+                    });
+                }
             }
         }
     }
@@ -6600,11 +6926,14 @@ document.addEventListener('DOMContentLoaded', () => {
     let yolkMediaSourceNode = null;
     let yolkEqPreGain = null;
     let yolkEqFilters = [];
+    let yolkAnalyserNode = null;
+    let visualizerEnabled = localStorage.getItem('yolk_visualizer_enabled') !== 'false';
+    let visualizerStyle = localStorage.getItem('yolk_visualizer_style') || 'bars';
 
-    function ensureWebAudioEqualizer() {
+    function ensureWebAudioEqualizer(forceInit = false) {
         const hasNonZero = eqEnabled && eqBands.some(g => Math.abs(g) > 0.05);
-        if (!yolkAudioCtx && !hasNonZero) {
-            // Keep native HTMLAudioElement direct pipeline untouched when EQ is flat
+        if (!yolkAudioCtx && !hasNonZero && !forceInit && !visualizerEnabled) {
+            // Keep native HTMLAudioElement direct pipeline untouched when EQ and visualizer are off
             return;
         }
         try {
@@ -6622,15 +6951,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     filter.gain.value = 0;
                     return filter;
                 });
+                yolkAnalyserNode = yolkAudioCtx.createAnalyser();
+                yolkAnalyserNode.fftSize = 128;
+                yolkAnalyserNode.smoothingTimeConstant = 0.82;
 
-                // Connect chain: source -> preGain -> filter0..4 -> destination
+                // Connect chain: source -> preGain -> filter0..4 -> analyser -> destination
                 yolkMediaSourceNode.connect(yolkEqPreGain);
                 let prevNode = yolkEqPreGain;
                 yolkEqFilters.forEach(f => {
                     prevNode.connect(f);
                     prevNode = f;
                 });
-                prevNode.connect(yolkAudioCtx.destination);
+                prevNode.connect(yolkAnalyserNode);
+                yolkAnalyserNode.connect(yolkAudioCtx.destination);
             }
             if (yolkAudioCtx.state === 'suspended') {
                 yolkAudioCtx.resume().catch(() => {});
@@ -6655,7 +6988,7 @@ document.addEventListener('DOMContentLoaded', () => {
     currentAudio.addEventListener('play', () => {
         if (yolkAudioCtx && yolkAudioCtx.state === 'suspended') {
             yolkAudioCtx.resume().catch(() => {});
-        } else if (eqEnabled && eqBands.some(g => Math.abs(g) > 0.05)) {
+        } else if ((eqEnabled && eqBands.some(g => Math.abs(g) > 0.05)) || visualizerEnabled) {
             ensureWebAudioEqualizer();
         }
     });
@@ -7475,7 +7808,651 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Deep Link Receiver (#song=<id>&t=<title>&a=<artist> or #album=<id>)
+    // =========================================================================
+    // 1. CROSSFADE SETTINGS UI
+    // =========================================================================
+    const crossfadeSlider = document.getElementById('crossfade-slider');
+    const crossfadeBadge = document.getElementById('crossfade-badge');
+    const crossfadeValLabel = document.getElementById('crossfade-val-label');
+    const crossfadePresetPills = document.querySelectorAll('.crossfade-preset-pill');
+
+    function updateCrossfadeUI(sec, notify = false) {
+        crossfadeSeconds = Math.max(0, Math.min(12, parseInt(sec, 10) || 0));
+        localStorage.setItem('yolk_crossfade_sec', String(crossfadeSeconds));
+
+        const label = crossfadeSeconds === 0 ? 'Off' : `${crossfadeSeconds}s`;
+        if (crossfadeBadge) crossfadeBadge.textContent = label;
+        if (crossfadeValLabel) crossfadeValLabel.textContent = label;
+        if (crossfadeSlider) crossfadeSlider.value = String(crossfadeSeconds);
+
+        crossfadePresetPills.forEach(pill => {
+            const pSec = parseInt(pill.getAttribute('data-crossfade-sec') || '0', 10);
+            const isActive = pSec === crossfadeSeconds;
+            pill.classList.toggle('bg-zinc-900', isActive);
+            pill.classList.toggle('text-white', isActive);
+            pill.classList.toggle('border-zinc-900', isActive);
+            pill.classList.toggle('font-bold', isActive);
+            pill.classList.toggle('bg-zinc-100', !isActive);
+            pill.classList.toggle('text-zinc-700', !isActive);
+            pill.classList.toggle('font-semibold', !isActive);
+        });
+
+        if (crossfadeSeconds === 0) {
+            clearCrossfadeTimers();
+            currentAudio.volume = currentVolume;
+        }
+        if (notify) {
+            showToast(crossfadeSeconds === 0 ? 'Crossfade turned off' : `Crossfade set to ${crossfadeSeconds}s`);
+        }
+    }
+
+    if (crossfadeSlider) {
+        crossfadeSlider.addEventListener('input', (e) => {
+            updateCrossfadeUI(e.target.value, false);
+        });
+        crossfadeSlider.addEventListener('change', (e) => {
+            triggerHaptic('selection');
+            updateCrossfadeUI(e.target.value, true);
+        });
+    }
+    crossfadePresetPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            triggerHaptic('selection');
+            const val = parseInt(pill.getAttribute('data-crossfade-sec') || '0', 10);
+            updateCrossfadeUI(val, true);
+        });
+    });
+    updateCrossfadeUI(crossfadeSeconds, false);
+
+    // =========================================================================
+    // 2. REAL-TIME 60FPS AUDIO VISUALIZER (SPECTRUM BARS / FLUID WAVE / PULSE GLOW)
+    // =========================================================================
+    const npVisualizerCanvas = document.getElementById('np-visualizer-canvas');
+    const npVisualizerWrapper = document.getElementById('np-visualizer-wrapper');
+    const visualizerToggleBtn = document.getElementById('visualizer-toggle-btn');
+    const visualizerToggleKnob = document.getElementById('visualizer-toggle-knob');
+    const visualizerStylePills = document.querySelectorAll('.visualizer-style-pill');
+    const npArtBox = document.getElementById('now-playing-art');
+
+    const _vizFreqBins = new Uint8Array(64);
+    const _vizSmoothBins = new Float32Array(28);
+
+    function updateVisualizerSettingsUI(notify = false) {
+        localStorage.setItem('yolk_visualizer_enabled', visualizerEnabled ? 'true' : 'false');
+        localStorage.setItem('yolk_visualizer_style', visualizerStyle);
+
+        if (visualizerToggleBtn) {
+            visualizerToggleBtn.setAttribute('aria-checked', visualizerEnabled ? 'true' : 'false');
+            visualizerToggleBtn.style.backgroundColor = visualizerEnabled ? '#FDE047' : 'rgba(212, 212, 216, 0.8)';
+            visualizerToggleBtn.style.borderColor = visualizerEnabled ? '#FACC15' : 'rgba(161, 161, 170, 0.7)';
+        }
+        if (visualizerToggleKnob) {
+            visualizerToggleKnob.style.transform = visualizerEnabled ? 'translateX(24px)' : 'translateX(0px)';
+            visualizerToggleKnob.style.backgroundColor = visualizerEnabled ? '#18181b' : '#ffffff';
+        }
+        if (npVisualizerWrapper) {
+            const hideCanvas = !visualizerEnabled || visualizerStyle === 'glow';
+            npVisualizerWrapper.style.opacity = hideCanvas ? '0' : '1';
+            npVisualizerWrapper.style.height = hideCanvas ? '0px' : '36px';
+            npVisualizerWrapper.style.marginTop = hideCanvas ? '0px' : '10px';
+        }
+        if (!visualizerEnabled && npArtBox) {
+            npArtBox.style.boxShadow = '';
+        }
+
+        visualizerStylePills.forEach(pill => {
+            const st = pill.getAttribute('data-viz-style');
+            const isActive = visualizerEnabled && st === visualizerStyle;
+            pill.classList.toggle('bg-zinc-900', isActive);
+            pill.classList.toggle('text-white', isActive);
+            pill.classList.toggle('border-zinc-900', isActive);
+            pill.classList.toggle('font-bold', isActive);
+            pill.classList.toggle('bg-zinc-100', !isActive);
+            pill.classList.toggle('text-zinc-700', !isActive);
+            pill.classList.toggle('font-semibold', !isActive);
+        });
+
+        if (visualizerEnabled && isPlaying) {
+            ensureWebAudioEqualizer(true);
+        }
+        if (notify) {
+            showToast(visualizerEnabled ? `Visualizer: ${visualizerStyle.toUpperCase()}` : 'Audio Visualizer disabled');
+        }
+    }
+
+    if (visualizerToggleBtn) {
+        visualizerToggleBtn.addEventListener('click', () => {
+            triggerHaptic('medium');
+            visualizerEnabled = !visualizerEnabled;
+            updateVisualizerSettingsUI(true);
+        });
+    }
+    visualizerStylePills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            triggerHaptic('selection');
+            visualizerStyle = pill.getAttribute('data-viz-style') || 'bars';
+            visualizerEnabled = true;
+            updateVisualizerSettingsUI(true);
+        });
+    });
+    updateVisualizerSettingsUI(false);
+
+    function computeLiveVisualizerBins(nowSec) {
+        let hasRealSignal = false;
+        if (yolkAnalyserNode && isPlaying) {
+            try {
+                yolkAnalyserNode.getByteFrequencyData(_vizFreqBins);
+                for (let i = 0; i < 28; i++) {
+                    if (_vizFreqBins[i] > 4) {
+                        hasRealSignal = true;
+                        break;
+                    }
+                }
+            } catch (_) {}
+        }
+
+        const numBars = 28;
+        let bassEnergy = 0;
+        for (let i = 0; i < numBars; i++) {
+            let target = 0.08;
+            if (isPlaying) {
+                if (hasRealSignal) {
+                    const binIdx = Math.min(_vizFreqBins.length - 1, Math.floor(i * 1.35) + 1);
+                    target = Math.max(0.08, Math.min(1, _vizFreqBins[binIdx] / 245));
+                } else {
+                    // Musical harmonic fallback when Web Audio source is bypassed/unavailable
+                    const centerDist = Math.abs(i - (numBars - 1) / 2) / (numBars / 2);
+                    const env = Math.max(0.18, 1 - centerDist * 0.72);
+                    const wave1 = Math.sin(nowSec * 7.8 + i * 0.55) * 0.5 + 0.5;
+                    const wave2 = Math.cos(nowSec * 12.4 - i * 0.85) * 0.5 + 0.5;
+                    const kick = Math.pow(Math.sin(nowSec * 4.2) * 0.5 + 0.5, 3);
+                    target = Math.max(0.10, Math.min(0.96, (wave1 * 0.45 + wave2 * 0.35 + kick * 0.35) * env));
+                }
+            }
+            _vizSmoothBins[i] = _vizSmoothBins[i] * 0.72 + target * 0.28;
+            if (i < 6) bassEnergy += _vizSmoothBins[i];
+        }
+        return bassEnergy / 6;
+    }
+
+    function drawVisualizerBarsOnContext(ctx, W, H, style, strokeHex) {
+        ctx.clearRect(0, 0, W, H);
+        const numBars = 28;
+        if (style === 'wave') {
+            ctx.save();
+            ctx.beginPath();
+            const midY = H / 2;
+            for (let i = 0; i < numBars; i++) {
+                const x = (i / (numBars - 1)) * W;
+                const amp = (_vizSmoothBins[i] - 0.08) * (H * 0.46);
+                const sign = (i % 2 === 0) ? 1 : -1;
+                const y = midY + sign * amp;
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    const prevX = ((i - 1) / (numBars - 1)) * W;
+                    const prevAmp = (_vizSmoothBins[i - 1] - 0.08) * (H * 0.46);
+                    const prevSign = ((i - 1) % 2 === 0) ? 1 : -1;
+                    const prevY = midY + prevSign * prevAmp;
+                    const cpX = (prevX + x) / 2;
+                    ctx.quadraticCurveTo(prevX, prevY, cpX, (prevY + y) / 2);
+                }
+            }
+            ctx.strokeStyle = strokeHex;
+            ctx.lineWidth = 2.6;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+            ctx.restore();
+            return;
+        }
+
+        // Default: Symmetric Rounded Spectrum Bars
+        const gap = 4;
+        const barW = Math.max(3, (W - gap * (numBars - 1)) / numBars);
+        ctx.save();
+        ctx.fillStyle = strokeHex;
+        for (let i = 0; i < numBars; i++) {
+            const val = _vizSmoothBins[i];
+            const barH = Math.max(4, Math.min(H - 2, val * (H - 2)));
+            const x = i * (barW + gap);
+            const y = (H - barH) / 2;
+            ctx.globalAlpha = 0.38 + Math.min(0.62, val * 0.72);
+            drawRoundedRectPath(ctx, x, y, barW, barH, barW / 2);
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+
+    // =========================================================================
+    // 3. NOW PLAYING COVER ART SWIPE GESTURES (LEFT = NEXT, RIGHT = PREV, DOWN = MINIMIZE)
+    // =========================================================================
+    if (npArtBox) {
+        let artStartX = 0;
+        let artStartY = 0;
+        let artDx = 0;
+        let artDy = 0;
+        let artSwiping = false;
+
+        npArtBox.addEventListener('touchstart', (e) => {
+            if (e.touches.length !== 1) return;
+            artStartX = e.touches[0].clientX;
+            artStartY = e.touches[0].clientY;
+            artDx = 0;
+            artDy = 0;
+            artSwiping = true;
+            npArtBox.style.transition = 'none';
+        }, { passive: true });
+
+        npArtBox.addEventListener('touchmove', (e) => {
+            if (!artSwiping || e.touches.length !== 1) return;
+            artDx = e.touches[0].clientX - artStartX;
+            artDy = e.touches[0].clientY - artStartY;
+            const clampX = Math.max(-90, Math.min(90, artDx * 0.55));
+            const clampY = Math.max(-25, Math.min(95, artDy * 0.5));
+            const rot = clampX * 0.06;
+            npArtBox.style.transform = `translate3d(${clampX}px, ${clampY}px, 0) rotate(${rot}deg)`;
+        }, { passive: true });
+
+        const finishArtSwipe = () => {
+            if (!artSwiping) return;
+            artSwiping = false;
+            const finalDx = artDx;
+            const finalDy = artDy;
+            npArtBox.style.transition = 'transform 0.38s cubic-bezier(0.16, 1, 0.3, 1)';
+            npArtBox.style.transform = '';
+
+            if (Math.abs(finalDx) >= 52 && Math.abs(finalDx) > Math.abs(finalDy) * 1.15) {
+                triggerHaptic('medium');
+                if (finalDx < 0) {
+                    playNext();
+                } else {
+                    playPrev();
+                }
+            } else if (finalDy >= 64 && Math.abs(finalDy) > Math.abs(finalDx) * 1.25) {
+                triggerHaptic('light');
+                window.location.hash = '#' + (previousNavPage || 'search');
+            }
+        };
+
+        npArtBox.addEventListener('touchend', finishArtSwipe, { passive: true });
+        npArtBox.addEventListener('touchcancel', finishArtSwipe, { passive: true });
+    }
+
+    // =========================================================================
+    // 4. FLOATING PICTURE-IN-PICTURE (PiP) MINI-PLAYER (DESKTOP + SAFARI/iOS FALLBACK)
+    // =========================================================================
+    let pipWindowRef = null;
+    let pipVideoEl = null;
+    let pipStreamCanvas = null;
+    let pipCoverImage = null;
+    let pipCoverImageSrc = '';
+
+    function getActiveLyricTextForPiP() {
+        const container = document.getElementById('lyrics-container');
+        if (container && typeof container._lastActiveIndex === 'number' && container._lastActiveIndex >= 0) {
+            const item = parsedLyrics[container._lastActiveIndex];
+            if (item && item.text) return item.text;
+        }
+        return '';
+    }
+
+    function ensurePipCoverLoaded() {
+        const src = currentTrack
+            ? (currentTrack._offlineArtUrl || getProxyUrl(currentTrack.artwork_url || currentTrack.image, '300x300'))
+            : '';
+        if (!src || src === pipCoverImageSrc) return;
+        pipCoverImageSrc = src;
+        const img = new Image();
+        const isLocal = src.startsWith('data:') || src.startsWith('blob:');
+        if (!isLocal) img.crossOrigin = 'Anonymous';
+        img.onload = () => {
+            pipCoverImage = img;
+        };
+        img.src = isLocal ? src : (src + (src.includes('?') ? '&' : '?') + 'cors=1');
+    }
+
+    function updateDocumentPipDOM() {
+        if (!pipWindowRef || pipWindowRef.closed) return;
+        const doc = pipWindowRef.document;
+        const titleEl = doc.getElementById('pip-title');
+        const artistEl = doc.getElementById('pip-artist');
+        const lyricEl = doc.getElementById('pip-lyric');
+        const imgEl = doc.getElementById('pip-cover');
+        const progFill = doc.getElementById('pip-prog-fill');
+        const curEl = doc.getElementById('pip-cur');
+        const durEl = doc.getElementById('pip-dur');
+        const playBtn = doc.getElementById('pip-play');
+        const favBtn = doc.getElementById('pip-fav');
+        const bodyEl = doc.body;
+
+        const tTitle = currentTrack ? (currentTrack.title || currentTrack.name || 'Unknown Title') : 'Not Playing';
+        const tArtist = currentTrack ? (currentTrack.artist_name || currentTrack.artist || 'Unknown Artist') : 'Select a song';
+        const coverSrc = currentTrack ? (currentTrack._offlineArtUrl || getProxyUrl(currentTrack.artwork_url || currentTrack.image, '300x300')) : '';
+        const cur = getPlaybackCurrentTime();
+        const dur = getPlaybackDuration();
+        const pct = dur > 0 ? Math.max(0, Math.min(100, (cur / dur) * 100)) : 0;
+
+        if (titleEl && titleEl.textContent !== tTitle) titleEl.textContent = tTitle;
+        if (artistEl && artistEl.textContent !== tArtist) artistEl.textContent = tArtist;
+        if (imgEl && coverSrc && imgEl.getAttribute('data-src') !== coverSrc) {
+            imgEl.setAttribute('data-src', coverSrc);
+            imgEl.src = coverSrc;
+        }
+        const activeLyric = getActiveLyricTextForPiP();
+        if (lyricEl) {
+            lyricEl.textContent = activeLyric || (isPlaying ? '♪ Instrumental / Playing…' : 'Paused');
+        }
+        if (progFill) progFill.style.width = `${pct}%`;
+        if (curEl) curEl.textContent = formatTime(cur);
+        if (durEl) durEl.textContent = formatTime(dur);
+        if (playBtn) {
+            playBtn.innerHTML = isPlaying
+                ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`
+                : `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="margin-left:2px"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
+        }
+        if (favBtn && currentTrack) {
+            const fav = isFavorite(currentTrack.id);
+            favBtn.style.color = fav ? '#FACC15' : '#ffffff';
+        }
+        if (bodyEl && currentCoverColor) {
+            const { r, g, b } = currentCoverColor;
+            bodyEl.style.background = `linear-gradient(160deg, rgb(${Math.round(r * 0.55)}, ${Math.round(g * 0.55)}, ${Math.round(b * 0.55)}) 0%, #111115 100%)`;
+        }
+
+        const pipVizCanvas = doc.getElementById('pip-viz-canvas');
+        if (pipVizCanvas) {
+            const vCtx = pipVizCanvas.getContext('2d');
+            drawVisualizerBarsOnContext(vCtx, pipVizCanvas.width, pipVizCanvas.height, visualizerStyle === 'wave' ? 'wave' : 'bars', '#FDE047');
+        }
+    }
+
+    function renderFallbackVideoPipCanvas() {
+        if (!pipStreamCanvas) return;
+        ensurePipCoverLoaded();
+        const ctx = pipStreamCanvas.getContext('2d');
+        const W = pipStreamCanvas.width;
+        const H = pipStreamCanvas.height;
+
+        const c = currentCoverColor || { r: 36, g: 36, b: 44 };
+        const grad = ctx.createLinearGradient(0, 0, W, H);
+        grad.addColorStop(0, `rgb(${Math.round(c.r * 0.65)}, ${Math.round(c.g * 0.65)}, ${Math.round(c.b * 0.65)})`);
+        grad.addColorStop(1, '#0e0e12');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, W, H);
+
+        // Cover Art
+        const artSize = 230;
+        const artX = (W - artSize) / 2;
+        const artY = 38;
+        ctx.save();
+        drawRoundedRectPath(ctx, artX, artY, artSize, artSize, 28);
+        ctx.clip();
+        if (pipCoverImage && pipCoverImage.complete && pipCoverImage.naturalWidth > 0) {
+            ctx.drawImage(pipCoverImage, artX, artY, artSize, artSize);
+        } else {
+            ctx.fillStyle = 'rgba(255,255,255,0.12)';
+            ctx.fillRect(artX, artY, artSize, artSize);
+        }
+        ctx.restore();
+
+        // Title & Artist
+        const tTitle = currentTrack ? (currentTrack.title || currentTrack.name || 'Not Playing') : 'Not Playing';
+        const tArtist = currentTrack ? (currentTrack.artist_name || currentTrack.artist || 'Yolk!') : 'Yolk!';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.font = '800 28px -apple-system, BlinkMacSystemFont, Inter, sans-serif';
+        ctx.fillText(tTitle.slice(0, 32), W / 2, 312);
+
+        ctx.fillStyle = 'rgba(255,255,255,0.72)';
+        ctx.font = '600 20px -apple-system, BlinkMacSystemFont, Inter, sans-serif';
+        ctx.fillText(tArtist.slice(0, 38), W / 2, 342);
+
+        // Synced Lyric Line
+        const lyric = getActiveLyricTextForPiP();
+        if (lyric) {
+            ctx.fillStyle = '#FDE047';
+            ctx.font = '700 22px -apple-system, BlinkMacSystemFont, Inter, sans-serif';
+            ctx.fillText(lyric.slice(0, 40), W / 2, 386);
+        }
+
+        // Visualizer Bars inside PiP
+        const numBars = 24;
+        const barW = 8;
+        const gap = 5;
+        const totalW = numBars * barW + (numBars - 1) * gap;
+        const startX = (W - totalW) / 2;
+        const baseMidY = 432;
+        ctx.fillStyle = 'rgba(253, 224, 71, 0.88)';
+        for (let i = 0; i < numBars; i++) {
+            const v = _vizSmoothBins[i] || 0.1;
+            const bH = Math.max(5, v * 36);
+            drawRoundedRectPath(ctx, startX + i * (barW + gap), baseMidY - bH / 2, barW, bH, 4);
+            ctx.fill();
+        }
+
+        // Progress Bar
+        const cur = getPlaybackCurrentTime();
+        const dur = getPlaybackDuration();
+        const pct = dur > 0 ? Math.max(0, Math.min(1, cur / dur)) : 0;
+        const barX = 56, barY = 478, barLen = W - 112;
+        ctx.fillStyle = 'rgba(255,255,255,0.22)';
+        drawRoundedRectPath(ctx, barX, barY, barLen, 8, 4);
+        ctx.fill();
+        if (pct > 0) {
+            ctx.fillStyle = '#ffffff';
+            drawRoundedRectPath(ctx, barX, barY, Math.max(8, barLen * pct), 8, 4);
+            ctx.fill();
+        }
+    }
+
+    async function togglePictureInPicture() {
+        triggerHaptic('medium');
+        if (!currentTrack) {
+            showToast('Play a song first to open the Mini-Player');
+            return;
+        }
+
+        // 1. Desktop Document Picture-in-Picture API (Chrome / Edge / Opera)
+        if ('documentPictureInPicture' in window) {
+            try {
+                if (pipWindowRef && !pipWindowRef.closed) {
+                    pipWindowRef.close();
+                    pipWindowRef = null;
+                    return;
+                }
+                const pipWin = await window.documentPictureInPicture.requestWindow({
+                    width: 340,
+                    height: 430
+                });
+                pipWindowRef = pipWin;
+                const doc = pipWin.document;
+                doc.head.innerHTML = `
+                    <style>
+                        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; font-family: -apple-system, BlinkMacSystemFont, 'Geist', sans-serif; }
+                        body {
+                            width: 100vw; height: 100vh; overflow: hidden;
+                            background: linear-gradient(160deg, #27272a 0%, #09090b 100%);
+                            color: #ffffff; display: flex; flex-direction: column;
+                            align-items: center; justify-content: space-between;
+                            padding: 16px 18px;
+                        }
+                        .cover-wrap {
+                            width: 148px; height: 148px; border-radius: 22px; overflow: hidden;
+                            box-shadow: 0 14px 34px rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.22);
+                            background: rgba(255,255,255,0.08); flex-shrink: 0;
+                        }
+                        .cover-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+                        .meta { width: 100%; text-align: center; margin-top: 8px; }
+                        #pip-title { font-size: 16px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                        #pip-artist { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.72); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                        #pip-lyric {
+                            font-size: 12px; font-weight: 700; color: #FDE047; margin-top: 6px;
+                            min-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+                        }
+                        .prog-wrap { width: 100%; margin-top: 6px; }
+                        #pip-prog-bar {
+                            width: 100%; height: 6px; background: rgba(255,255,255,0.2);
+                            border-radius: 999px; overflow: hidden; cursor: pointer; position: relative;
+                        }
+                        #pip-prog-fill { height: 100%; width: 0%; background: #ffffff; border-radius: 999px; }
+                        .times { display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.65); margin-top: 4px; }
+                        .controls { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 6px; width: 100%; }
+                        button {
+                            background: none; border: none; color: #ffffff; cursor: pointer;
+                            display: flex; align-items: center; justify-content: center;
+                            transition: transform 0.15s ease, opacity 0.15s ease;
+                        }
+                        button:hover { transform: scale(1.1); }
+                        button:active { transform: scale(0.94); }
+                        #pip-play {
+                            width: 46px; height: 46px; border-radius: 999px;
+                            background: #ffffff; color: #09090b;
+                            box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+                        }
+                    </style>
+                `;
+                doc.body.innerHTML = `
+                    <div class="cover-wrap"><img id="pip-cover" src="" alt="Cover"></div>
+                    <canvas id="pip-viz-canvas" width="220" height="24" style="width:220px;height:24px;margin-top:6px;"></canvas>
+                    <div class="meta">
+                        <div id="pip-title">Not Playing</div>
+                        <div id="pip-artist">Yolk!</div>
+                        <div id="pip-lyric"></div>
+                    </div>
+                    <div class="prog-wrap">
+                        <div id="pip-prog-bar"><div id="pip-prog-fill"></div></div>
+                        <div class="times"><span id="pip-cur">0:00</span><span id="pip-dur">0:00</span></div>
+                    </div>
+                    <div class="controls">
+                        <button id="pip-fav" title="Favorite"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+                        <button id="pip-prev" title="Previous"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg></button>
+                        <button id="pip-play" title="Play/Pause"></button>
+                        <button id="pip-next" title="Next"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg></button>
+                    </div>
+                `;
+                doc.getElementById('pip-play').onclick = () => togglePlayPause();
+                doc.getElementById('pip-prev').onclick = () => playPrev();
+                doc.getElementById('pip-next').onclick = () => playNext();
+                doc.getElementById('pip-fav').onclick = () => {
+                    if (currentTrack) toggleFavorite(currentTrack, null);
+                    updateDocumentPipDOM();
+                };
+                doc.getElementById('pip-prog-bar').onclick = (e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                    const dur = getPlaybackDuration();
+                    if (dur > 0) seekToSeconds(ratio * dur);
+                };
+                updateDocumentPipDOM();
+                return;
+            } catch (err) {
+                console.warn('documentPictureInPicture fallback notice:', err);
+            }
+        }
+
+        // 2. Safari macOS / iOS / Mobile Canvas-Stream <video> Picture-in-Picture Fallback
+        try {
+            if (document.pictureInPictureElement) {
+                await document.exitPictureInPicture();
+                return;
+            }
+            if (!pipStreamCanvas) {
+                pipStreamCanvas = document.createElement('canvas');
+                pipStreamCanvas.width = 520;
+                pipStreamCanvas.height = 520;
+            }
+            renderFallbackVideoPipCanvas();
+            if (!pipVideoEl) {
+                pipVideoEl = document.createElement('video');
+                pipVideoEl.muted = true;
+                pipVideoEl.playsInline = true;
+                pipVideoEl.setAttribute('playsinline', '');
+                pipVideoEl.setAttribute('webkit-playsinline', '');
+                pipVideoEl.style.cssText = 'position:fixed;bottom:0;right:0;width:1px;height:1px;opacity:0.001;pointer-events:none;z-index:-1;';
+                document.body.appendChild(pipVideoEl);
+                if (typeof pipStreamCanvas.captureStream === 'function') {
+                    pipVideoEl.srcObject = pipStreamCanvas.captureStream(30);
+                }
+            }
+            await pipVideoEl.play().catch(() => {});
+            if (typeof pipVideoEl.requestPictureInPicture === 'function') {
+                await pipVideoEl.requestPictureInPicture();
+            } else if (typeof pipVideoEl.webkitSetPresentationMode === 'function') {
+                pipVideoEl.webkitSetPresentationMode(
+                    pipVideoEl.webkitPresentationMode === 'picture-in-picture' ? 'inline' : 'picture-in-picture'
+                );
+            } else {
+                showToast('Picture-in-Picture is not supported on this browser');
+            }
+        } catch (err) {
+            console.warn('Video PiP notice:', err);
+            showToast('Unable to open Picture-in-Picture on this device');
+        }
+    }
+    window.togglePictureInPicture = togglePictureInPicture;
+
+    const npPipBtn = document.getElementById('np-pip-btn');
+    const bpPipBtn = document.getElementById('bp-pip-btn');
+    const npMobileMorePipBtn = document.getElementById('np-mobile-more-pip-btn');
+    const bpMorePipBtn = document.getElementById('bp-more-pip-btn');
+
+    if (npPipBtn) npPipBtn.addEventListener('click', togglePictureInPicture);
+    if (bpPipBtn) bpPipBtn.addEventListener('click', togglePictureInPicture);
+    if (npMobileMorePipBtn) {
+        npMobileMorePipBtn.addEventListener('click', () => {
+            if (npMobileMorePopover) npMobileMorePopover.classList.add('hidden');
+            togglePictureInPicture();
+        });
+    }
+    if (bpMorePipBtn) {
+        bpMorePipBtn.addEventListener('click', () => {
+            if (bpMobileMorePopover) bpMobileMorePopover.classList.add('hidden');
+            togglePictureInPicture();
+        });
+    }
+
+    // Master 60fps Animation Loop for Now Playing Visualizer + Active PiP Window
+    function runVisualizerAndPipFrame(ts) {
+        const nowSec = (ts || performance.now()) / 1000;
+        const onNowPlaying = document.body.getAttribute('data-page') === 'now-playing';
+        const hasDocPip = Boolean(pipWindowRef && !pipWindowRef.closed);
+        const hasVideoPip = Boolean(
+            document.pictureInPictureElement === pipVideoEl ||
+            (pipVideoEl && pipVideoEl.webkitPresentationMode === 'picture-in-picture')
+        );
+
+        if ((visualizerEnabled && onNowPlaying) || hasDocPip || hasVideoPip) {
+            const bassEnergy = computeLiveVisualizerBins(nowSec);
+
+            if (visualizerEnabled && onNowPlaying) {
+                if (npVisualizerCanvas && visualizerStyle !== 'glow') {
+                    const ctx = npVisualizerCanvas.getContext('2d');
+                    const isDark = document.body.classList.contains('dark-mode');
+                    const strokeColor = isDark ? '#f4f4f5' : '#18181b';
+                    drawVisualizerBarsOnContext(ctx, npVisualizerCanvas.width, npVisualizerCanvas.height, visualizerStyle, strokeColor);
+                }
+                if (npArtBox) {
+                    if (isPlaying) {
+                        const c = currentCoverColor || { r: 250, g: 204, b: 21 };
+                        const glowAlpha = (0.18 + bassEnergy * 0.42).toFixed(2);
+                        const spread = Math.round(28 + bassEnergy * 38);
+                        npArtBox.style.boxShadow = `0 20px ${spread}px rgba(${c.r}, ${c.g}, ${c.b}, ${glowAlpha})`;
+                    } else {
+                        npArtBox.style.boxShadow = '';
+                    }
+                }
+            }
+
+            if (hasDocPip) {
+                updateDocumentPipDOM();
+            }
+            if (hasVideoPip) {
+                renderFallbackVideoPipCanvas();
+            }
+        }
+        requestAnimationFrame(runVisualizerAndPipFrame);
+    }
+    requestAnimationFrame(runVisualizerAndPipFrame);
     window.handleYolkDeepLink = async function (rawHash) {
         if (!rawHash) return;
         if (rawHash.startsWith('album=')) {

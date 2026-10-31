@@ -19,5 +19,35 @@
       "sizes": "256x256",
       "type": "image/png"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Search Music",
+      "short_name": "Search",
+      "description": "Search songs, albums, and artists on Yolk!",
+      "url": "/#search",
+      "icons": [{ "src": "/icon-256.png", "sizes": "256x256", "type": "image/png" }]
+    },
+    {
+      "name": "Favorites",
+      "short_name": "Favorites",
+      "description": "Open your Favorited songs",
+      "url": "/#favorites",
+      "icons": [{ "src": "/icon-256.png", "sizes": "256x256", "type": "image/png" }]
+    },
+    {
+      "name": "My Library",
+      "short_name": "Library",
+      "description": "Browse your offline playlists and library",
+      "url": "/#library",
+      "icons": [{ "src": "/icon-256.png", "sizes": "256x256", "type": "image/png" }]
+    },
+    {
+      "name": "Equalizer & Settings",
+      "short_name": "Settings",
+      "description": "Adjust EQ, Crossfade, Visualizer, and Dark Mode",
+      "url": "/#settings",
+      "icons": [{ "src": "/icon-256.png", "sizes": "256x256", "type": "image/png" }]
+    }
   ]
 }

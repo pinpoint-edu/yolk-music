@@ -1397,6 +1397,8 @@
             border-color: rgba(255, 255, 255, 0.16) !important;
         }
         body.dark-mode .eq-preset-pill.bg-zinc-900,
+        body.dark-mode .crossfade-preset-pill.bg-zinc-900,
+        body.dark-mode .visualizer-style-pill.bg-zinc-900,
         body.dark-mode #storage-sync-library-btn,
         body.dark-mode #share-native-btn,
         body.dark-mode #share-tab-song.bg-zinc-900,
@@ -1407,6 +1409,20 @@
         }
         body.dark-mode #storage-bar-audio {
             background-color: #f4f4f5 !important;
+        }
+        .dragging-reorder-row {
+            opacity: 0.92 !important;
+            transform: scale(1.015) !important;
+            box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16) !important;
+            z-index: 30 !important;
+        }
+        .drag-over-reorder-target {
+            border-top: 2px solid #FACC15 !important;
+        }
+        .reorder-grip-handle {
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
         }
         body.dark-mode #np-share-lyrics-btn {
             background-color: rgba(255, 255, 255, 0.14) !important;
@@ -1635,14 +1651,19 @@
         <div id="now-playing-container" class="now-playing-container relative z-10">
             <!-- Left Side: Cover Art, Metadata, Progress & Buttons -->
             <div class="np-left-col">
-                <div id="now-playing-art" class="w-64 h-64 sm:w-72 sm:h-72 bg-white/40 backdrop-blur-2xl rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.12)] border border-white/60 flex items-center justify-center relative overflow-hidden shrink-0 transition-all duration-500 hover:scale-[1.02]">
-                    <img id="now-playing-img" src="" alt="Album Art" class="absolute inset-0 w-full h-full object-cover hidden z-10 transition-opacity duration-300" referrerpolicy="no-referrer">
-                    <div id="now-playing-vinyl" class="w-24 h-24 rounded-full bg-black/85 backdrop-blur-md flex items-center justify-center shadow-inner spin-slow z-0">
+                <div id="now-playing-art" class="w-64 h-64 sm:w-72 sm:h-72 bg-white/40 backdrop-blur-2xl rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.12)] border border-white/60 flex items-center justify-center relative overflow-hidden shrink-0 transition-all duration-500 hover:scale-[1.02] select-none">
+                    <img id="now-playing-img" src="" alt="Album Art" class="absolute inset-0 w-full h-full object-cover hidden z-10 transition-opacity duration-300 pointer-events-none" referrerpolicy="no-referrer">
+                    <div id="now-playing-vinyl" class="w-24 h-24 rounded-full bg-black/85 backdrop-blur-md flex items-center justify-center shadow-inner spin-slow z-0 pointer-events-none">
                         <div class="w-8 h-8 rounded-full bg-white/80 shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)]"></div>
                     </div>
                 </div>
 
-                <div class="text-center mt-5 mb-1 w-full px-2">
+                <!-- Real-Time 60fps Audio Visualizer Canvas -->
+                <div id="np-visualizer-wrapper" class="w-full max-w-[280px] h-9 mt-2.5 -mb-2 flex items-center justify-center pointer-events-none overflow-hidden transition-opacity duration-300">
+                    <canvas id="np-visualizer-canvas" width="280" height="36" class="w-full h-full block"></canvas>
+                </div>
+
+                <div class="text-center mt-4 mb-1 w-full px-2">
                     <h1 id="now-playing-title" class="text-2xl font-black tracking-tight text-black truncate">Not Playing</h1>
                     <p id="now-playing-artist" class="text-sm font-bold text-black/75 truncate mt-1 hover:text-black hover:underline cursor-pointer">Select a song to start</p>
                 </div>
@@ -1704,12 +1725,21 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
                     </button>
 
+                    <!-- Floating PiP Mini-Player Button (Desktop & Tablet) -->
+                    <button id="np-pip-btn" class="hidden sm:inline-flex sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="Floating Mini-Player (Picture-in-Picture)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 9V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h4"></path><rect width="10" height="7" x="12" y="13" rx="2"></rect></svg>
+                    </button>
+
                     <!-- Mobile More Button & Popover (Accessible on phone format in standard Now Playing) -->
                     <div class="relative sm:hidden flex items-center shrink-0">
                         <button id="np-mobile-more-btn" class="sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="More options">
                             <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
                         </button>
                         <div id="np-mobile-more-popover" class="hidden absolute right-0 bottom-full mb-3 w-56 bg-white/80 backdrop-blur-2xl border border-white/80 rounded-2xl p-2.5 shadow-[0_16px_40px_rgba(0,0,0,0.16)] flex flex-col gap-1 z-50">
+                            <button id="np-mobile-more-pip-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 9V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h4"></path><rect width="10" height="7" x="12" y="13" rx="2"></rect></svg>
+                                <span>Floating Mini-Player (PiP)</span>
+                            </button>
                             <button id="np-mobile-more-share-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
                                 <span>Share Song / Lyrics</span>
@@ -2037,6 +2067,67 @@
                         </button>
                     </div>
 
+                    <!-- 2b. Crossfade & Seamless Transitions Setting Card -->
+                    <div class="bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-4">
+                        <div class="flex items-center justify-between gap-4 flex-wrap">
+                            <div class="flex items-center gap-3.5">
+                                <div class="w-11 h-11 rounded-2xl bg-zinc-100 border border-zinc-200/80 flex items-center justify-center text-zinc-800 shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <h2 class="text-base sm:text-lg font-bold text-zinc-900">Crossfade Tracks</h2>
+                                        <span id="crossfade-badge" class="px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-zinc-100 text-zinc-700 border border-zinc-200/80">Off</span>
+                                    </div>
+                                    <p class="text-xs sm:text-sm text-zinc-500 mt-0.5">Smoothly overlap and blend the end of one song into the start of the next</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar pt-2 border-t border-zinc-100">
+                            <button type="button" data-crossfade-sec="0" class="crossfade-preset-pill px-3.5 py-1.5 rounded-full text-xs font-bold bg-zinc-900 text-white border border-zinc-900 shrink-0 cursor-pointer transition-all">Off</button>
+                            <button type="button" data-crossfade-sec="2" class="crossfade-preset-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border border-zinc-200/80 shrink-0 cursor-pointer transition-all">2s</button>
+                            <button type="button" data-crossfade-sec="4" class="crossfade-preset-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border border-zinc-200/80 shrink-0 cursor-pointer transition-all">4s</button>
+                            <button type="button" data-crossfade-sec="6" class="crossfade-preset-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border border-zinc-200/80 shrink-0 cursor-pointer transition-all">6s</button>
+                            <button type="button" data-crossfade-sec="8" class="crossfade-preset-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border border-zinc-200/80 shrink-0 cursor-pointer transition-all">8s</button>
+                            <button type="button" data-crossfade-sec="12" class="crossfade-preset-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border border-zinc-200/80 shrink-0 cursor-pointer transition-all">12s</button>
+                        </div>
+
+                        <div class="flex items-center gap-3 pt-1">
+                            <span class="text-xs font-bold text-zinc-500 shrink-0">0s</span>
+                            <input id="crossfade-slider" type="range" min="0" max="12" step="1" value="0" class="yolk-volume-slider flex-1 cursor-pointer">
+                            <span id="crossfade-val-label" class="w-12 text-right font-mono text-xs font-bold text-zinc-700 shrink-0">Off</span>
+                        </div>
+                    </div>
+
+                    <!-- 2c. Real-Time Audio Visualizer Setting Card -->
+                    <div class="bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-4">
+                        <div class="flex items-center justify-between gap-4">
+                            <div class="flex items-center gap-3.5 min-w-0">
+                                <div class="w-11 h-11 rounded-2xl bg-zinc-100 border border-zinc-200/80 flex items-center justify-center text-zinc-800 shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10v3"></path><path d="M6 6v11"></path><path d="M10 3v18"></path><path d="M14 8v7"></path><path d="M18 5v13"></path><path d="M22 10v3"></path></svg>
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <h2 class="text-base sm:text-lg font-bold text-zinc-900">Real-Time Audio Visualizer</h2>
+                                        <span class="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded-full bg-zinc-100 text-zinc-700 border border-zinc-200/80">60 FPS</span>
+                                    </div>
+                                    <p class="text-xs sm:text-sm text-zinc-500 mt-0.5">Live frequency bars, waveform, and bass-reactive cover glow on Now Playing & PiP</p>
+                                </div>
+                            </div>
+
+                            <button id="visualizer-toggle-btn" type="button" role="switch" aria-checked="true" class="w-14 h-8 rounded-full bg-[#FDE047] p-1 transition-colors duration-300 cursor-pointer flex items-center relative shrink-0 border border-[#FACC15]">
+                                <span id="visualizer-toggle-knob" class="w-6 h-6 rounded-full bg-zinc-900 shadow-md transform transition-transform duration-300 translate-x-6 flex items-center justify-center"></span>
+                            </button>
+                        </div>
+
+                        <div class="flex items-center gap-2 pt-2 border-t border-zinc-100">
+                            <button type="button" data-viz-style="bars" class="visualizer-style-pill px-3.5 py-1.5 rounded-full text-xs font-bold bg-zinc-900 text-white border border-zinc-900 shrink-0 cursor-pointer transition-all">Spectrum Bars</button>
+                            <button type="button" data-viz-style="wave" class="visualizer-style-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border border-zinc-200/80 shrink-0 cursor-pointer transition-all">Fluid Wave</button>
+                            <button type="button" data-viz-style="glow" class="visualizer-style-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border border-zinc-200/80 shrink-0 cursor-pointer transition-all">Cover Pulse Only</button>
+                        </div>
+                    </div>
+
                     <!-- 3. 5-Band Audio Equalizer (EQ) Card -->
                     <div class="bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-5">
                         <div class="flex items-center justify-between gap-4 flex-wrap">
@@ -2215,6 +2306,9 @@
                 <button id="bottom-player-download-btn" class="hidden sm:inline-flex sleek-hover text-zinc-400 hover:text-zinc-800 transition-colors p-2 rounded-full hover:bg-black/5 shrink-0" title="Download Offline">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                 </button>
+                <button id="bp-pip-btn" class="hidden sm:inline-flex sleek-hover text-zinc-400 hover:text-zinc-800 transition-colors p-2 rounded-full hover:bg-black/5 cursor-pointer shrink-0" title="Floating Mini-Player (PiP)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 9V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h4"></path><rect width="10" height="7" x="12" y="13" rx="2"></rect></svg>
+                </button>
 
                 <!-- Mobile More Button & Popover (Phone view puts all extra options into this button) -->
                 <div class="relative sm:hidden flex items-center shrink-0">
@@ -2222,6 +2316,10 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
                     </button>
                     <div id="bp-mobile-more-popover" class="hidden absolute right-0 bottom-full mb-3 w-56 bg-white/95 backdrop-blur-2xl border border-zinc-200/90 rounded-2xl p-2.5 shadow-[0_16px_40px_rgba(0,0,0,0.18)] flex flex-col gap-1 z-50">
+                        <button id="bp-more-pip-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 9V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h4"></path><rect width="10" height="7" x="12" y="13" rx="2"></rect></svg>
+                            <span>Floating Mini-Player (PiP)</span>
+                        </button>
                         <button id="bp-more-share-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
                             <span>Share Song / Lyrics</span>
@@ -2652,6 +2750,15 @@
                     if (typeof window.handleYolkDeepLink === 'function') {
                         window.handleYolkDeepLink(rawHash);
                     }
+                    return;
+                }
+                if (rawHash === 'favorites') {
+                    window.location.hash = '#library';
+                    setTimeout(() => {
+                        if (typeof window.openPlaylistDetail === 'function') {
+                            window.openPlaylistDetail('favorites');
+                        }
+                    }, 60);
                     return;
                 }
                 let hash = rawHash;
