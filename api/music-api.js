@@ -86,6 +86,31 @@ async function fetchYTM(endpoint, body = {}) {
   return null;
 }
 
+function isLikelyMusicVideo(title = '', subtitle = '', videoType = '', userQuery = '') {
+  const qLower = (userQuery || '').toLowerCase();
+  const userExplicitlyWantsVideo = /\b(music\s+video|official\s+video|mv)\b/i.test(qLower);
+  if (userExplicitlyWantsVideo) return false;
+
+  const vt = String(videoType || '').toUpperCase();
+  if (vt && (vt.includes('OMV') || vt.includes('UGC') || vt === 'MUSIC_VIDEO_TYPE_PRIVATELY_OWNED_TRACK')) {
+    return true;
+  }
+
+  const subLower = String(subtitle || '').toLowerCase();
+  if (subLower.startsWith('video •') || subLower.includes('• video •') || /\b\d+(?:\.\d+)?[km]?\s+views\b/i.test(subLower)) {
+    return true;
+  }
+
+  const t = String(title || '');
+  if (/\b(official\s+music\s+video|music\s+video|official\s+video|official\s+hd\s+video|video\s+oficial|clip\s+officiel|m\/v)\b/i.test(t)) {
+    return true;
+  }
+  if (/(?:\(|\[)\s*(?:official\s+)?(?:hd\s+|4k\s+)?video\s*(?:\)|\])/i.test(t)) {
+    return true;
+  }
+  return false;
+}
+
 async function searchYTM(query) {
   const data = await fetchYTM("search", { 
     query,
@@ -105,11 +130,18 @@ async function searchYTM(query) {
           const col1 = r.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.title?.runs || r.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
           const title = col0.map(x => x.text).join("");
           const subRuns = col1.map(x => x.text);
-          const videoId = r.playlistItemData?.videoId || r.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint?.videoId || r.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.title?.runs?.[0]?.navigationEndpoint?.watchEndpoint?.videoId;
+          const playWatchEndpoint = r.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint
+            || r.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.title?.runs?.[0]?.navigationEndpoint?.watchEndpoint;
+          const videoId = r.playlistItemData?.videoId || playWatchEndpoint?.videoId;
+          const videoType = playWatchEndpoint?.watchEndpointMusicSupportedConfigs?.watchEndpointMusicConfig?.musicVideoType || '';
           const thumb = r.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails?.[0]?.url;
+          const rawSubtitle = subRuns.join("");
+
+          if (isLikelyMusicVideo(title, rawSubtitle, videoType, query)) {
+            continue;
+          }
           
           if (title && videoId && !results.some(res => res.youtube_id === videoId)) {
-            const rawSubtitle = subRuns.join("");
             const parts = rawSubtitle.split(" • ").map(p => p.trim());
             const artistName = parts[0] || "Unknown Artist";
             const albumName = parts.length > 2 ? parts[1] : null;
@@ -372,6 +404,71 @@ export default async function handler(req, res) {
   }
 
   try {
+    if (endpoint === 'share-page' || pathname === '/share') {
+      const escapeHtml = (str = '') => String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+      const songId = req.query.song || '';
+      const albumId = req.query.album || '';
+      const title = req.query.t || 'Yolk!';
+      const artist = req.query.a || '';
+      const lyrics = req.query.l || '';
+      const imgUrl = req.query.img || `https://${req.headers?.host || 'localhost'}/icon-256.png`;
+
+      let ogTitle = title;
+      let ogDescription = 'Listen on Yolk! — Minimalist Music';
+      let targetHash = '#search';
+
+      if (albumId) {
+        ogTitle = artist ? `${title} — ${artist} (Album)` : `${title} (Album)`;
+        ogDescription = artist ? `Listen to ${title} by ${artist} on Yolk!` : `Listen to ${title} on Yolk!`;
+        targetHash = `#album=${encodeURIComponent(albumId)}&t=${encodeURIComponent(title)}&a=${encodeURIComponent(artist)}`;
+      } else if (songId) {
+        if (lyrics) {
+          ogTitle = `“${lyrics}”`;
+          ogDescription = artist ? `${title} • ${artist} — Listen with synced lyrics on Yolk!` : `${title} — Listen with synced lyrics on Yolk!`;
+        } else {
+          ogTitle = artist ? `${title} — ${artist}` : title;
+          ogDescription = artist ? `Listen to ${title} by ${artist} on Yolk!` : `Listen to ${title} on Yolk!`;
+        }
+        targetHash = `#song=${encodeURIComponent(songId)}&t=${encodeURIComponent(title)}&a=${encodeURIComponent(artist)}`;
+      }
+
+      const safeTitle = escapeHtml(ogTitle);
+      const safeDesc = escapeHtml(ogDescription);
+      const safeImg = escapeHtml(imgUrl);
+      const safeRedirect = `/${targetHash}`;
+
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      return res.status(200).send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${safeTitle}</title>
+  <meta property="og:type" content="music.song">
+  <meta property="og:site_name" content="Yolk!">
+  <meta property="og:title" content="${safeTitle}">
+  <meta property="og:description" content="${safeDesc}">
+  <meta property="og:image" content="${safeImg}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${safeTitle}">
+  <meta name="twitter:description" content="${safeDesc}">
+  <meta name="twitter:image" content="${safeImg}">
+  <link rel="icon" type="image/png" href="/icon-256.png">
+  <script>window.location.replace(${JSON.stringify(safeRedirect)});</script>
+</head>
+<body style="background:#FCFBF8;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
+  <a href="${escapeHtml(safeRedirect)}" style="color:#18181b;font-weight:700;text-decoration:none;">Opening ${safeTitle} in Yolk!…</a>
+</body>
+</html>`);
+    }
+
     if (endpoint === 'proxy-image') {
       const imageUrl = req.query.url;
       if (!imageUrl) return res.status(400).json({ error: 'Missing url' });
@@ -460,7 +557,7 @@ export default async function handler(req, res) {
                   const thumb = shelf.thumbnail?.contents?.[0]?.url || shelf.thumbnails?.[0]?.url;
                   const rawId = extractVideoId(shelf);
 
-                  if (subtitle.includes('song') || rawId) {
+                  if (subtitle.includes('song') && !subtitle.includes('video') && !isLikelyMusicVideo(title, subtitle, '', searchQuery)) {
                       ytSongs.unshift({
                           id: rawId,
                           title: title,
@@ -470,7 +567,7 @@ export default async function handler(req, res) {
                           youtube_id: rawId,
                           source: 'YTMusic'
                       });
-                  } else if (subtitle.includes('artist') || (!rawId && !subtitle.includes('album'))) {
+                  } else if (subtitle.includes('artist') || (!rawId && !subtitle.includes('album') && !subtitle.includes('video'))) {
                       ytArtists.unshift({
                           id: browseId ? (browseId.startsWith('ytm-') ? browseId : `ytm-${browseId}`) : `ytm-${encodeURIComponent(title)}`,
                           name: title,
@@ -482,12 +579,16 @@ export default async function handler(req, res) {
               items.forEach(item => {
                   const itemType = item.item_type?.toLowerCase() || '';
                   if (itemType === 'non_music_track' || itemType === 'podcast_show' || itemType === 'podcast_episode') return;
+                  if (itemType.includes('video') || shelfTitle.includes('video')) return;
+                  const itemTitle = item.title?.toString() || item.name?.toString() || item.title?.text || '';
+                  const itemSubtitle = item.subtitle?.toString() || '';
                   let targetGroup = null;
-                  if (itemType.includes('song') || shelfTitle.includes('song')) targetGroup = ytSongs;
+                  if (itemType.includes('song') || shelfTitle.includes('song')) {
+                      if (!isLikelyMusicVideo(itemTitle, itemSubtitle, '', searchQuery)) targetGroup = ytSongs;
+                  }
                   else if (itemType.includes('album') || shelfTitle.includes('album')) targetGroup = ytAlbums;
                   else if (itemType.includes('artist') || shelfTitle.includes('artist')) targetGroup = ytArtists;
                   else if (itemType.includes('playlist') || shelfTitle.includes('playlist')) targetGroup = ytPlaylists;
-                  else if (item.duration || extractVideoId(item)) targetGroup = ytSongs;
                   else if (item.song_count) targetGroup = ytPlaylists;
                   
                   if (targetGroup) {
@@ -660,6 +761,8 @@ export default async function handler(req, res) {
                 const vid = item.video_id || item.id;
                 if (!vid) return null;
                 const title = item.title?.text || item.title?.toString() || 'Unknown Title';
+                const videoType = item.video_type || item.endpoint?.payload?.musicVideoType || '';
+                if (isLikelyMusicVideo(title, '', videoType, '')) return null;
                 const artist = item.author || item.artists?.[0]?.name || 'Unknown Artist';
                 const thumbnail = optimizeThumbnailUrl(item.thumbnail?.[0]?.url || item.thumbnails?.[0]?.url);
                 const duration = (item.duration?.seconds || 0) * 1000;
@@ -815,9 +918,11 @@ export default async function handler(req, res) {
             if (ytSearchRes && ytSearchRes.contents) {
                 ytSearchRes.contents.forEach(shelf => {
                     const shelfTitle = (shelf.title?.toString() || shelf.header?.title?.toString() || '').toLowerCase();
+                    if (shelfTitle.includes('video')) return;
                     const items = shelf.contents || [];
                     items.forEach(item => {
                         const itemType = (item.item_type || '').toLowerCase();
+                        if (itemType.includes('video')) return;
                         const itemId = item.id || item.endpoint?.payload?.browseId;
                         if (itemType.includes('album') || shelfTitle.includes('album') || (typeof itemId === 'string' && itemId.startsWith('MPRE'))) {
                             const albTitle = item.title?.toString() || item.name?.toString();
@@ -836,9 +941,10 @@ export default async function handler(req, res) {
                             }
                             return;
                         }
+                        if (!itemType.includes('song') && !shelfTitle.includes('song')) return;
                         const rawId = extractVideoId(item);
                         const title = item.title?.toString() || item.name?.toString();
-                        if (rawId && title) {
+                        if (rawId && title && !isLikelyMusicVideo(title, item.subtitle?.toString() || '', '', '')) {
                             const author = extractArtistName(item, artistName);
                             if (author !== 'YT Music Artist') {
                                 allTracks.push({
@@ -1075,19 +1181,28 @@ export default async function handler(req, res) {
                     results: ytmResults
                 });
             }
+            const ytmAudioResults = await searchYTM(`${searchQuery} audio`);
+            if (ytmAudioResults && ytmAudioResults.length > 0) {
+                return res.status(200).json({
+                    videoId: ytmAudioResults[0].videoId,
+                    results: ytmAudioResults
+                });
+            }
         } catch (e) {}
 
         try {
             const yt = await getYoutube();
-            const searchResults = await yt.search(searchQuery, { type: 'video' });
+            const searchResults = await yt.search(`${searchQuery} official audio`, { type: 'video' });
             
-            const results = (searchResults.results || searchResults.videos || []).map(item => ({
-                videoId: item.id,
-                id: item.id,
-                title: item.title?.toString(),
-                author: item.author?.name,
-                thumbnails: item.thumbnails
-            }));
+            const results = (searchResults.results || searchResults.videos || [])
+                .filter(item => !isLikelyMusicVideo(item.title?.toString() || '', '', '', searchQuery))
+                .map(item => ({
+                    videoId: item.id,
+                    id: item.id,
+                    title: item.title?.toString(),
+                    author: item.author?.name,
+                    thumbnails: item.thumbnails
+                }));
 
             const firstVideoId = results.length > 0 ? results[0].videoId : null;
 
@@ -1270,6 +1385,7 @@ export default async function handler(req, res) {
         ];
 
         try {
+            const ytmPopular = await searchYTM('top hits popular songs').catch(() => []);
             const yt = await getYoutube();
             const searchPromise = yt.music.search('top hits popular music');
             const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000));
@@ -1278,19 +1394,23 @@ export default async function handler(req, res) {
                 Promise.race([searchPromise, timeoutPromise])
             ]);
 
-            const dynamicTracks = [];
+            const dynamicTracks = [...(ytmPopular || [])];
             const ytMusicRes = musicRes.status === 'fulfilled' ? musicRes.value : null;
             const ytGeneralRes = null;
 
             if (ytMusicRes && ytMusicRes.contents) {
                 const shelves = ytMusicRes.contents || [];
                 shelves.forEach(shelf => {
+                    const shelfTitle = (shelf.title?.toString() || shelf.header?.title?.toString() || '').toLowerCase();
+                    if (shelfTitle.includes('video')) return;
                     const items = shelf.contents || [];
                     items.forEach(item => {
+                        const itemType = (item.item_type || '').toLowerCase();
+                        if (itemType.includes('video')) return;
                         const rawId = extractVideoId(item);
                         const title = item.title?.toString() || item.name?.toString() || item.title?.text;
                         const artist = extractArtistName(item);
-                        if (rawId && title && artist && artist !== 'YT Music Artist') {
+                        if (rawId && title && artist && artist !== 'YT Music Artist' && !isLikelyMusicVideo(title, item.subtitle?.toString() || '', '', '')) {
                             dynamicTracks.push({
                                 id: `ytm-${rawId}`,
                                 title: title,

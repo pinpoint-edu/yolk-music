@@ -110,88 +110,11 @@ function formatTime(seconds) {
 }
 
 // ==========================================
-// iOS 18+ Safari Taptic Engine & Web Haptics
+// Haptic Feedback (Disabled per user preference)
 // ==========================================
-let hapticsEnabled = localStorage.getItem('yolk_haptics') !== 'false';
-let _lastHapticTs = 0;
-let _hapticAudioCtx = null;
-
-function playTactileAudioPulse(style = 'light') {
-    try {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (!AudioCtx) return;
-        if (!_hapticAudioCtx) {
-            _hapticAudioCtx = new AudioCtx();
-        }
-        if (_hapticAudioCtx.state === 'suspended') {
-            _hapticAudioCtx.resume().catch(() => {});
-        }
-        const now = _hapticAudioCtx.currentTime;
-
-        // Low-frequency chassis-coupled tactile transient (58Hz–68Hz sub-bass micro-thump)
-        const osc = _hapticAudioCtx.createOscillator();
-        const gain = _hapticAudioCtx.createGain();
-        osc.type = 'sine';
-
-        const dur = style === 'heavy' ? 0.018 : (style === 'medium' ? 0.014 : 0.010);
-        const peakGain = style === 'heavy' ? 0.24 : (style === 'medium' ? 0.17 : 0.11);
-        const startFreq = style === 'heavy' ? 68 : (style === 'medium' ? 62 : 58);
-
-        osc.frequency.setValueAtTime(startFreq, now);
-        osc.frequency.exponentialRampToValueAtTime(36, now + dur);
-
-        gain.gain.setValueAtTime(0.001, now);
-        gain.gain.linearRampToValueAtTime(peakGain, now + 0.002);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
-
-        osc.connect(gain);
-        gain.connect(_hapticAudioCtx.destination);
-        osc.start(now);
-        osc.stop(now + dur + 0.002);
-    } catch (_) {}
-}
-
-function triggerHaptic(style = 'light') {
-    if (!hapticsEnabled) return;
-    const now = performance.now();
-    if (now - _lastHapticTs < 35) return;
-    _lastHapticTs = now;
-
-    try {
-        // 1. iOS 18+ Safari Native Taptic Engine via in-viewport <input type="checkbox" switch> label click
-        const iosSwitchLabel = document.getElementById('yolk-ios-haptic-label');
-        if (iosSwitchLabel) {
-            iosSwitchLabel.click();
-        }
-        // 2. Web Vibration API (Android / supported browsers)
-        if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
-            if (style === 'heavy') {
-                navigator.vibrate([14, 28, 18]);
-            } else if (style === 'medium') {
-                navigator.vibrate(16);
-            } else {
-                navigator.vibrate(8);
-            }
-        }
-        // 3. Tactile Web Audio sub-bass micro-pulse fallback for iOS standalone PWA & iOS < 18
-        playTactileAudioPulse(style);
-    } catch (_) {}
-}
+let hapticsEnabled = false;
+function triggerHaptic() {}
 window.triggerHaptic = triggerHaptic;
-
-// Fire haptic synchronously on pointerdown (inside WebKit's strict user-gesture activation window)
-document.addEventListener('pointerdown', (e) => {
-    if (!hapticsEnabled) return;
-    const target = e.target;
-    if (!target || typeof target.closest !== 'function') return;
-    if (target.id === 'yolk-ios-haptic-input' || target.id === 'yolk-ios-haptic-label' || target.closest('#yolk-ios-haptic-label')) {
-        return;
-    }
-    const interactive = target.closest('button, a[href^="#"], .song-row-card, .lyric-line, .bubbly-hover, .sleek-hover, [role="switch"], input[type="range"]');
-    if (interactive) {
-        triggerHaptic('light');
-    }
-}, { passive: true });
 
 function getTrackUid(track) {
     if (!track) return '';
@@ -201,11 +124,18 @@ function getTrackUid(track) {
 // Artwork URL optimization & resolution
 function getProxyUrl(url, size = null) {
     if (!url || typeof url !== 'string') return '';
-    if (url.startsWith('data:')) return url;
+    if (url.startsWith('data:') || url.startsWith('blob:')) return url;
 
     let resUrl = url;
     if (resUrl.includes('googleusercontent.com') || resUrl.includes('ggpht.com')) {
-        const targetSize = (size === '50x50') ? 's80' : 'w1000-h1000-l90-rj';
+        let targetSize = 'w1000-h1000-l90-rj';
+        if (size === '50x50' || size === '60x60' || size === '80x80') {
+            targetSize = 's80';
+        } else if (size === '100x100' || size === '120x120' || size === '128x128') {
+            targetSize = 'w128-h128-l90-rj';
+        } else if (size === '150x150' || size === '200x200' || size === '300x300') {
+            targetSize = 'w400-h400-l90-rj';
+        }
         if (resUrl.includes('=')) {
             resUrl = resUrl.split('=')[0] + '=' + targetSize;
         } else {
@@ -1056,6 +986,9 @@ window.refreshAllDownloadButtonsUI = function () {
     if (typeof window.refreshStorageManagerUI === 'function') {
         window.refreshStorageManagerUI();
     }
+    if (typeof window.updateCurrentTrackDownloadUI === 'function') {
+        window.updateCurrentTrackDownloadUI();
+    }
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1103,6 +1036,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const npMobileMoreBtn = document.getElementById('np-mobile-more-btn');
     const npMobileMorePopover = document.getElementById('np-mobile-more-popover');
     const npMobileMoreArtistBtn = document.getElementById('np-mobile-more-artist-btn');
+    const npMobileMoreAlbumBtn = document.getElementById('np-mobile-more-album-btn');
     const npMobileMoreAddBtn = document.getElementById('np-mobile-more-add-btn');
     const npMobileMoreQueueBtn = document.getElementById('np-mobile-more-queue-btn');
     const npMobileMoreDownloadBtn = document.getElementById('np-mobile-more-download-btn');
@@ -1111,6 +1045,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const bpMobileMoreBtn = document.getElementById('bp-mobile-more-btn');
     const bpMobileMorePopover = document.getElementById('bp-mobile-more-popover');
     const bpMoreArtistBtn = document.getElementById('bp-more-artist-btn');
+    const bpMoreAlbumBtn = document.getElementById('bp-more-album-btn');
     const bpMoreFavBtn = document.getElementById('bp-more-fav-btn');
     const bpMoreAddBtn = document.getElementById('bp-more-add-btn');
     const bpMoreQueueBtn = document.getElementById('bp-more-queue-btn');
@@ -1118,6 +1053,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const bpMoreVolumeSlider = document.getElementById('bp-more-volume-slider');
 
     const lyricsMoreArtistBtn = document.getElementById('lyrics-more-artist-btn');
+    const lyricsMoreAlbumBtn = document.getElementById('lyrics-more-album-btn');
+    const npAlbumBtn = document.getElementById('now-playing-album-btn');
 
     const nowPlayingContainer = document.getElementById('now-playing-container');
     let isLyricsAvailable = false;
@@ -1175,7 +1112,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const toggleLyricsMode = () => {
         if (!isLyricsAvailable) return;
-        triggerHaptic('light');
         isLyricsUserEnabled = !isLyricsUserEnabled;
         updateLyricsVisibilityUI();
         if (isLyricsUserEnabled && typeof window.syncLyricsOnNavigate === 'function') {
@@ -1216,35 +1152,44 @@ document.addEventListener('DOMContentLoaded', () => {
     if (lyricsBarMoreBtn) {
         lyricsBarMoreBtn.onclick = (e) => {
             e.stopPropagation();
+            if (npMobileMorePopover) npMobileMorePopover.classList.add('hidden');
+            if (bpMobileMorePopover) bpMobileMorePopover.classList.add('hidden');
             if (lyricsBarMorePopover) {
                 lyricsBarMorePopover.classList.toggle('hidden');
             }
+            updateCurrentTrackDownloadUI();
         };
     }
     if (npMobileMoreBtn) {
         npMobileMoreBtn.onclick = (e) => {
             e.stopPropagation();
+            if (lyricsBarMorePopover) lyricsBarMorePopover.classList.add('hidden');
+            if (bpMobileMorePopover) bpMobileMorePopover.classList.add('hidden');
             if (npMobileMorePopover) {
                 npMobileMorePopover.classList.toggle('hidden');
             }
+            updateCurrentTrackDownloadUI();
         };
     }
     if (bpMobileMoreBtn) {
         bpMobileMoreBtn.onclick = (e) => {
             e.stopPropagation();
+            if (lyricsBarMorePopover) lyricsBarMorePopover.classList.add('hidden');
+            if (npMobileMorePopover) npMobileMorePopover.classList.add('hidden');
             if (bpMobileMorePopover) {
                 bpMobileMorePopover.classList.toggle('hidden');
             }
+            updateCurrentTrackDownloadUI();
         };
     }
     document.addEventListener('click', (e) => {
-        if (lyricsBarMorePopover && !lyricsBarMorePopover.contains(e.target) && e.target !== lyricsBarMoreBtn) {
+        if (lyricsBarMorePopover && !lyricsBarMorePopover.contains(e.target) && (!lyricsBarMoreBtn || !lyricsBarMoreBtn.contains(e.target))) {
             lyricsBarMorePopover.classList.add('hidden');
         }
-        if (npMobileMorePopover && !npMobileMorePopover.contains(e.target) && e.target !== npMobileMoreBtn) {
+        if (npMobileMorePopover && !npMobileMorePopover.contains(e.target) && (!npMobileMoreBtn || !npMobileMoreBtn.contains(e.target))) {
             npMobileMorePopover.classList.add('hidden');
         }
-        if (bpMobileMorePopover && !bpMobileMorePopover.contains(e.target) && e.target !== bpMobileMoreBtn) {
+        if (bpMobileMorePopover && !bpMobileMorePopover.contains(e.target) && (!bpMobileMoreBtn || !bpMobileMoreBtn.contains(e.target))) {
             bpMobileMorePopover.classList.add('hidden');
         }
     });
@@ -1268,43 +1213,145 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function navigateToTrackAlbum() {
+    async function navigateToTrackAlbum() {
         if (!currentTrack) return;
         if (currentTrack.album_id && typeof window.loadAlbumView === 'function') {
             window.loadAlbumView(currentTrack.album_id);
             return;
         }
-        const albumName = currentTrack.album_name || currentTrack.album;
-        if (albumName) {
-            window.location.hash = '#search';
-            const searchInput = document.getElementById('searchInput');
-            if (searchInput) {
-                searchInput.value = albumName;
-                if (typeof handleSearch === 'function') handleSearch(albumName);
-                setTimeout(() => {
-                    const albumsTab = document.querySelector('.search-tab-pill[data-tab="albums"]');
-                    if (albumsTab) albumsTab.click();
-                }, 350);
+        const albumName = (currentTrack.album_name || currentTrack.album || '').trim();
+        const title = (currentTrack.title || currentTrack.name || '').trim();
+        const artist = (currentTrack.artist_name || currentTrack.artist || '').trim();
+        const query = (albumName && albumName !== 'Yolk Music') ? `${albumName} ${artist}`.trim() : `${title} ${artist}`.trim();
+        if (!query) return;
+
+        showSpinner(true);
+        try {
+            const res = await fetch(`${API_BASE}?endpoint=search&q=${encodeURIComponent(query)}&limit=10`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data && Array.isArray(data.tracks)) {
+                    const matchTrack = data.tracks.find(t => t.album_id && (t.youtube_id === currentTrack.youtube_id || (t.title || '').toLowerCase() === title.toLowerCase()));
+                    if (matchTrack && matchTrack.album_id && typeof window.loadAlbumView === 'function') {
+                        currentTrack.album_id = matchTrack.album_id;
+                        showSpinner(false);
+                        window.loadAlbumView(matchTrack.album_id);
+                        return;
+                    }
+                }
+                if (data && Array.isArray(data.albums) && data.albums.length > 0 && typeof window.loadAlbumView === 'function') {
+                    const bestAlbum = data.albums.find(a => artist && (a.artist_name || '').toLowerCase().includes(artist.toLowerCase())) || data.albums[0];
+                    if (bestAlbum && bestAlbum.id) {
+                        currentTrack.album_id = bestAlbum.id;
+                        showSpinner(false);
+                        window.loadAlbumView(bestAlbum.id);
+                        return;
+                    }
+                }
             }
+        } catch (_) {}
+        showSpinner(false);
+
+        window.location.hash = '#search';
+        const sInput = document.getElementById('searchInput');
+        if (sInput) {
+            sInput.value = albumName || query;
+            if (typeof handleSearch === 'function') handleSearch(sInput.value);
+            setTimeout(() => {
+                const albumsTab = document.querySelector('.search-tab-pill[data-tab="albums"]');
+                if (albumsTab) albumsTab.click();
+            }, 350);
         }
     }
 
+    const npDownloadBtn = document.getElementById('now-playing-download-btn');
+    const bpDownloadBtn = document.getElementById('bottom-player-download-btn');
+
+    async function updateCurrentTrackDownloadUI() {
+        const uid = currentTrack ? getTrackUid(currentTrack) : '';
+        const isDl = uid ? await YolkOfflineDB.isDownloaded(uid) : false;
+
+        // 1. Update Now Playing & Bottom Bar icon buttons
+        [npDownloadBtn, bpDownloadBtn].forEach(btn => {
+            if (!btn) return;
+            const iconSize = btn === npDownloadBtn ? 18 : 16;
+            if (isDl) {
+                btn.style.color = '#10b981';
+                btn.title = 'Downloaded Offline (Click to Undownload)';
+                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+            } else {
+                btn.style.color = '';
+                btn.title = 'Download Song Offline';
+                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
+            }
+        });
+
+        // 2. Update More Popover download buttons
+        [npMobileMoreDownloadBtn, bpMoreDownloadBtn, lyricsMoreDownloadBtn].forEach(btn => {
+            if (!btn) return;
+            if (isDl) {
+                btn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    <span style="color:#10b981;font-weight:700;">Undownload Song</span>
+                `;
+            } else {
+                btn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    <span>Download Song</span>
+                `;
+            }
+        });
+    }
+    window.updateCurrentTrackDownloadUI = updateCurrentTrackDownloadUI;
+
+    async function toggleCurrentTrackDownload() {
+        if (!currentTrack) return;
+        const uid = getTrackUid(currentTrack);
+        const already = await YolkOfflineDB.isDownloaded(uid);
+        if (already) {
+            await YolkOfflineDB.deleteTrack(uid);
+            await updateCurrentTrackDownloadUI();
+            if (typeof window.refreshAllDownloadButtonsUI === 'function') {
+                window.refreshAllDownloadButtonsUI();
+            }
+            showToast('Removed from offline downloads');
+        } else {
+            await YolkOfflineDB.downloadTrack(currentTrack);
+            await updateCurrentTrackDownloadUI();
+        }
+    }
+
+    if (npAlbumBtn) {
+        npAlbumBtn.onclick = () => navigateToTrackAlbum();
+    }
     if (lyricsMoreArtistBtn) {
         lyricsMoreArtistBtn.onclick = () => {
             if (lyricsBarMorePopover) lyricsBarMorePopover.classList.add('hidden');
             navigateToTrackArtist();
         };
     }
+    if (lyricsMoreAlbumBtn) {
+        lyricsMoreAlbumBtn.onclick = () => {
+            if (lyricsBarMorePopover) lyricsBarMorePopover.classList.add('hidden');
+            navigateToTrackAlbum();
+        };
+    }
     if (lyricsMoreDownloadBtn) {
         lyricsMoreDownloadBtn.onclick = () => {
             if (lyricsBarMorePopover) lyricsBarMorePopover.classList.add('hidden');
-            if (currentTrack) YolkOfflineDB.downloadTrack(currentTrack);
+            toggleCurrentTrackDownload();
         };
     }
     if (npMobileMoreArtistBtn) {
         npMobileMoreArtistBtn.onclick = () => {
             if (npMobileMorePopover) npMobileMorePopover.classList.add('hidden');
             navigateToTrackArtist();
+        };
+    }
+    if (npMobileMoreAlbumBtn) {
+        npMobileMoreAlbumBtn.onclick = () => {
+            if (npMobileMorePopover) npMobileMorePopover.classList.add('hidden');
+            navigateToTrackAlbum();
         };
     }
     if (npMobileMoreAddBtn) {
@@ -1322,13 +1369,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (npMobileMoreDownloadBtn) {
         npMobileMoreDownloadBtn.onclick = () => {
             if (npMobileMorePopover) npMobileMorePopover.classList.add('hidden');
-            if (currentTrack) YolkOfflineDB.downloadTrack(currentTrack);
+            toggleCurrentTrackDownload();
         };
     }
     if (bpMoreArtistBtn) {
         bpMoreArtistBtn.onclick = () => {
             if (bpMobileMorePopover) bpMobileMorePopover.classList.add('hidden');
             navigateToTrackArtist();
+        };
+    }
+    if (bpMoreAlbumBtn) {
+        bpMoreAlbumBtn.onclick = () => {
+            if (bpMobileMorePopover) bpMobileMorePopover.classList.add('hidden');
+            navigateToTrackAlbum();
         };
     }
     if (bpMoreFavBtn) {
@@ -1356,19 +1409,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (bpMoreDownloadBtn) {
         bpMoreDownloadBtn.onclick = () => {
             if (bpMobileMorePopover) bpMobileMorePopover.classList.add('hidden');
-            if (currentTrack) YolkOfflineDB.downloadTrack(currentTrack);
+            toggleCurrentTrackDownload();
         };
     }
-    const npDownloadBtn = document.getElementById('now-playing-download-btn');
     if (npDownloadBtn) {
         npDownloadBtn.onclick = () => {
-            if (currentTrack) YolkOfflineDB.downloadTrack(currentTrack);
+            toggleCurrentTrackDownload();
         };
     }
-    const bpDownloadBtn = document.getElementById('bottom-player-download-btn');
     if (bpDownloadBtn) {
-        bpDownloadBtn.onclick = () => {
-            if (currentTrack) YolkOfflineDB.downloadTrack(currentTrack);
+        bpDownloadBtn.onclick = (e) => {
+            e.stopPropagation();
+            toggleCurrentTrackDownload();
         };
     }
     if (npMobileMoreVolumeSlider) {
@@ -1528,11 +1580,130 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Bottom Player Routing
+    // Bottom Player Routing & Touch Swipe Gestures:
+    // - Swipe Up anywhere on the bottom bar opens Now Playing
+    // - Swipe Left/Right anywhere on the bottom bar skips/previous with animated cover, title & artist shift
+    let _bpSuppressClick = false;
     if (bottomPlayerInfo) {
-        bottomPlayerInfo.addEventListener('click', () => {
+        bottomPlayerInfo.addEventListener('click', (e) => {
+            if (_bpSuppressClick) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
             window.location.hash = '#now-playing';
         });
+    }
+
+    if (bottomPlayer) {
+        let bpTouchStartX = 0;
+        let bpTouchStartY = 0;
+        let bpTouchDx = 0;
+        let bpTouchDy = 0;
+        let bpSwipeActive = false;
+        let bpSwipeAxis = null; // 'x' or 'y'
+
+        bottomPlayer.addEventListener('touchstart', (e) => {
+            if (e.touches.length !== 1) return;
+            if (e.target.closest('input[type="range"]') || (bpMobileMorePopover && bpMobileMorePopover.contains(e.target))) {
+                bpSwipeActive = false;
+                return;
+            }
+            bpTouchStartX = e.touches[0].clientX;
+            bpTouchStartY = e.touches[0].clientY;
+            bpTouchDx = 0;
+            bpTouchDy = 0;
+            bpSwipeActive = true;
+            bpSwipeAxis = null;
+            if (bottomPlayerInfo) {
+                bottomPlayerInfo.style.transition = 'none';
+            }
+        }, { passive: true });
+
+        bottomPlayer.addEventListener('touchmove', (e) => {
+            if (!bpSwipeActive || e.touches.length !== 1) return;
+            bpTouchDx = e.touches[0].clientX - bpTouchStartX;
+            bpTouchDy = e.touches[0].clientY - bpTouchStartY;
+
+            if (!bpSwipeAxis) {
+                if (Math.abs(bpTouchDx) > 10 && Math.abs(bpTouchDx) > Math.abs(bpTouchDy) * 1.15) {
+                    bpSwipeAxis = 'x';
+                } else if (Math.abs(bpTouchDy) > 10 && Math.abs(bpTouchDy) > Math.abs(bpTouchDx)) {
+                    bpSwipeAxis = 'y';
+                }
+            }
+
+            if (bpSwipeAxis === 'x' && bottomPlayerInfo) {
+                const shiftX = Math.max(-72, Math.min(72, bpTouchDx * 0.72));
+                const fade = Math.max(0.32, 1 - Math.abs(shiftX) / 95);
+                bottomPlayerInfo.style.transform = `translate3d(${shiftX}px, 0, 0)`;
+                bottomPlayerInfo.style.opacity = String(fade);
+            }
+        }, { passive: true });
+
+        const finishBottomBarSwipe = () => {
+            if (!bpSwipeActive) return;
+            bpSwipeActive = false;
+            const dx = bpTouchDx;
+            const dy = bpTouchDy;
+            const axis = bpSwipeAxis;
+            bpSwipeAxis = null;
+
+            // 1. Swipe Up -> Open Now Playing
+            if ((axis === 'y' || Math.abs(dy) > Math.abs(dx)) && dy < -26) {
+                _bpSuppressClick = true;
+                setTimeout(() => { _bpSuppressClick = false; }, 350);
+                if (bottomPlayerInfo) {
+                    bottomPlayerInfo.style.transition = 'transform 0.25s ease, opacity 0.25s ease';
+                    bottomPlayerInfo.style.transform = '';
+                    bottomPlayerInfo.style.opacity = '1';
+                }
+                window.location.hash = '#now-playing';
+                return;
+            }
+
+            // 2. Swipe Left / Right -> Next / Previous Track with Cover, Title & Artist Shift Animation
+            if (axis === 'x' && Math.abs(dx) >= 36) {
+                _bpSuppressClick = true;
+                setTimeout(() => { _bpSuppressClick = false; }, 380);
+                const dir = dx < 0 ? -1 : 1; // -1 = swipe left (next), +1 = swipe right (prev)
+                if (bottomPlayerInfo) {
+                    bottomPlayerInfo.style.transition = 'transform 0.16s cubic-bezier(0.4, 0, 1, 1), opacity 0.16s ease';
+                    bottomPlayerInfo.style.transform = `translate3d(${dir * 64}px, 0, 0)`;
+                    bottomPlayerInfo.style.opacity = '0';
+                    setTimeout(() => {
+                        if (dir < 0) {
+                            playNext();
+                        } else {
+                            playPrev();
+                        }
+                        bottomPlayerInfo.style.transition = 'none';
+                        bottomPlayerInfo.style.transform = `translate3d(${-dir * 64}px, 0, 0)`;
+                        bottomPlayerInfo.style.opacity = '0';
+                        requestAnimationFrame(() => {
+                            requestAnimationFrame(() => {
+                                bottomPlayerInfo.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.24s ease';
+                                bottomPlayerInfo.style.transform = 'translate3d(0, 0, 0)';
+                                bottomPlayerInfo.style.opacity = '1';
+                            });
+                        });
+                    }, 150);
+                } else {
+                    if (dir < 0) playNext();
+                    else playPrev();
+                }
+                return;
+            }
+
+            if (bottomPlayerInfo) {
+                bottomPlayerInfo.style.transition = 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease';
+                bottomPlayerInfo.style.transform = '';
+                bottomPlayerInfo.style.opacity = '1';
+            }
+        };
+
+        bottomPlayer.addEventListener('touchend', finishBottomBarSwipe, { passive: true });
+        bottomPlayer.addEventListener('touchcancel', finishBottomBarSwipe, { passive: true });
     }
 
     const npArtistEl = document.getElementById('now-playing-artist');
@@ -2805,6 +2976,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let crossfadeSeconds = Math.max(0, Math.min(12, parseInt(localStorage.getItem('yolk_crossfade_sec') || '0', 10) || 0));
     let _crossfadeFadeInTimer = null;
+    let userPausedIntentionally = false;
 
     function clearCrossfadeTimers() {
         if (_crossfadeFadeInTimer) {
@@ -2823,6 +2995,7 @@ document.addEventListener('DOMContentLoaded', () => {
         activeSource = 'audio';
         const shouldCrossfadeIn = Boolean(crossfadeSeconds > 0 && currentAudio._didCrossfadeOut);
         currentAudio._didCrossfadeOut = false;
+        currentAudio._crossfadeTriggered = false;
         clearCrossfadeTimers();
 
         if (ytPlayer && typeof ytPlayer.stopVideo === 'function') {
@@ -2833,20 +3006,21 @@ document.addEventListener('DOMContentLoaded', () => {
         currentAudio.load();
         currentAudio._recovering = false;
         currentAudio.src = streamUrl;
-        currentAudio.volume = shouldCrossfadeIn ? Math.max(0.05, currentVolume * 0.16) : currentVolume;
+        currentAudio.volume = shouldCrossfadeIn ? Math.max(0.03, currentVolume * 0.08) : currentVolume;
         currentAudio.load();
         const playPromise = currentAudio.play();
         if (playPromise !== undefined) {
             playPromise.then(() => {
                 currentAudio._recovering = false;
+                userPausedIntentionally = false;
                 showSpinner(false);
                 isPlaying = true;
                 updatePlayPauseButtons();
                 updateNowPlayingNavVisibility(true);
                 if (shouldCrossfadeIn && crossfadeSeconds > 0) {
-                    const rampMs = Math.min(crossfadeSeconds * 650, 3500);
-                    const steps = 24;
-                    const stepTime = Math.max(30, Math.round(rampMs / steps));
+                    const rampMs = Math.max(750, Math.min(crossfadeSeconds * 650, 3800));
+                    const steps = 28;
+                    const stepTime = Math.max(25, Math.round(rampMs / steps));
                     let step = 0;
                     _crossfadeFadeInTimer = setInterval(() => {
                         step++;
@@ -2857,7 +3031,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             return;
                         }
                         const ratio = step / steps;
-                        currentAudio.volume = Math.min(1, Math.max(0, currentVolume * (0.16 + 0.84 * ratio)));
+                        currentAudio.volume = Math.min(1, Math.max(0, currentVolume * (0.08 + 0.92 * ratio)));
                     }, stepTime);
                 } else {
                     currentAudio.volume = currentVolume;
@@ -3047,7 +3221,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const isOffline = await YolkOfflineDB.getTrack(uid);
-            if (isOffline) {
+            if (isOffline && isOffline.audioBlob) {
+                try {
+                    preloadedNextAudio.pause();
+                    preloadedNextAudio.removeAttribute('src');
+                    preloadedNextAudio.load();
+                } catch (_) {}
                 preloadedNextTrackUid = uid;
                 return;
             }
@@ -3071,16 +3250,18 @@ document.addEventListener('DOMContentLoaded', () => {
     async function playTrack(track) {
         if (!track) return;
         currentTrack = track;
+        userPausedIntentionally = false;
         showSpinner(true);
         stopYouTubeProgress();
         currentAudio._recovering = false;
         currentAudio._mvhdDuration = 0;
 
-        // Immediately update titles, covers, and fav status
+        // Immediately update titles, covers, download status, and fav status
         updateNowPlayingUI(track);
         updateBottomPlayerUI(track);
         updateNowPlayingFavButton();
         updateNowPlayingNavVisibility(true);
+        if (typeof window.updateCurrentTrackDownloadUI === 'function') window.updateCurrentTrackDownloadUI();
         if (typeof updateQueueModalUI === 'function') updateQueueModalUI();
 
         // Autoplay Preload: keep queue filled with continuous recommendations
@@ -3217,15 +3398,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     currentAudio.addEventListener('ended', () => {
-        if (activeSource === 'audio') {
+        if (activeSource === 'audio' && !currentAudio._crossfadeTriggered) {
             playNext();
         }
     });
 
     currentAudio.addEventListener('error', async () => {
-        // Do nothing if audio is not active or if src is empty/null/cleared
-        if (activeSource !== 'audio' || !currentAudio.src || currentAudio.src === window.location.href) {
+        // Do nothing if audio is not active, intentionally paused by user, or if src is empty/null/cleared
+        if (userPausedIntentionally || !isPlaying || activeSource !== 'audio' || !currentAudio.src || currentAudio.src === window.location.href) {
             currentAudio._recovering = false;
+            showSpinner(false);
             return;
         }
         showSpinner(false);
@@ -3233,7 +3415,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentAudio._recovering = true;
             try {
                 const videoId = await getYoutubeId(currentTrack);
-                if (videoId) {
+                if (videoId && !userPausedIntentionally) {
                     // Swap to alternative codec (MP4 <-> WebM) to seamlessly recover on machines lacking proprietary codecs (like older Windows/Opera)
                     const currentFmt = currentAudio._activeFormat || (currentAudio.src.includes('format=webm') ? 'webm' : 'mp4');
                     const altFmt = currentFmt === 'mp4' ? 'webm' : 'mp4';
@@ -3245,6 +3427,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     currentAudio.src = retryUrl;
                     currentAudio.load();
                     try {
+                        if (userPausedIntentionally) {
+                            currentAudio._recovering = false;
+                            return;
+                        }
                         await currentAudio.play();
                         currentAudio._recovering = false;
                         return;
@@ -3252,7 +3438,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         // Try alternative video ID if available
                         try {
                             const searchQ = `${currentTrack.title || ''} ${currentTrack.artist_name || ''}`.trim();
-                            if (searchQ) {
+                            if (searchQ && !userPausedIntentionally) {
                                 const searchRes = await fetch(`/api/music-api?endpoint=search&q=${encodeURIComponent(searchQ)}&limit=5`);
                                 if (searchRes.ok) {
                                     const searchData = await searchRes.json();
@@ -3261,7 +3447,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                         const vid = i.youtube_id || i.videoId;
                                         return vid && vid !== videoId;
                                     });
-                                    if (altItem) {
+                                    if (altItem && !userPausedIntentionally) {
                                         const altId = altItem.youtube_id || altItem.videoId;
                                         currentTrack.youtube_id = altId;
                                         currentAudio._activeVideoId = altId;
@@ -3293,8 +3479,8 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('online', () => {
         showToast('✓ Back online');
         currentAudio._recovering = false;
-        // If track was paused or failed during offline disconnect, resume seamlessly
-        if (currentTrack && (!currentAudio.src || currentAudio.error || (!isPlaying && currentAudio.paused && currentAudio.currentTime === 0))) {
+        // Only resume if the user did NOT intentionally pause playback
+        if (!userPausedIntentionally && currentTrack && (!currentAudio.src || currentAudio.error)) {
             playTrack(currentTrack);
         }
     });
@@ -3354,26 +3540,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const dur = getEffectiveAudioDuration();
         if (dur > 0 && cur >= dur - 0.15 && currentAudio.duration > dur + 2) {
             // Reached true end of song: skip any trailing blank container padding immediately
-            playNext();
+            if (!currentAudio._crossfadeTriggered) {
+                currentAudio._crossfadeTriggered = true;
+                playNext();
+            }
             return;
         }
 
-        // Crossfade Envelope: smoothly fade outgoing song & overlap preloaded next song during final crossfadeSeconds
-        if (crossfadeSeconds > 0 && dur > Math.max(18, crossfadeSeconds * 2) && isPlaying) {
+        // Crossfade Envelope: smoothly fade outgoing song & transition directly into the next track (downloaded or streaming) without restarting
+        if (crossfadeSeconds > 0 && dur > Math.max(16, crossfadeSeconds * 2) && isPlaying) {
             const remaining = dur - cur;
-            if (remaining > 0.18 && remaining <= crossfadeSeconds) {
+            const transitionPoint = Math.max(0.65, crossfadeSeconds * 0.42);
+            if (remaining > 0.15 && remaining <= crossfadeSeconds) {
                 currentAudio._didCrossfadeOut = true;
-                const fadeRatio = Math.max(0.06, Math.min(1, remaining / crossfadeSeconds));
+                const fadeOutSpan = Math.max(0.5, crossfadeSeconds - transitionPoint);
+                const fadeRatio = Math.max(0.08, Math.min(1, (remaining - transitionPoint) / fadeOutSpan));
                 if (!_crossfadeFadeInTimer) {
                     currentAudio.volume = Math.max(0, Math.min(1, currentVolume * fadeRatio));
                 }
-                if (preloadedNextAudio && preloadedNextAudio.src && preloadedNextTrackUid) {
-                    try {
-                        preloadedNextAudio.volume = Math.max(0, Math.min(1, currentVolume * (1 - fadeRatio) * 0.85));
-                        if (preloadedNextAudio.paused) {
-                            preloadedNextAudio.play().catch(() => {});
-                        }
-                    } catch (_) {}
+                if (remaining <= transitionPoint && !currentAudio._crossfadeTriggered) {
+                    currentAudio._crossfadeTriggered = true;
+                    playNext();
+                    return;
                 }
             } else if (remaining > crossfadeSeconds && !_crossfadeFadeInTimer && currentAudio.volume !== currentVolume) {
                 currentAudio.volume = currentVolume;
@@ -3405,6 +3593,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateProgressUI(seekTo, dur);
                     updateLyricsSync(seekTo);
                     if (!isPlaying && typeof ytPlayer.playVideo === 'function') {
+                        userPausedIntentionally = false;
                         ytPlayer.playVideo();
                     }
                 }
@@ -3416,6 +3605,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentAudio.currentTime = clickPos * dur;
                 updateMediaSessionPosition();
                 if (!isPlaying) {
+                    userPausedIntentionally = false;
                     currentAudio.play().then(() => {
                         isPlaying = true;
                         updatePlayPauseButtons();
@@ -3432,6 +3622,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentTrack) {
             if (currentQueue.length > 0) {
                 currentQueueIndex = 0;
+                userPausedIntentionally = false;
                 playTrack(currentQueue[0]);
             }
             return;
@@ -3439,11 +3630,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (activeSource === 'youtube' && ytPlayer) {
             if (isPlaying) {
+                userPausedIntentionally = true;
                 if (typeof ytPlayer.pauseVideo === 'function') ytPlayer.pauseVideo();
                 isPlaying = false;
                 updatePlayPauseButtons();
                 stopYouTubeProgress();
             } else {
+                userPausedIntentionally = false;
                 if (typeof ytPlayer.playVideo === 'function') ytPlayer.playVideo();
                 isPlaying = true;
                 updatePlayPauseButtons();
@@ -3453,11 +3646,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (!currentAudio.src || currentAudio.error) {
+            userPausedIntentionally = false;
             playTrack(currentTrack);
             return;
         }
 
         if (currentAudio.paused) {
+            userPausedIntentionally = false;
             const playPromise = currentAudio.play();
             if (playPromise !== undefined) {
                 playPromise.then(() => {
@@ -3470,6 +3665,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         } else {
+            userPausedIntentionally = true;
             currentAudio.pause();
             isPlaying = false;
             updatePlayPauseButtons();
@@ -4645,9 +4841,26 @@ document.addEventListener('DOMContentLoaded', () => {
         return hslToRgb(h, s, l);
     }
 
+    const _artworkPaletteCache = new Map();
+
+    function getCorsSafeArtworkUrl(imgUrl, size = '128x128') {
+        if (!imgUrl) return '';
+        if (imgUrl.startsWith('data:') || imgUrl.startsWith('blob:')) return imgUrl;
+        const baseSrc = getProxyUrl(imgUrl, size);
+        if (baseSrc.includes('ytimg.com')) {
+            return `/api/music-api?endpoint=proxy-image&url=${encodeURIComponent(baseSrc)}`;
+        }
+        return baseSrc;
+    }
+
     function extractArtworkPalette(imgUrl, callback) {
         if (!imgUrl) {
             callback(null);
+            return;
+        }
+        const cacheKey = getProxyUrl(imgUrl, '128x128') || imgUrl;
+        if (_artworkPaletteCache.has(cacheKey)) {
+            callback(_artworkPaletteCache.get(cacheKey));
             return;
         }
         const img = new Image();
@@ -4656,9 +4869,8 @@ document.addEventListener('DOMContentLoaded', () => {
             img.crossOrigin = 'Anonymous';
         }
         let retriedWithProxy = false;
-        const baseSrc = isLocal ? imgUrl : getProxyUrl(imgUrl, '120x120');
-        // Append cors=1 for external URLs so iOS Safari never reuses a non-CORS cached <img> response from song lists
-        const targetSrc = isLocal ? baseSrc : (baseSrc + (baseSrc.includes('?') ? '&' : '?') + 'cors=1');
+        const baseSrc = isLocal ? imgUrl : getProxyUrl(imgUrl, '128x128');
+        const targetSrc = getCorsSafeArtworkUrl(imgUrl, '128x128');
         img.src = targetSrc;
         img.onload = () => {
             try {
@@ -4719,7 +4931,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Sort by vibrance score
                 candidates.sort((a, b) => b.score - a.score);
 
-                // 1st color: The most vibrant dominant color in the artwork (e.g. vibrant pinkish red!)
+                // 1st color: The most vibrant dominant color in the artwork
                 const picked = [candidates[0]];
 
                 // Use Farthest Point Sampling (Max-Min Distance) to pick the 4 MOST DIFFERENT colors in the artwork!
@@ -4769,20 +4981,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Apply ensureVibrantColor: keeps saturation high, prevents washed-out salmon
                 const vibrantColors = picked.map(c => ensureVibrantColor(c));
                 vibrantColors.topRowColor = topRowColor;
+                _artworkPaletteCache.set(cacheKey, vibrantColors);
                 callback(vibrantColors);
             } catch (_) {
-                if (!isLocal && !retriedWithProxy && !img.src.includes('/api/proxy')) {
+                if (!isLocal && !retriedWithProxy && !img.src.includes('proxy-image')) {
                     retriedWithProxy = true;
-                    img.src = `/api/proxy?url=${encodeURIComponent(targetSrc)}`;
+                    img.src = `/api/music-api?endpoint=proxy-image&url=${encodeURIComponent(baseSrc)}`;
                     return;
                 }
                 callback(null);
             }
         };
         img.onerror = () => {
-            if (!isLocal && !retriedWithProxy && !img.src.includes('/api/proxy')) {
+            if (!isLocal && !retriedWithProxy && !img.src.includes('proxy-image')) {
                 retriedWithProxy = true;
-                img.src = `/api/proxy?url=${encodeURIComponent(targetSrc)}`;
+                img.src = `/api/music-api?endpoint=proxy-image&url=${encodeURIComponent(baseSrc)}`;
                 return;
             }
             callback(null);
@@ -5039,7 +5252,7 @@ document.addEventListener('DOMContentLoaded', () => {
             clearPlaylistTint();
 
             if (detailArt) {
-                detailArt.className = 'w-32 h-32 sm:w-48 sm:h-48 md:w-52 md:h-52 rounded-2xl bg-[#F4F4F5] flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.08)] border border-zinc-200/80 relative';
+                detailArt.className = 'w-28 h-28 sm:w-40 sm:h-40 md:w-44 md:h-44 rounded-2xl bg-[#F4F4F5] flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.08)] border border-zinc-200/80 relative';
                 detailArt.title = 'Favorites';
                 detailArt.style.cursor = 'default';
             }
@@ -5047,7 +5260,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             detailArtImg.classList.add('hidden');
             detailArtIcon.classList.remove('hidden');
-            detailArtIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" class="text-zinc-900"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
+            detailArtIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="52" height="52" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" class="text-zinc-900"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
             editBtn.classList.add('hidden');
             deleteBtn.classList.add('hidden');
         } else {
@@ -5058,7 +5271,7 @@ document.addEventListener('DOMContentLoaded', () => {
             trackList = pl.tracks || [];
 
             if (detailArt) {
-                detailArt.className = 'w-32 h-32 sm:w-48 sm:h-48 md:w-52 md:h-52 rounded-2xl bg-zinc-100 flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.12)] border border-white/60 relative group/art cursor-pointer';
+                detailArt.className = 'w-28 h-28 sm:w-40 sm:h-40 md:w-44 md:h-44 rounded-2xl bg-zinc-100 flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.12)] border border-white/60 relative group/art cursor-pointer';
                 detailArt.title = 'Click to upload album cover';
                 detailArt.style.cursor = 'pointer';
             }
@@ -5826,18 +6039,22 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // Modal: Add Track to Playlist
+    // Modal: Add Track to Playlist (with duplicate prompt to Dismiss or Remove from Playlist)
     function openAddToPlaylistModal(track) {
         trackToAddPending = track;
         addToPlaylistTrackName.textContent = `${track.title || track.name} - ${track.artist_name || track.artist}`;
         addToPlaylistOptions.innerHTML = '';
+        if (addToPlaylistNewBtn) addToPlaylistNewBtn.classList.remove('hidden');
+
+        const trackUid = getTrackUid(track);
 
         if (playlists.length === 0) {
             addToPlaylistOptions.innerHTML = `<div class="py-4 text-center text-xs text-zinc-400">No custom playlists yet. Create one below!</div>`;
         } else {
             playlists.forEach(pl => {
+                const alreadyIn = Array.isArray(pl.tracks) && pl.tracks.some(t => getTrackUid(t) === trackUid);
                 const btn = document.createElement('button');
-                btn.className = 'w-full flex items-center justify-between p-3 rounded-2xl border border-zinc-100 hover:border-zinc-300 hover:bg-zinc-50 transition-all text-left';
+                btn.className = 'w-full flex items-center justify-between p-3 rounded-2xl border border-zinc-100 hover:border-zinc-300 hover:bg-zinc-50 transition-all text-left cursor-pointer';
                 btn.innerHTML = `
                     <div class="flex items-center gap-3 min-w-0">
                         <div class="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center shrink-0 text-zinc-500 overflow-hidden">
@@ -5845,9 +6062,49 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         <span class="text-sm font-semibold text-zinc-800 truncate">${escapeHtml(pl.name)}</span>
                     </div>
-                    <span class="text-xs text-zinc-400 font-medium shrink-0">${pl.tracks ? pl.tracks.length : 0}</span>
+                    <div class="flex items-center gap-2 shrink-0">
+                        ${alreadyIn ? `<span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Added</span>` : ''}
+                        <span class="text-xs text-zinc-400 font-medium">${pl.tracks ? pl.tracks.length : 0}</span>
+                    </div>
                 `;
                 btn.onclick = () => {
+                    if (alreadyIn) {
+                        if (addToPlaylistNewBtn) addToPlaylistNewBtn.classList.add('hidden');
+                        addToPlaylistOptions.innerHTML = `
+                            <div class="p-4 rounded-2xl border border-zinc-200/80 bg-zinc-50/80 flex flex-col gap-3 text-left">
+                                <div class="text-xs font-bold text-zinc-800 leading-relaxed">
+                                    This song is already in <span class="font-extrabold">"${escapeHtml(pl.name)}"</span>. Would you like to remove it from this playlist or dismiss?
+                                </div>
+                                <div class="flex items-center gap-2 pt-1">
+                                    <button type="button" id="dup-pl-dismiss-btn" class="flex-1 py-2.5 px-3 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-100 text-xs font-bold text-zinc-700 transition-colors cursor-pointer">
+                                        Dismiss
+                                    </button>
+                                    <button type="button" id="dup-pl-remove-btn" class="flex-1 py-2.5 px-3 rounded-xl bg-red-500 hover:bg-red-600 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer">
+                                        Remove Song
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        const dismissBtn = document.getElementById('dup-pl-dismiss-btn');
+                        const removeBtn = document.getElementById('dup-pl-remove-btn');
+                        if (dismissBtn) {
+                            dismissBtn.onclick = () => closeAddToPlaylistModal();
+                        }
+                        if (removeBtn) {
+                            removeBtn.onclick = () => {
+                                pl.tracks = (pl.tracks || []).filter(t => getTrackUid(t) !== trackUid);
+                                savePlaylists();
+                                showToast(`Removed from "${pl.name}"`);
+                                if (!playlistDetailView.classList.contains('hidden') && currentPlaylistContextId === pl.id) {
+                                    openPlaylistDetail(pl.id);
+                                } else {
+                                    renderLibrary();
+                                }
+                                closeAddToPlaylistModal();
+                            };
+                        }
+                        return;
+                    }
                     addTrackToPlaylist(pl.id, trackToAddPending);
                     closeAddToPlaylistModal();
                 };
@@ -5860,6 +6117,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function closeAddToPlaylistModal() {
         addToPlaylistModal.classList.remove('active');
+        if (addToPlaylistNewBtn) addToPlaylistNewBtn.classList.remove('hidden');
         trackToAddPending = null;
     }
 
@@ -6807,12 +7065,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (themeToggleBtn) {
             themeToggleBtn.setAttribute('aria-checked', isDark ? 'true' : 'false');
-            themeToggleBtn.style.backgroundColor = isDark ? '#FDE047' : '';
-            themeToggleBtn.style.borderColor = isDark ? '#FACC15' : '';
-        }
-        if (themeToggleKnob) {
-            themeToggleKnob.style.transform = isDark ? 'translateX(24px)' : 'translateX(0px)';
-            themeToggleKnob.style.backgroundColor = isDark ? '#18181b' : '#ffffff';
+            themeToggleBtn.classList.toggle('is-on', isDark);
+            themeToggleBtn.classList.toggle('is-off', !isDark);
         }
         if (themeLightDot) themeLightDot.classList.toggle('hidden', isDark);
         if (themeDarkDot) themeDarkDot.classList.toggle('hidden', !isDark);
@@ -6842,14 +7096,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (themeToggleBtn) {
         themeToggleBtn.addEventListener('click', () => {
-            triggerHaptic('medium');
             const isCurrentlyDark = document.body.classList.contains('dark-mode');
             applyThemeMode(isCurrentlyDark ? 'light' : 'dark', true);
         });
     }
     if (themeLightBtn) {
         themeLightBtn.addEventListener('click', () => {
-            triggerHaptic('light');
             if (document.body.classList.contains('dark-mode')) {
                 applyThemeMode('light', true);
             }
@@ -6857,41 +7109,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (themeDarkBtn) {
         themeDarkBtn.addEventListener('click', () => {
-            triggerHaptic('light');
             if (!document.body.classList.contains('dark-mode')) {
                 applyThemeMode('dark', true);
             }
         });
     }
-
-    // ==== SETTINGS PAGE: HAPTIC FEEDBACK TOGGLE ====
-    const hapticToggleBtn = document.getElementById('haptic-toggle-btn');
-    const hapticToggleKnob = document.getElementById('haptic-toggle-knob');
-
-    function updateHapticToggleUI(enabled, notify = false) {
-        hapticsEnabled = !!enabled;
-        localStorage.setItem('yolk_haptics', hapticsEnabled ? 'true' : 'false');
-        if (hapticToggleBtn) {
-            hapticToggleBtn.setAttribute('aria-checked', hapticsEnabled ? 'true' : 'false');
-            hapticToggleBtn.style.backgroundColor = hapticsEnabled ? '#FDE047' : 'rgba(212, 212, 216, 0.8)';
-            hapticToggleBtn.style.borderColor = hapticsEnabled ? '#FACC15' : 'rgba(161, 161, 170, 0.7)';
-        }
-        if (hapticToggleKnob) {
-            hapticToggleKnob.style.transform = hapticsEnabled ? 'translateX(24px)' : 'translateX(0px)';
-            hapticToggleKnob.style.backgroundColor = hapticsEnabled ? '#18181b' : '#ffffff';
-        }
-        if (notify) {
-            if (hapticsEnabled) triggerHaptic('medium');
-            showToast(hapticsEnabled ? 'Haptic Feedback enabled' : 'Haptic Feedback disabled');
-        }
-    }
-
-    if (hapticToggleBtn) {
-        hapticToggleBtn.addEventListener('click', () => {
-            updateHapticToggleUI(!hapticsEnabled, true);
-        });
-    }
-    updateHapticToggleUI(hapticsEnabled, false);
 
     // ==== SETTINGS PAGE: REAL-TIME 5-BAND WEB AUDIO EQUALIZER (EQ) ====
     const EQ_PRESETS = {
@@ -6928,9 +7150,20 @@ document.addEventListener('DOMContentLoaded', () => {
     let yolkEqFilters = [];
     let yolkAnalyserNode = null;
     let visualizerEnabled = localStorage.getItem('yolk_visualizer_enabled') !== 'false';
-    let visualizerStyle = localStorage.getItem('yolk_visualizer_style') || 'bars';
+    let visualizerStyle = 'bars';
+
+    const isIOSOrMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '') ||
+        (navigator.maxTouchPoints > 1 && /Macintosh/i.test(navigator.userAgent || ''));
 
     function ensureWebAudioEqualizer(forceInit = false) {
+        // CRITICAL FOR iOS / iPHONE LOCK SCREEN & BACKGROUND PLAYBACK:
+        // On iOS Safari, routing an <audio> element through AudioContext.createMediaElementSource()
+        // mutes cross-origin streams and immediately suspends audio as soon as the user locks the screen
+        // or switches apps. Keeping currentAudio on the native hardware media pipeline guarantees
+        // uninterrupted background & lock-screen audio on iPhone.
+        if (isIOSOrMobileDevice) {
+            return;
+        }
         const hasNonZero = eqEnabled && eqBands.some(g => Math.abs(g) > 0.05);
         if (!yolkAudioCtx && !hasNonZero && !forceInit && !visualizerEnabled) {
             // Keep native HTMLAudioElement direct pipeline untouched when EQ and visualizer are off
@@ -6986,6 +7219,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     currentAudio.addEventListener('play', () => {
+        if (isIOSOrMobileDevice) return;
         if (yolkAudioCtx && yolkAudioCtx.state === 'suspended') {
             yolkAudioCtx.resume().catch(() => {});
         } else if ((eqEnabled && eqBands.some(g => Math.abs(g) > 0.05)) || visualizerEnabled) {
@@ -7007,12 +7241,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (eqEnableToggleBtn) {
             eqEnableToggleBtn.setAttribute('aria-checked', eqEnabled ? 'true' : 'false');
-            eqEnableToggleBtn.style.backgroundColor = eqEnabled ? '#FDE047' : 'rgba(212, 212, 216, 0.8)';
-            eqEnableToggleBtn.style.borderColor = eqEnabled ? '#FACC15' : 'rgba(161, 161, 170, 0.7)';
-        }
-        if (eqEnableToggleKnob) {
-            eqEnableToggleKnob.style.transform = eqEnabled ? 'translateX(24px)' : 'translateX(0px)';
-            eqEnableToggleKnob.style.backgroundColor = eqEnabled ? '#18181b' : '#ffffff';
+            eqEnableToggleBtn.classList.toggle('is-on', eqEnabled);
+            eqEnableToggleBtn.classList.toggle('is-off', !eqEnabled);
         }
         if (eqPresetBadge) {
             const label = !eqEnabled ? 'Off' : (EQ_PRESETS[eqCurrentPreset]?.name || 'Custom');
@@ -7293,19 +7523,51 @@ document.addEventListener('DOMContentLoaded', () => {
         loadedCoverImg: null
     };
 
+    const yolkCircleLogoImg = new Image();
+    yolkCircleLogoImg.src = '/yolk-circle.png';
+
     function getShareDeepLinkUrl() {
-        const base = window.location.origin + window.location.pathname;
+        const origin = window.location.origin;
         if (currentShareState.mode === 'album' && currentAlbumData && currentAlbumData.id) {
             const cleanId = String(currentAlbumData.id).replace('ytm-', '');
-            return `${base}#album=${encodeURIComponent(cleanId)}`;
+            const title = currentAlbumData.name || '';
+            const artist = currentAlbumData.artist_name || '';
+            const rawArt = currentAlbumData.artwork_url || (currentAlbumData.tracks?.[0]?.artwork_url) || '';
+            const params = new URLSearchParams({
+                album: cleanId,
+                t: title,
+                a: artist
+            });
+            if (rawArt && !rawArt.startsWith('blob:') && !rawArt.startsWith('data:')) {
+                params.set('img', rawArt);
+            }
+            return `${origin}/share?${params.toString()}`;
         }
         if (currentTrack) {
-            const vid = getYoutubeIdSync(currentTrack) || currentTrack.id || '';
+            const vid = getYoutubeIdSync(currentTrack) || String(currentTrack.id || '').replace('ytm-', '');
             const title = currentTrack.title || currentTrack.name || '';
             const artist = currentTrack.artist_name || currentTrack.artist || '';
-            return `${base}#song=${encodeURIComponent(vid)}&t=${encodeURIComponent(title)}&a=${encodeURIComponent(artist)}`;
+            const rawArt = currentTrack.artwork_url || currentTrack.image || '';
+            const params = new URLSearchParams({
+                song: vid,
+                t: title,
+                a: artist
+            });
+            if (rawArt && !rawArt.startsWith('blob:') && !rawArt.startsWith('data:')) {
+                params.set('img', rawArt);
+            }
+            if (currentShareState.mode === 'lyrics' && Array.isArray(currentShareState.selectedLyricIndices) && currentShareState.selectedLyricIndices.length > 0) {
+                const selectedQuote = currentShareState.selectedLyricIndices
+                    .map(i => currentShareState.lyricLines[i])
+                    .filter(Boolean)
+                    .join(' / ');
+                if (selectedQuote) {
+                    params.set('l', selectedQuote);
+                }
+            }
+            return `${origin}/share?${params.toString()}`;
         }
-        return window.location.origin;
+        return origin;
     }
 
     function drawRoundedRectPath(ctx, x, y, w, h, r) {
@@ -7490,13 +7752,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // 3. Bottom Yolk! Branding Footer inside Card
         const footerY = cardY + cardH - 64;
         ctx.save();
-        ctx.beginPath();
-        ctx.arc(cardX + 90, footerY - 12, 16, 0, Math.PI * 2);
-        ctx.fillStyle = '#FACC15';
-        ctx.fill();
-        ctx.lineWidth = 3.5;
-        ctx.strokeStyle = '#09090b';
-        ctx.stroke();
+        if (yolkCircleLogoImg && yolkCircleLogoImg.complete && yolkCircleLogoImg.naturalWidth > 0) {
+            ctx.drawImage(yolkCircleLogoImg, cardX + 72, footerY - 30, 36, 36);
+        } else {
+            ctx.beginPath();
+            ctx.arc(cardX + 90, footerY - 12, 16, 0, Math.PI * 2);
+            ctx.fillStyle = '#FACC15';
+            ctx.fill();
+            ctx.lineWidth = 3.5;
+            ctx.strokeStyle = '#09090b';
+            ctx.stroke();
+        }
 
         ctx.font = '800 32px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
         ctx.fillStyle = '#FFFFFF';
@@ -7538,7 +7804,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 <span class="text-[10px] font-extrabold shrink-0">${isSelected ? '✓' : '+'}</span>
             `;
             btn.addEventListener('click', () => {
-                triggerHaptic('selection');
                 const pos = currentShareState.selectedLyricIndices.indexOf(idx);
                 if (pos > -1) {
                     currentShareState.selectedLyricIndices.splice(pos, 1);
@@ -7549,6 +7814,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     currentShareState.selectedLyricIndices.push(idx);
                     currentShareState.selectedLyricIndices.sort((a, b) => a - b);
                 }
+                currentShareState.shareUrl = getShareDeepLinkUrl();
                 populateShareLyricsPicker();
                 renderShareCardCanvas();
             });
@@ -7558,6 +7824,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setShareModalTab(mode) {
         currentShareState.mode = mode;
+        currentShareState.shareUrl = getShareDeepLinkUrl();
         if (shareTabSong && shareTabLyrics) {
             const isSong = mode === 'song';
             shareTabSong.className = isSong
@@ -7670,13 +7937,12 @@ document.addEventListener('DOMContentLoaded', () => {
             coverImg.onerror = () => {
                 if (!isLocal && !retried) {
                     retried = true;
-                    coverImg.src = `/api/proxy?url=${encodeURIComponent(currentShareState.artworkUrl)}`;
+                    coverImg.src = `/api/music-api?endpoint=proxy-image&url=${encodeURIComponent(currentShareState.artworkUrl)}`;
                 }
             };
-            const corsArtUrl = isLocal
+            coverImg.src = isLocal
                 ? currentShareState.artworkUrl
-                : (currentShareState.artworkUrl + (currentShareState.artworkUrl.includes('?') ? '&' : '?') + 'cors=1');
-            coverImg.src = corsArtUrl;
+                : getCorsSafeArtworkUrl(currentShareState.artworkUrl, '500x500');
         }
 
         shareCardModal.classList.add('active');
@@ -7738,37 +8004,18 @@ document.addEventListener('DOMContentLoaded', () => {
         albumShareBtn.addEventListener('click', () => openShareModal('album'));
     }
 
-    // Native iOS Share Sheet / Image Download / Copy Link Actions
+    // Native iOS Share Sheet (shares rich Open Graph link preview card for iMessage) / Image Download / Copy Link Actions
     if (shareNativeBtn) {
         shareNativeBtn.addEventListener('click', async () => {
-            triggerHaptic('medium');
-            if (!shareCardCanvas) return;
-
+            currentShareState.shareUrl = getShareDeepLinkUrl();
             const shareTitle = `${currentShareState.title} — ${currentShareState.artist}`;
-            let shareText = `Listen to "${currentShareState.title}" by ${currentShareState.artist} on Yolk!`;
-            if (currentShareState.mode === 'lyrics' && currentShareState.selectedLyricIndices.length > 0) {
-                const quote = currentShareState.selectedLyricIndices.map(i => currentShareState.lyricLines[i]).filter(Boolean).join('\n');
-                shareText = `"${quote}"\n— ${currentShareState.title} by ${currentShareState.artist}`;
-            } else if (currentShareState.mode === 'album') {
-                shareText = `Check out the album "${currentShareState.title}" by ${currentShareState.artist} on Yolk!`;
-            }
 
             try {
-                const blob = await new Promise(resolve => shareCardCanvas.toBlob(resolve, 'image/png'));
-                if (blob && navigator.share) {
-                    const file = new File([blob], `yolk-${currentShareState.mode}-card.png`, { type: 'image/png' });
-                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                        await navigator.share({
-                            files: [file],
-                            title: shareTitle,
-                            text: shareText,
-                            url: currentShareState.shareUrl
-                        });
-                        return;
-                    }
+                if (navigator.share) {
+                    // Share URL directly (without attaching a separate PNG file) so iMessage / social apps
+                    // render the rich Open Graph link preview card showing the song/album and lyrics!
                     await navigator.share({
                         title: shareTitle,
-                        text: shareText,
                         url: currentShareState.shareUrl
                     });
                     return;
@@ -7777,8 +8024,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (err && err.name === 'AbortError') return;
             }
 
-            // Fallback: copy link & trigger image download
-            if (shareDownloadImgBtn) shareDownloadImgBtn.click();
+            // Fallback: copy link to clipboard
+            if (shareCopyLinkBtn) shareCopyLinkBtn.click();
         });
     }
 
@@ -7865,84 +8112,58 @@ document.addEventListener('DOMContentLoaded', () => {
     updateCrossfadeUI(crossfadeSeconds, false);
 
     // =========================================================================
-    // 2. REAL-TIME 60FPS AUDIO VISUALIZER (SPECTRUM BARS / FLUID WAVE / PULSE GLOW)
+    // 2. REAL-TIME 60FPS AUDIO VISUALIZER (CRISP SPECTRUM BARS MATCHING COVER WIDTH)
     // =========================================================================
     const npVisualizerCanvas = document.getElementById('np-visualizer-canvas');
     const npVisualizerWrapper = document.getElementById('np-visualizer-wrapper');
     const visualizerToggleBtn = document.getElementById('visualizer-toggle-btn');
-    const visualizerToggleKnob = document.getElementById('visualizer-toggle-knob');
-    const visualizerStylePills = document.querySelectorAll('.visualizer-style-pill');
     const npArtBox = document.getElementById('now-playing-art');
 
     const _vizFreqBins = new Uint8Array(64);
-    const _vizSmoothBins = new Float32Array(28);
+    const _vizSmoothBins = new Float32Array(32);
 
     function updateVisualizerSettingsUI(notify = false) {
+        visualizerStyle = 'bars';
         localStorage.setItem('yolk_visualizer_enabled', visualizerEnabled ? 'true' : 'false');
-        localStorage.setItem('yolk_visualizer_style', visualizerStyle);
+        localStorage.setItem('yolk_visualizer_style', 'bars');
 
         if (visualizerToggleBtn) {
             visualizerToggleBtn.setAttribute('aria-checked', visualizerEnabled ? 'true' : 'false');
-            visualizerToggleBtn.style.backgroundColor = visualizerEnabled ? '#FDE047' : 'rgba(212, 212, 216, 0.8)';
-            visualizerToggleBtn.style.borderColor = visualizerEnabled ? '#FACC15' : 'rgba(161, 161, 170, 0.7)';
-        }
-        if (visualizerToggleKnob) {
-            visualizerToggleKnob.style.transform = visualizerEnabled ? 'translateX(24px)' : 'translateX(0px)';
-            visualizerToggleKnob.style.backgroundColor = visualizerEnabled ? '#18181b' : '#ffffff';
+            visualizerToggleBtn.classList.toggle('is-on', visualizerEnabled);
+            visualizerToggleBtn.classList.toggle('is-off', !visualizerEnabled);
         }
         if (npVisualizerWrapper) {
-            const hideCanvas = !visualizerEnabled || visualizerStyle === 'glow';
-            npVisualizerWrapper.style.opacity = hideCanvas ? '0' : '1';
-            npVisualizerWrapper.style.height = hideCanvas ? '0px' : '36px';
-            npVisualizerWrapper.style.marginTop = hideCanvas ? '0px' : '10px';
+            npVisualizerWrapper.style.opacity = visualizerEnabled ? '1' : '0';
+            npVisualizerWrapper.style.height = visualizerEnabled ? '24px' : '0px';
+            npVisualizerWrapper.style.marginTop = visualizerEnabled ? '8px' : '0px';
         }
         if (!visualizerEnabled && npArtBox) {
             npArtBox.style.boxShadow = '';
         }
 
-        visualizerStylePills.forEach(pill => {
-            const st = pill.getAttribute('data-viz-style');
-            const isActive = visualizerEnabled && st === visualizerStyle;
-            pill.classList.toggle('bg-zinc-900', isActive);
-            pill.classList.toggle('text-white', isActive);
-            pill.classList.toggle('border-zinc-900', isActive);
-            pill.classList.toggle('font-bold', isActive);
-            pill.classList.toggle('bg-zinc-100', !isActive);
-            pill.classList.toggle('text-zinc-700', !isActive);
-            pill.classList.toggle('font-semibold', !isActive);
-        });
-
         if (visualizerEnabled && isPlaying) {
             ensureWebAudioEqualizer(true);
         }
         if (notify) {
-            showToast(visualizerEnabled ? `Visualizer: ${visualizerStyle.toUpperCase()}` : 'Audio Visualizer disabled');
+            showToast(visualizerEnabled ? 'Spectrum Visualizer enabled' : 'Audio Visualizer disabled');
         }
     }
 
     if (visualizerToggleBtn) {
         visualizerToggleBtn.addEventListener('click', () => {
-            triggerHaptic('medium');
             visualizerEnabled = !visualizerEnabled;
             updateVisualizerSettingsUI(true);
         });
     }
-    visualizerStylePills.forEach(pill => {
-        pill.addEventListener('click', () => {
-            triggerHaptic('selection');
-            visualizerStyle = pill.getAttribute('data-viz-style') || 'bars';
-            visualizerEnabled = true;
-            updateVisualizerSettingsUI(true);
-        });
-    });
     updateVisualizerSettingsUI(false);
 
     function computeLiveVisualizerBins(nowSec) {
         let hasRealSignal = false;
+        const numBars = 32;
         if (yolkAnalyserNode && isPlaying) {
             try {
                 yolkAnalyserNode.getByteFrequencyData(_vizFreqBins);
-                for (let i = 0; i < 28; i++) {
+                for (let i = 0; i < numBars; i++) {
                     if (_vizFreqBins[i] > 4) {
                         hasRealSignal = true;
                         break;
@@ -7951,72 +8172,42 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (_) {}
         }
 
-        const numBars = 28;
         let bassEnergy = 0;
         for (let i = 0; i < numBars; i++) {
             let target = 0.08;
             if (isPlaying) {
                 if (hasRealSignal) {
-                    const binIdx = Math.min(_vizFreqBins.length - 1, Math.floor(i * 1.35) + 1);
+                    const binIdx = Math.min(_vizFreqBins.length - 1, Math.floor(i * 1.2) + 1);
                     target = Math.max(0.08, Math.min(1, _vizFreqBins[binIdx] / 245));
                 } else {
-                    // Musical harmonic fallback when Web Audio source is bypassed/unavailable
+                    // Musical harmonic fallback when Web Audio source is bypassed/unavailable (e.g., iOS native audio pipeline)
                     const centerDist = Math.abs(i - (numBars - 1) / 2) / (numBars / 2);
                     const env = Math.max(0.18, 1 - centerDist * 0.72);
-                    const wave1 = Math.sin(nowSec * 7.8 + i * 0.55) * 0.5 + 0.5;
-                    const wave2 = Math.cos(nowSec * 12.4 - i * 0.85) * 0.5 + 0.5;
+                    const wave1 = Math.sin(nowSec * 7.8 + i * 0.52) * 0.5 + 0.5;
+                    const wave2 = Math.cos(nowSec * 12.4 - i * 0.82) * 0.5 + 0.5;
                     const kick = Math.pow(Math.sin(nowSec * 4.2) * 0.5 + 0.5, 3);
-                    target = Math.max(0.10, Math.min(0.96, (wave1 * 0.45 + wave2 * 0.35 + kick * 0.35) * env));
+                    target = Math.max(0.10, Math.min(0.95, (wave1 * 0.45 + wave2 * 0.35 + kick * 0.35) * env));
                 }
             }
-            _vizSmoothBins[i] = _vizSmoothBins[i] * 0.72 + target * 0.28;
+            _vizSmoothBins[i] = _vizSmoothBins[i] * 0.70 + target * 0.30;
             if (i < 6) bassEnergy += _vizSmoothBins[i];
         }
         return bassEnergy / 6;
     }
 
-    function drawVisualizerBarsOnContext(ctx, W, H, style, strokeHex) {
+    function drawVisualizerBarsOnContext(ctx, W, H, _style, strokeHex) {
         ctx.clearRect(0, 0, W, H);
-        const numBars = 28;
-        if (style === 'wave') {
-            ctx.save();
-            ctx.beginPath();
-            const midY = H / 2;
-            for (let i = 0; i < numBars; i++) {
-                const x = (i / (numBars - 1)) * W;
-                const amp = (_vizSmoothBins[i] - 0.08) * (H * 0.46);
-                const sign = (i % 2 === 0) ? 1 : -1;
-                const y = midY + sign * amp;
-                if (i === 0) {
-                    ctx.moveTo(x, y);
-                } else {
-                    const prevX = ((i - 1) / (numBars - 1)) * W;
-                    const prevAmp = (_vizSmoothBins[i - 1] - 0.08) * (H * 0.46);
-                    const prevSign = ((i - 1) % 2 === 0) ? 1 : -1;
-                    const prevY = midY + prevSign * prevAmp;
-                    const cpX = (prevX + x) / 2;
-                    ctx.quadraticCurveTo(prevX, prevY, cpX, (prevY + y) / 2);
-                }
-            }
-            ctx.strokeStyle = strokeHex;
-            ctx.lineWidth = 2.6;
-            ctx.lineCap = 'round';
-            ctx.stroke();
-            ctx.restore();
-            return;
-        }
-
-        // Default: Symmetric Rounded Spectrum Bars
-        const gap = 4;
-        const barW = Math.max(3, (W - gap * (numBars - 1)) / numBars);
+        const numBars = 32;
+        const gap = Math.max(4, Math.round(W * 0.011));
+        const barW = Math.max(4, (W - gap * (numBars - 1)) / numBars);
         ctx.save();
         ctx.fillStyle = strokeHex;
         for (let i = 0; i < numBars; i++) {
-            const val = _vizSmoothBins[i];
-            const barH = Math.max(4, Math.min(H - 2, val * (H - 2)));
+            const val = _vizSmoothBins[i] || 0.08;
+            const barH = Math.max(5, Math.min(H - 2, val * (H - 4)));
             const x = i * (barW + gap);
             const y = (H - barH) / 2;
-            ctx.globalAlpha = 0.38 + Math.min(0.62, val * 0.72);
+            ctx.globalAlpha = 0.42 + Math.min(0.58, val * 0.68);
             drawRoundedRectPath(ctx, x, y, barW, barH, barW / 2);
             ctx.fill();
         }
@@ -8108,7 +8299,7 @@ document.addEventListener('DOMContentLoaded', () => {
         img.onload = () => {
             pipCoverImage = img;
         };
-        img.src = isLocal ? src : (src + (src.includes('?') ? '&' : '?') + 'cors=1');
+        img.src = isLocal ? src : getCorsSafeArtworkUrl(src, '300x300');
     }
 
     function updateDocumentPipDOM() {
@@ -8246,7 +8437,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function togglePictureInPicture() {
-        triggerHaptic('medium');
+        if (isIOSOrMobileDevice) return;
         if (!currentTrack) {
             showToast('Play a song first to open the Mini-Player');
             return;

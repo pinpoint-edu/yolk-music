@@ -58,7 +58,7 @@
             overflow: hidden;
             overscroll-behavior: none;
             background-color: #FCFBF8;
-            transition: background-color 0.35s ease;
+            transition: background-color 0.12s ease;
         }
         html.dark-mode,
         body.dark-mode {
@@ -447,7 +447,7 @@
             background: linear-gradient(180deg, #FCFBF8 0%, #FCFBF8 64%, rgba(252, 251, 248, 0.90) 84%, rgba(252, 251, 248, 0) 100%);
             z-index: 28;
             pointer-events: none;
-            transition: opacity 0.35s ease, background 0.5s ease;
+            transition: opacity 0.2s ease;
         }
         body.dark-mode #top-white-fade-bar {
             background: linear-gradient(180deg, #0c0c0e 0%, #0c0c0e 64%, rgba(12, 12, 14, 0.90) 84%, rgba(12, 12, 14, 0) 100%);
@@ -1398,7 +1398,6 @@
         }
         body.dark-mode .eq-preset-pill.bg-zinc-900,
         body.dark-mode .crossfade-preset-pill.bg-zinc-900,
-        body.dark-mode .visualizer-style-pill.bg-zinc-900,
         body.dark-mode #storage-sync-library-btn,
         body.dark-mode #share-native-btn,
         body.dark-mode #share-tab-song.bg-zinc-900,
@@ -1407,8 +1406,149 @@
             color: #09090b !important;
             border-color: #f4f4f5 !important;
         }
+        body.dark-mode .eq-preset-pill:not(.bg-zinc-900),
+        body.dark-mode .crossfade-preset-pill:not(.bg-zinc-900) {
+            background-color: #202026 !important;
+            color: #d4d4d8 !important;
+            border-color: rgba(82, 82, 91, 0.7) !important;
+        }
         body.dark-mode #storage-bar-audio {
             background-color: #f4f4f5 !important;
+        }
+        body.dark-mode .yolk-volume-slider {
+            background: rgba(255, 255, 255, 0.16) !important;
+        }
+        body.dark-mode .yolk-volume-slider::-webkit-slider-thumb {
+            background: #FACC15 !important;
+            border-color: #18181b !important;
+        }
+        body.dark-mode .yolk-volume-slider::-moz-range-thumb {
+            background: #FACC15 !important;
+            border-color: #18181b !important;
+        }
+        /* Keep Light Mode Preview Card always looking like Light Mode even when Dark Mode is active */
+        #theme-mode-light-btn,
+        body.dark-mode #theme-mode-light-btn {
+            background-color: #FCFBF8 !important;
+        }
+        #theme-mode-light-btn .light-card-sun,
+        body.dark-mode #theme-mode-light-btn .light-card-sun {
+            background-color: #ffffff !important;
+            border-color: #e4e4e7 !important;
+            color: #f59e0b !important;
+        }
+        #theme-mode-light-btn .light-card-title,
+        body.dark-mode #theme-mode-light-btn .light-card-title {
+            color: #18181b !important;
+        }
+        #theme-mode-light-btn .light-card-sub,
+        body.dark-mode #theme-mode-light-btn .light-card-sub {
+            color: #52525b !important;
+        }
+        #theme-mode-dark-btn,
+        body.dark-mode #theme-mode-dark-btn {
+            background-color: #141418 !important;
+        }
+        /* Reliable Settings Toggle Switches in both Light and Dark Mode */
+        .yolk-switch-btn {
+            width: 56px !important;
+            height: 32px !important;
+            border-radius: 9999px !important;
+            padding: 4px !important;
+            display: flex !important;
+            align-items: center !important;
+            position: relative !important;
+            cursor: pointer !important;
+            transition: background-color 0.25s ease, border-color 0.25s ease !important;
+        }
+        .yolk-switch-btn.is-on,
+        body.dark-mode .yolk-switch-btn.is-on {
+            background-color: #FACC15 !important;
+            border: 1px solid #EAB308 !important;
+        }
+        .yolk-switch-btn.is-off {
+            background-color: #e4e4e7 !important;
+            border: 1px solid #d4d4d8 !important;
+        }
+        body.dark-mode .yolk-switch-btn.is-off {
+            background-color: #27272a !important;
+            border: 1px solid #3f3f46 !important;
+        }
+        .yolk-switch-knob {
+            width: 24px !important;
+            height: 24px !important;
+            border-radius: 9999px !important;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.25s ease !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            pointer-events: none !important;
+        }
+        .yolk-switch-btn.is-on .yolk-switch-knob,
+        body.dark-mode .yolk-switch-btn.is-on .yolk-switch-knob {
+            transform: translateX(24px) !important;
+            background-color: #18181b !important;
+            color: #FACC15 !important;
+        }
+        .yolk-switch-btn.is-off .yolk-switch-knob {
+            transform: translateX(0px) !important;
+            background-color: #ffffff !important;
+            color: #27272a !important;
+        }
+        body.dark-mode .yolk-switch-btn.is-off .yolk-switch-knob {
+            background-color: #a1a1aa !important;
+            color: #18181b !important;
+        }
+        /* Settings Dark Mode Refinements */
+        body.dark-mode #page-settings .settings-icon-box {
+            background-color: #23232a !important;
+            border-color: rgba(82, 82, 91, 0.7) !important;
+            color: #f4f4f5 !important;
+        }
+        body.dark-mode #crossfade-badge,
+        body.dark-mode #eq-active-preset-badge,
+        body.dark-mode #viz-fps-badge {
+            background-color: #23232a !important;
+            color: #e4e4e7 !important;
+            border-color: rgba(82, 82, 91, 0.7) !important;
+        }
+        body.dark-mode #storage-count-badge {
+            background-color: rgba(16, 185, 129, 0.16) !important;
+            color: #6ee7b7 !important;
+            border-color: rgba(16, 185, 129, 0.35) !important;
+        }
+        body.dark-mode #storage-clean-orphans-btn,
+        body.dark-mode #eq-reset-btn {
+            background-color: #23232a !important;
+            color: #f4f4f5 !important;
+            border-color: rgba(82, 82, 91, 0.7) !important;
+        }
+        body.dark-mode #storage-clear-all-btn {
+            background-color: rgba(239, 68, 68, 0.14) !important;
+            color: #fca5a5 !important;
+            border-color: rgba(239, 68, 68, 0.35) !important;
+        }
+        /* Translucent More (•••) Popovers matching Bottom Bar */
+        .more-glass-popover {
+            background-color: rgba(255, 255, 255, 0.65) !important;
+            backdrop-filter: blur(28px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.72) !important;
+            box-shadow: 0 20px 44px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+        }
+        body.dark-mode .more-glass-popover {
+            background-color: rgba(20, 20, 25, 0.68) !important;
+            backdrop-filter: blur(28px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.14) !important;
+            box-shadow: 0 20px 48px rgba(0, 0, 0, 0.55) !important;
+        }
+        body.dark-mode .more-glass-popover button {
+            color: #f4f4f5 !important;
+        }
+        body.dark-mode .more-glass-popover button:hover {
+            background-color: rgba(255, 255, 255, 0.1) !important;
         }
         .dragging-reorder-row {
             opacity: 0.92 !important;
@@ -1428,6 +1568,10 @@
             background-color: rgba(255, 255, 255, 0.14) !important;
             border-color: rgba(255, 255, 255, 0.24) !important;
             color: #f4f4f5 !important;
+        }
+        #bottom-player-info {
+            transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+            will-change: transform, opacity;
         }
     </style>
     <script>
@@ -1452,7 +1596,7 @@
     <!-- Phone Portrait Orientation Lock Overlay -->
     <div id="portrait-lock-overlay" class="fixed inset-0 z-[99999] bg-[#FCFBF8] flex-col items-center justify-center p-6 text-center select-none">
         <div class="flex items-center gap-2.5 mb-4">
-            <div class="w-7 h-7 rounded-full bg-[#FACC15] border-2 border-black shadow-sm shrink-0"></div>
+            <img src="/yolk-circle.png" alt="" class="w-7 h-7 object-contain shrink-0 pointer-events-none select-none">
             <span class="text-2xl font-bold text-black tracking-tight">Yolk!</span>
         </div>
         <div class="w-12 h-12 rounded-2xl bg-white border border-zinc-200 shadow-sm flex items-center justify-center mb-3 text-zinc-800">
@@ -1464,7 +1608,7 @@
 
     <!-- Small Top-Left Logo -->
     <div id="smallLogo" class="fixed top-5 left-4 sm:top-7 sm:left-8 z-40 flex items-center gap-2 cursor-pointer pointer-events-auto select-none transition-transform hover:scale-105 active:scale-95" title="Return to Home">
-        <div class="w-6 h-6 rounded-full bg-[#FACC15] border-2 border-black shadow-sm shrink-0"></div>
+        <img src="/yolk-circle.png" alt="" class="w-6 h-6 object-contain shrink-0 pointer-events-none select-none">
         <span class="text-xl font-bold text-black tracking-tight">Yolk!</span>
     </div>
 
@@ -1494,7 +1638,7 @@
             <div id="large-logo-wrapper" class="cursor-pointer select-none transition-transform hover:scale-[1.02] active:scale-95" title="Yolk! Home">
                 <div class="logo-inner flex flex-col items-center justify-center mb-8">
                     <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-full bg-[#FACC15] border-[2.5px] border-black shadow-md shrink-0"></div>
+                        <img src="/yolk-circle.png" alt="" class="w-12 h-12 object-contain shrink-0 pointer-events-none select-none">
                         <h1 class="text-6xl font-bold text-black tracking-tighter">Yolk!</h1>
                     </div>
                 </div>
@@ -1576,47 +1720,48 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                 </button>
 
-                <!-- Top Wide Banner: Left Cover, Right Info & Action Buttons in Bottom-Right -->
-                <div class="playlist-hero-card w-full bg-white/85 backdrop-blur-xl rounded-3xl border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-4 sm:p-7 flex flex-col sm:flex-row gap-4 sm:gap-7 items-center sm:items-stretch mb-4 sm:mb-6">
-                    <!-- Left: Cover Art -->
-                    <div id="playlist-detail-art" class="w-32 h-32 sm:w-48 sm:h-48 md:w-52 md:h-52 rounded-2xl bg-zinc-100 flex items-center justify-center overflow-hidden shrink-0 shadow-[0_12px_28px_rgba(0,0,0,0.1)] border border-white/60 relative group/art cursor-pointer" title="Click to upload album cover">
-                        <img id="playlist-detail-img" src="" class="w-full h-full object-cover hidden" referrerpolicy="no-referrer">
-                        <div id="playlist-detail-icon" class="text-zinc-900">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                <!-- Top Wide Banner: Cover on Left, Title + Info + Desc on Right, Buttons Centered Underneath Both -->
+                <div class="playlist-hero-card w-full bg-white/85 backdrop-blur-xl rounded-3xl border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-4 sm:p-7 flex flex-col gap-4 sm:gap-5 mb-4 sm:mb-6">
+                    <!-- Top Row: Cover on Left, Title / Playlist Info / Description to the Right of Cover -->
+                    <div class="flex flex-row items-center gap-4 sm:gap-7 w-full">
+                        <!-- Left: Cover Art -->
+                        <div id="playlist-detail-art" class="w-28 h-28 sm:w-44 sm:h-44 md:w-48 md:h-48 rounded-2xl bg-zinc-100 flex items-center justify-center overflow-hidden shrink-0 shadow-[0_12px_28px_rgba(0,0,0,0.1)] border border-white/60 relative group/art cursor-pointer" title="Click to upload album cover">
+                            <img id="playlist-detail-img" src="" class="w-full h-full object-cover hidden" referrerpolicy="no-referrer">
+                            <div id="playlist-detail-icon" class="text-zinc-900">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                            </div>
+                            <div id="playlist-detail-upload-overlay" class="absolute inset-0 bg-black/40 backdrop-blur-[2px] opacity-0 group-hover/art:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-1 pointer-events-none">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                                <span class="text-[10px] font-bold uppercase tracking-wider">Change Cover</span>
+                            </div>
                         </div>
-                        <div id="playlist-detail-upload-overlay" class="absolute inset-0 bg-black/40 backdrop-blur-[2px] opacity-0 group-hover/art:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-1 pointer-events-none">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                            <span class="text-[10px] font-bold uppercase tracking-wider">Change Cover</span>
-                        </div>
-                    </div>
-                    <input type="file" id="playlist-detail-cover-input" accept="image/*" style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;">
+                        <input type="file" id="playlist-detail-cover-input" accept="image/*" style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;">
 
-                    <!-- Right: Info Top, Buttons Bottom-Right -->
-                    <div class="flex-1 flex flex-col justify-between w-full min-w-0 text-center sm:text-left">
-                        <div class="flex flex-col items-center sm:items-start min-w-0">
-                            <div class="playlist-collection-badge inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/5 text-[10px] uppercase tracking-widest font-bold text-zinc-600 mb-2">
+                        <!-- Right of Cover: Title, Playlist Info (# of songs & minutes long), and Description -->
+                        <div class="flex-1 flex flex-col items-start justify-center min-w-0 text-left">
+                            <div class="playlist-collection-badge inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/5 text-[9px] sm:text-[10px] uppercase tracking-widest font-bold text-zinc-600 mb-1.5">
                                 <span>Playlist Collection</span>
                             </div>
-                            <h2 id="playlist-detail-name" class="text-2xl sm:text-3xl font-extrabold text-zinc-900 tracking-tight leading-tight line-clamp-2">Playlist Name</h2>
-                            <p id="playlist-detail-desc" class="text-sm text-zinc-500 mt-1.5 line-clamp-2 font-medium max-w-xl">Playlist description</p>
-                            <p id="playlist-detail-meta" class="text-xs font-semibold text-zinc-400 mt-1.5">0 songs</p>
+                            <h2 id="playlist-detail-name" class="text-xl sm:text-3xl font-extrabold text-zinc-900 tracking-tight leading-tight line-clamp-2">Playlist Name</h2>
+                            <p id="playlist-detail-meta" class="text-xs sm:text-sm font-bold text-zinc-500 mt-1">0 songs • 0 min</p>
+                            <p id="playlist-detail-desc" class="text-xs sm:text-sm text-zinc-500 mt-1.5 line-clamp-2 font-medium max-w-xl">Playlist description</p>
                         </div>
+                    </div>
 
-                        <!-- Buttons Bottom-Right (Icon only!) -->
-                        <div class="flex items-center justify-center sm:justify-end gap-2.5 mt-5 sm:mt-0 flex-wrap">
-                            <button id="playlist-play-all-btn" class="bubbly-hover flex items-center justify-center w-11 h-11 rounded-full bg-zinc-900 text-white shadow-md hover:bg-zinc-800 transition-all cursor-pointer shrink-0" title="Play All">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                            </button>
-                            <button id="playlist-download-all-btn" class="bubbly-hover flex items-center justify-center w-11 h-11 rounded-full bg-white text-zinc-700 hover:bg-zinc-100 transition-all border border-zinc-200/80 shadow-sm cursor-pointer shrink-0" title="Download Entire Playlist">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                            </button>
-                            <button id="playlist-edit-btn" class="bubbly-hover flex items-center justify-center w-11 h-11 rounded-full bg-white text-zinc-700 hover:bg-zinc-100 transition-all border border-zinc-200/80 shadow-sm cursor-pointer shrink-0" title="Edit Playlist">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                            </button>
-                            <button id="playlist-delete-btn" class="bubbly-hover flex items-center justify-center w-11 h-11 rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition-all border border-red-200/50 shadow-sm cursor-pointer shrink-0" title="Delete Playlist">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                            </button>
-                        </div>
+                    <!-- Bottom Row: Action Buttons Underneath Both of Those, Centered -->
+                    <div class="flex items-center justify-center gap-3 w-full pt-3 sm:pt-4 border-t border-zinc-200/60 flex-wrap">
+                        <button id="playlist-play-all-btn" class="bubbly-hover flex items-center justify-center w-11 h-11 rounded-full bg-zinc-900 text-white shadow-md hover:bg-zinc-800 transition-all cursor-pointer shrink-0" title="Play All">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        </button>
+                        <button id="playlist-download-all-btn" class="bubbly-hover flex items-center justify-center w-11 h-11 rounded-full bg-white text-zinc-700 hover:bg-zinc-100 transition-all border border-zinc-200/80 shadow-sm cursor-pointer shrink-0" title="Download Entire Playlist">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        </button>
+                        <button id="playlist-edit-btn" class="bubbly-hover flex items-center justify-center w-11 h-11 rounded-full bg-white text-zinc-700 hover:bg-zinc-100 transition-all border border-zinc-200/80 shadow-sm cursor-pointer shrink-0" title="Edit Playlist">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        </button>
+                        <button id="playlist-delete-btn" class="bubbly-hover flex items-center justify-center w-11 h-11 rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition-all border border-red-200/50 shadow-sm cursor-pointer shrink-0" title="Delete Playlist">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                        </button>
                     </div>
                 </div>
 
@@ -1658,9 +1803,9 @@
                     </div>
                 </div>
 
-                <!-- Real-Time 60fps Audio Visualizer Canvas -->
-                <div id="np-visualizer-wrapper" class="w-full max-w-[280px] h-9 mt-2.5 -mb-2 flex items-center justify-center pointer-events-none overflow-hidden transition-opacity duration-300">
-                    <canvas id="np-visualizer-canvas" width="280" height="36" class="w-full h-full block"></canvas>
+                <!-- Real-Time 60fps Audio Spectrum Bars Visualizer Canvas (Matches cover art width) -->
+                <div id="np-visualizer-wrapper" class="w-64 sm:w-72 h-6 mt-2 -mb-1.5 flex items-center justify-center pointer-events-none overflow-hidden transition-opacity duration-300">
+                    <canvas id="np-visualizer-canvas" width="576" height="48" class="w-full h-full block"></canvas>
                 </div>
 
                 <div class="text-center mt-4 mb-1 w-full px-2">
@@ -1725,7 +1870,12 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
                     </button>
 
-                    <!-- Floating PiP Mini-Player Button (Desktop & Tablet) -->
+                    <!-- Go to Album Button (Desktop & Tablet) -->
+                    <button id="now-playing-album-btn" class="hidden sm:inline-flex sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="Go to Album">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+                    </button>
+
+                    <!-- Floating PiP Mini-Player Button (Desktop Only) -->
                     <button id="np-pip-btn" class="hidden sm:inline-flex sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="Floating Mini-Player (Picture-in-Picture)">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 9V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h4"></path><rect width="10" height="7" x="12" y="13" rx="2"></rect></svg>
                     </button>
@@ -1735,28 +1885,28 @@
                         <button id="np-mobile-more-btn" class="sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="More options">
                             <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
                         </button>
-                        <div id="np-mobile-more-popover" class="hidden absolute right-0 bottom-full mb-3 w-56 bg-white/80 backdrop-blur-2xl border border-white/80 rounded-2xl p-2.5 shadow-[0_16px_40px_rgba(0,0,0,0.16)] flex flex-col gap-1 z-50">
-                            <button id="np-mobile-more-pip-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 9V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h4"></path><rect width="10" height="7" x="12" y="13" rx="2"></rect></svg>
-                                <span>Floating Mini-Player (PiP)</span>
-                            </button>
-                            <button id="np-mobile-more-share-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                        <div id="np-mobile-more-popover" class="more-glass-popover hidden absolute right-0 bottom-full mb-4 w-56 rounded-2xl p-2 flex flex-col gap-1 z-50">
+                            <button id="np-mobile-more-share-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
                                 <span>Share Song / Lyrics</span>
                             </button>
-                            <button id="np-mobile-more-artist-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                            <button id="np-mobile-more-album-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+                                <span>Go to Album</span>
+                            </button>
+                            <button id="np-mobile-more-artist-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                                 <span>View Artist</span>
                             </button>
-                            <button id="np-mobile-more-add-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                            <button id="np-mobile-more-add-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
                                 <span>Add to Playlist</span>
                             </button>
-                            <button id="np-mobile-more-queue-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                            <button id="np-mobile-more-queue-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
                                 <span>Play Queue</span>
                             </button>
-                            <button id="np-mobile-more-download-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                            <button id="np-mobile-more-download-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                                 <span>Download Offline</span>
                             </button>
@@ -1828,24 +1978,28 @@
                     </button>
 
                     <!-- More Popover Container -->
-                    <div id="lyrics-bar-more-popover" class="hidden absolute right-0 bottom-full mb-3 w-56 bg-white/90 backdrop-blur-2xl border border-white/80 rounded-2xl p-2.5 shadow-[0_16px_40px_rgba(0,0,0,0.18)] flex flex-col gap-1 z-50">
-                        <button id="lyrics-more-share-lyrics-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                    <div id="lyrics-bar-more-popover" class="more-glass-popover hidden absolute right-0 bottom-full mb-4 w-56 rounded-2xl p-2 flex flex-col gap-1 z-50">
+                        <button id="lyrics-more-share-lyrics-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
                             <span>Share Lyrics Card</span>
                         </button>
-                        <button id="lyrics-more-artist-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                        <button id="lyrics-more-album-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+                            <span>Go to Album</span>
+                        </button>
+                        <button id="lyrics-more-artist-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                             <span>View Artist</span>
                         </button>
-                        <button id="lyrics-more-add-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                        <button id="lyrics-more-add-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
                             <span>Add to Playlist</span>
                         </button>
-                        <button id="lyrics-more-queue-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                        <button id="lyrics-more-queue-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
                             <span>Play Queue</span>
                         </button>
-                        <button id="lyrics-more-download-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                        <button id="lyrics-more-download-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                             <span>Download Offline</span>
                         </button>
@@ -1990,7 +2144,7 @@
             <div class="library-shell max-w-3xl mx-auto pb-20">
                 <div class="mb-6">
                     <h1 class="text-3xl font-bold tracking-tight text-zinc-900">Settings</h1>
-                    <p class="text-sm text-zinc-500 mt-1">Customize appearance, audio EQ, haptics, and offline storage</p>
+                    <p class="text-sm text-zinc-500 mt-1">Customize appearance, audio EQ, crossfade, and offline storage</p>
                 </div>
 
                 <div class="flex flex-col gap-5">
@@ -1998,34 +2152,34 @@
                     <div class="bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-5">
                         <div class="flex items-center justify-between gap-4 flex-wrap">
                             <div class="flex items-center gap-3.5">
-                                <div class="w-11 h-11 rounded-2xl bg-zinc-100 border border-zinc-200/80 flex items-center justify-center text-zinc-800 shrink-0">
+                                <div class="settings-icon-box w-11 h-11 rounded-2xl bg-zinc-100 border border-zinc-200/80 flex items-center justify-center text-zinc-800 shrink-0">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>
                                 </div>
                                 <div>
                                     <div class="flex items-center gap-2">
                                         <h2 class="text-base sm:text-lg font-bold text-zinc-900">Dark Mode</h2>
-                                        <span class="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded-full bg-[#FACC15]/25 text-amber-700 border border-[#FACC15]/60">Beta</span>
+                                        <span class="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded-full bg-[#FACC15]/25 text-amber-600 border border-[#FACC15]/60">Beta</span>
                                     </div>
                                     <p class="text-xs sm:text-sm text-zinc-500 mt-0.5">Switch between Yolk!'s classic warm light mode and dark mode</p>
                                 </div>
                             </div>
 
-                            <button id="theme-mode-toggle-btn" type="button" role="switch" aria-checked="false" class="w-14 h-8 rounded-full bg-zinc-200 p-1 transition-colors duration-300 cursor-pointer flex items-center relative shrink-0 border border-zinc-300/80">
-                                <span id="theme-mode-toggle-knob" class="w-6 h-6 rounded-full bg-white shadow-md transform transition-transform duration-300 translate-x-0 flex items-center justify-center text-zinc-800"></span>
+                            <button id="theme-mode-toggle-btn" type="button" role="switch" aria-checked="false" class="yolk-switch-btn is-off shrink-0">
+                                <span id="theme-mode-toggle-knob" class="yolk-switch-knob"></span>
                             </button>
                         </div>
 
                         <div class="grid grid-cols-2 gap-3 pt-2 border-t border-zinc-100">
                             <button id="theme-mode-light-btn" type="button" class="bubbly-hover p-4 rounded-2xl border-2 border-zinc-900 bg-[#FCFBF8] text-left flex flex-col gap-2.5 cursor-pointer transition-all">
                                 <div class="flex items-center justify-between">
-                                    <div class="w-8 h-8 rounded-full bg-white border border-zinc-200 flex items-center justify-center text-amber-500 shadow-xs">
+                                    <div class="light-card-sun w-8 h-8 rounded-full bg-white border border-zinc-200 flex items-center justify-center text-amber-500 shadow-xs">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>
                                     </div>
                                     <span id="theme-light-active-dot" class="w-2.5 h-2.5 rounded-full bg-zinc-900"></span>
                                 </div>
                                 <div>
-                                    <div class="text-sm font-bold text-zinc-900">Light Mode</div>
-                                    <div class="text-[11px] font-medium text-zinc-500">Classic warm Yolk! paper</div>
+                                    <div class="light-card-title text-sm font-bold text-zinc-900">Light Mode</div>
+                                    <div class="light-card-sub text-[11px] font-medium text-zinc-500">Classic warm Yolk! paper</div>
                                 </div>
                             </button>
 
@@ -2047,31 +2201,11 @@
                         </div>
                     </div>
 
-                    <!-- 2. Haptic Feedback Setting Card (iOS Taptic Engine + Web Haptics) -->
-                    <div class="bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex items-center justify-between gap-4">
-                        <div class="flex items-center gap-3.5 min-w-0">
-                            <div class="w-11 h-11 rounded-2xl bg-zinc-100 border border-zinc-200/80 flex items-center justify-center text-zinc-800 shrink-0">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10v3"></path><path d="M6 6v11"></path><path d="M10 3v18"></path><path d="M14 8v7"></path><path d="M18 5v13"></path><path d="M22 10v3"></path></svg>
-                            </div>
-                            <div class="min-w-0">
-                                <div class="flex items-center gap-2">
-                                    <h2 class="text-base sm:text-lg font-bold text-zinc-900">Haptic Feedback</h2>
-                                    <span class="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded-full bg-zinc-100 text-zinc-700 border border-zinc-200/80">iOS Taptic</span>
-                                </div>
-                                <p class="text-xs sm:text-sm text-zinc-500 mt-0.5">Tactile taps on playback controls, favorites, lyrics scrubbing, and EQ</p>
-                            </div>
-                        </div>
-
-                        <button id="haptic-toggle-btn" type="button" role="switch" aria-checked="true" class="w-14 h-8 rounded-full bg-[#FDE047] p-1 transition-colors duration-300 cursor-pointer flex items-center relative shrink-0 border border-[#FACC15]">
-                            <span id="haptic-toggle-knob" class="w-6 h-6 rounded-full bg-zinc-900 shadow-md transform transition-transform duration-300 translate-x-6 flex items-center justify-center"></span>
-                        </button>
-                    </div>
-
-                    <!-- 2b. Crossfade & Seamless Transitions Setting Card -->
+                    <!-- 2. Crossfade & Seamless Transitions Setting Card -->
                     <div class="bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-4">
                         <div class="flex items-center justify-between gap-4 flex-wrap">
                             <div class="flex items-center gap-3.5">
-                                <div class="w-11 h-11 rounded-2xl bg-zinc-100 border border-zinc-200/80 flex items-center justify-center text-zinc-800 shrink-0">
+                                <div class="settings-icon-box w-11 h-11 rounded-2xl bg-zinc-100 border border-zinc-200/80 flex items-center justify-center text-zinc-800 shrink-0">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>
                                 </div>
                                 <div>
@@ -2100,39 +2234,33 @@
                         </div>
                     </div>
 
-                    <!-- 2c. Real-Time Audio Visualizer Setting Card -->
+                    <!-- 3. Real-Time Audio Spectrum Bars Visualizer Setting Card -->
                     <div class="bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-4">
                         <div class="flex items-center justify-between gap-4">
                             <div class="flex items-center gap-3.5 min-w-0">
-                                <div class="w-11 h-11 rounded-2xl bg-zinc-100 border border-zinc-200/80 flex items-center justify-center text-zinc-800 shrink-0">
+                                <div class="settings-icon-box w-11 h-11 rounded-2xl bg-zinc-100 border border-zinc-200/80 flex items-center justify-center text-zinc-800 shrink-0">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10v3"></path><path d="M6 6v11"></path><path d="M10 3v18"></path><path d="M14 8v7"></path><path d="M18 5v13"></path><path d="M22 10v3"></path></svg>
                                 </div>
                                 <div class="min-w-0">
                                     <div class="flex items-center gap-2">
-                                        <h2 class="text-base sm:text-lg font-bold text-zinc-900">Real-Time Audio Visualizer</h2>
-                                        <span class="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded-full bg-zinc-100 text-zinc-700 border border-zinc-200/80">60 FPS</span>
+                                        <h2 class="text-base sm:text-lg font-bold text-zinc-900">Audio Spectrum Visualizer</h2>
+                                        <span id="viz-fps-badge" class="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded-full bg-zinc-100 text-zinc-700 border border-zinc-200/80">60 FPS</span>
                                     </div>
-                                    <p class="text-xs sm:text-sm text-zinc-500 mt-0.5">Live frequency bars, waveform, and bass-reactive cover glow on Now Playing & PiP</p>
+                                    <p class="text-xs sm:text-sm text-zinc-500 mt-0.5">Live high-resolution spectrum bars directly beneath cover art in Now Playing</p>
                                 </div>
                             </div>
 
-                            <button id="visualizer-toggle-btn" type="button" role="switch" aria-checked="true" class="w-14 h-8 rounded-full bg-[#FDE047] p-1 transition-colors duration-300 cursor-pointer flex items-center relative shrink-0 border border-[#FACC15]">
-                                <span id="visualizer-toggle-knob" class="w-6 h-6 rounded-full bg-zinc-900 shadow-md transform transition-transform duration-300 translate-x-6 flex items-center justify-center"></span>
+                            <button id="visualizer-toggle-btn" type="button" role="switch" aria-checked="true" class="yolk-switch-btn is-on shrink-0">
+                                <span id="visualizer-toggle-knob" class="yolk-switch-knob"></span>
                             </button>
-                        </div>
-
-                        <div class="flex items-center gap-2 pt-2 border-t border-zinc-100">
-                            <button type="button" data-viz-style="bars" class="visualizer-style-pill px-3.5 py-1.5 rounded-full text-xs font-bold bg-zinc-900 text-white border border-zinc-900 shrink-0 cursor-pointer transition-all">Spectrum Bars</button>
-                            <button type="button" data-viz-style="wave" class="visualizer-style-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border border-zinc-200/80 shrink-0 cursor-pointer transition-all">Fluid Wave</button>
-                            <button type="button" data-viz-style="glow" class="visualizer-style-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border border-zinc-200/80 shrink-0 cursor-pointer transition-all">Cover Pulse Only</button>
                         </div>
                     </div>
 
-                    <!-- 3. 5-Band Audio Equalizer (EQ) Card -->
+                    <!-- 4. 5-Band Audio Equalizer (EQ) Card -->
                     <div class="bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-5">
                         <div class="flex items-center justify-between gap-4 flex-wrap">
                             <div class="flex items-center gap-3.5">
-                                <div class="w-11 h-11 rounded-2xl bg-zinc-100 border border-zinc-200/80 flex items-center justify-center text-zinc-800 shrink-0">
+                                <div class="settings-icon-box w-11 h-11 rounded-2xl bg-zinc-100 border border-zinc-200/80 flex items-center justify-center text-zinc-800 shrink-0">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
                                 </div>
                                 <div>
@@ -2148,8 +2276,8 @@
                                 <button id="eq-reset-btn" type="button" class="px-3 py-1.5 rounded-full text-xs font-bold bg-zinc-100 hover:bg-zinc-200 text-zinc-700 border border-zinc-200/80 transition-colors cursor-pointer">
                                     Reset
                                 </button>
-                                <button id="eq-enable-toggle-btn" type="button" role="switch" aria-checked="true" class="w-14 h-8 rounded-full bg-[#FDE047] p-1 transition-colors duration-300 cursor-pointer flex items-center relative shrink-0 border border-[#FACC15]">
-                                    <span id="eq-enable-toggle-knob" class="w-6 h-6 rounded-full bg-zinc-900 shadow-md transform transition-transform duration-300 translate-x-6 flex items-center justify-center"></span>
+                                <button id="eq-enable-toggle-btn" type="button" role="switch" aria-checked="true" class="yolk-switch-btn is-on shrink-0">
+                                    <span id="eq-enable-toggle-knob" class="yolk-switch-knob"></span>
                                 </button>
                             </div>
                         </div>
@@ -2198,7 +2326,7 @@
                     <div class="bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-5">
                         <div class="flex items-center justify-between gap-4 flex-wrap">
                             <div class="flex items-center gap-3.5">
-                                <div class="w-11 h-11 rounded-2xl bg-zinc-100 border border-zinc-200/80 flex items-center justify-center text-zinc-800 shrink-0">
+                                <div class="settings-icon-box w-11 h-11 rounded-2xl bg-zinc-100 border border-zinc-200/80 flex items-center justify-center text-zinc-800 shrink-0">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
                                 </div>
                                 <div>
@@ -2315,32 +2443,32 @@
                     <button id="bp-mobile-more-btn" class="sleek-hover text-zinc-600 hover:text-zinc-950 p-2 rounded-full hover:bg-black/5 cursor-pointer shrink-0" title="More options">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
                     </button>
-                    <div id="bp-mobile-more-popover" class="hidden absolute right-0 bottom-full mb-3 w-56 bg-white/95 backdrop-blur-2xl border border-zinc-200/90 rounded-2xl p-2.5 shadow-[0_16px_40px_rgba(0,0,0,0.18)] flex flex-col gap-1 z-50">
-                        <button id="bp-more-pip-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 9V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h4"></path><rect width="10" height="7" x="12" y="13" rx="2"></rect></svg>
-                            <span>Floating Mini-Player (PiP)</span>
-                        </button>
-                        <button id="bp-more-share-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                    <div id="bp-mobile-more-popover" class="more-glass-popover hidden absolute right-0 bottom-full mb-4 w-56 rounded-2xl p-2 flex flex-col gap-1 z-50">
+                        <button id="bp-more-share-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
                             <span>Share Song / Lyrics</span>
                         </button>
-                        <button id="bp-more-artist-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                        <button id="bp-more-album-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+                            <span>Go to Album</span>
+                        </button>
+                        <button id="bp-more-artist-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                             <span>View Artist</span>
                         </button>
-                        <button id="bp-more-fav-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                        <button id="bp-more-fav-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#18181b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                             <span>Favorite</span>
                         </button>
-                        <button id="bp-more-add-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                        <button id="bp-more-add-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
                             <span>Add to Playlist</span>
                         </button>
-                        <button id="bp-more-queue-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                        <button id="bp-more-queue-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
                             <span>Play Queue</span>
                         </button>
-                        <button id="bp-more-download-btn" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
+                        <button id="bp-more-download-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                             <span>Download Offline</span>
                         </button>
@@ -2918,12 +3046,6 @@
             navigate(); // Trigger on initial load
         });
     </script>
-    <!-- In-Viewport iOS 18+ Safari Native Taptic Engine Switch Trigger -->
-    <div style="position:fixed;bottom:0;left:0;width:24px;height:24px;opacity:0.01;z-index:-1;overflow:hidden;pointer-events:none;">
-        <label id="yolk-ios-haptic-label" for="yolk-ios-haptic-input" style="display:block;width:24px;height:24px;pointer-events:auto;">
-            <input type="checkbox" id="yolk-ios-haptic-input" switch style="width:24px;height:24px;">
-        </label>
-    </div>
     <div id="youtubePlayer"></div>
     <audio id="yolk-audio-player" playsinline webkit-playsinline x-webkit-airplay="allow" preload="auto" class="hidden"></audio>
     <script src="yolk-app.js"></script>
