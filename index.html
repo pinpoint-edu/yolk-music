@@ -460,24 +460,30 @@
             opacity: 0 !important;
             pointer-events: none !important;
         }
-        @media (min-width: 768px) {
+        @media (min-width: 640px) {
             #top-white-fade-bar,
+            #safari-top-color-shim,
+            #now-playing-top-safari-fade,
             #main-header {
                 display: none !important;
                 opacity: 0 !important;
+                visibility: hidden !important;
                 pointer-events: none !important;
+                height: 0 !important;
+                background: transparent !important;
             }
             #smallLogo {
                 padding: 6px 14px 6px 10px;
                 border-radius: 9999px;
-                background: radial-gradient(ellipse at 40% 50%, rgba(254, 249, 195, 0.65) 0%, rgba(254, 240, 138, 0.28) 55%, transparent 80%);
-                box-shadow: 0 0 24px 8px rgba(254, 243, 199, 0.55), 0 0 8px 2px rgba(250, 204, 21, 0.20);
-                backdrop-filter: blur(8px);
-                -webkit-backdrop-filter: blur(8px);
+                border: none !important;
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
+                background: radial-gradient(ellipse 110% 90% at 45% 50%, rgba(255, 253, 245, 0.90) 0%, rgba(255, 252, 240, 0.58) 45%, rgba(255, 252, 240, 0.18) 75%, rgba(255, 252, 240, 0) 100%) !important;
+                box-shadow: 0 0 35px 15px rgba(255, 253, 245, 0.72) !important;
             }
             body.dark-mode #smallLogo {
-                background: radial-gradient(ellipse at 40% 50%, rgba(254, 240, 138, 0.16) 0%, rgba(250, 204, 21, 0.08) 55%, transparent 80%);
-                box-shadow: 0 0 28px 8px rgba(250, 204, 21, 0.15), 0 0 10px 2px rgba(254, 240, 138, 0.10);
+                background: radial-gradient(ellipse 110% 90% at 45% 50%, rgba(255, 253, 245, 0.20) 0%, rgba(255, 252, 240, 0.09) 50%, rgba(255, 252, 240, 0) 100%) !important;
+                box-shadow: 0 0 35px 12px rgba(255, 253, 245, 0.14) !important;
             }
         }
 
@@ -613,19 +619,45 @@
             box-shadow: 0 3px 10px rgba(0, 0, 0, 0.55) !important;
         }
 
-        .sleek-scrollbar::-webkit-scrollbar {
-            width: 5px;
-            height: 5px;
+        /* Globally suppress any visual scrollbar on all elements and browsers (Opera, Chrome, WebKit, Edge, Firefox) */
+        html,
+        body,
+        *,
+        *::before,
+        *::after {
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
         }
-        .sleek-scrollbar::-webkit-scrollbar-track {
-            background: transparent;
+
+        ::-webkit-scrollbar {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+            background: transparent !important;
         }
-        .sleek-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(0, 0, 0, 0.12);
-            border-radius: 9999px;
+
+        ::-webkit-scrollbar-thumb,
+        ::-webkit-scrollbar-track,
+        ::-webkit-scrollbar-corner {
+            display: none !important;
+            background: transparent !important;
+            width: 0 !important;
+            height: 0 !important;
         }
-        .sleek-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: rgba(0, 0, 0, 0.25);
+
+        .sleek-scrollbar,
+        #lyrics-container,
+        #share-lyrics-picker-list {
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+        }
+
+        .sleek-scrollbar::-webkit-scrollbar,
+        #lyrics-container::-webkit-scrollbar,
+        #share-lyrics-picker-list::-webkit-scrollbar {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
         }
 
         .logo-inner {
@@ -733,6 +765,93 @@
         #lyrics-bar-lyrics-toggle svg {
             color: #ffffff !important;
             stroke: #ffffff !important;
+        }
+
+        /* Downloaded Offline Badge: Solid Black/White Circle behind Checkmark */
+        .downloaded-badge-icon .dl-circle {
+            fill: #18181b !important;
+        }
+        .downloaded-badge-icon .dl-check {
+            stroke: #ffffff !important;
+        }
+        body.dark-mode .downloaded-badge-icon .dl-circle {
+            fill: #ffffff !important;
+        }
+        body.dark-mode .downloaded-badge-icon .dl-check {
+            stroke: #18181b !important;
+        }
+
+        /* Desktop Bottom Bar Theme Colors — Solid Black in Light Mode, Solid White in Dark Mode (No Grey!) */
+        @media (min-width: 640px) {
+            #bottom-player a:not(.yolk-active),
+            #bottom-player button:not(#bottom-player-play-pause),
+            #bottom-player button:not(#bottom-player-play-pause) svg:not(.downloaded-badge-icon):not(.downloaded-badge-icon *),
+            #bp-desktop-nav a:not(.yolk-active) svg,
+            #bp-desktop-nav a:not(.yolk-active) span,
+            #bottom-player-current-time,
+            #bottom-player-duration,
+            #bp-volume-icon svg {
+                color: #18181b !important;
+                stroke: #18181b !important;
+            }
+            #bottom-player a:not(.yolk-active):hover,
+            #bottom-player button:not(#bottom-player-play-pause):hover {
+                background-color: rgba(0, 0, 0, 0.08) !important;
+            }
+            #bottom-player-title {
+                color: #18181b !important;
+            }
+            #bottom-player-artist {
+                color: #3f3f46 !important;
+            }
+            #bottom-player-progress-bar {
+                background-color: rgba(24, 24, 27, 0.16) !important;
+            }
+            #bottom-player-progress-fill {
+                background-color: #18181b !important;
+            }
+            #bp-desktop-nav {
+                border-color: rgba(24, 24, 27, 0.16) !important;
+            }
+
+            body.dark-mode #bottom-player a:not(.yolk-active),
+            body.dark-mode #bottom-player button:not(#bottom-player-play-pause),
+            body.dark-mode #bottom-player button:not(#bottom-player-play-pause) svg:not(.downloaded-badge-icon):not(.downloaded-badge-icon *),
+            body.dark-mode #bp-desktop-nav a:not(.yolk-active) svg,
+            body.dark-mode #bp-desktop-nav a:not(.yolk-active) span,
+            body.dark-mode #bottom-player-current-time,
+            body.dark-mode #bottom-player-duration,
+            body.dark-mode #bp-volume-icon svg {
+                color: #ffffff !important;
+                stroke: #ffffff !important;
+            }
+            body.dark-mode #bottom-player a:not(.yolk-active):hover,
+            body.dark-mode #bottom-player button:not(#bottom-player-play-pause):hover {
+                background-color: rgba(255, 255, 255, 0.12) !important;
+            }
+            body.dark-mode #bottom-player-title {
+                color: #ffffff !important;
+            }
+            body.dark-mode #bottom-player-artist {
+                color: #d4d4d8 !important;
+            }
+            body.dark-mode #bottom-player-progress-bar {
+                background-color: rgba(255, 255, 255, 0.22) !important;
+            }
+            body.dark-mode #bottom-player-progress-fill {
+                background-color: #ffffff !important;
+            }
+            body.dark-mode #bp-desktop-nav {
+                border-color: rgba(255, 255, 255, 0.16) !important;
+            }
+            body.dark-mode #bp-desktop-nav a.yolk-active {
+                background-color: #ffffff !important;
+                color: #09090b !important;
+            }
+            body.dark-mode #bp-desktop-nav a.yolk-active svg {
+                color: #09090b !important;
+                stroke: #09090b !important;
+            }
         }
 
         /* Bottom Player Morphing Animation & Hover Expansion */
@@ -2444,31 +2563,31 @@
                 </div>
             </div>
 
-            <!-- Center: Controls -->
-            <div class="flex items-center justify-center gap-1.5 sm:gap-3.5 shrink-0">
-                <button id="bp-queue-btn" class="hidden sm:inline-flex sleek-hover text-zinc-500 hover:text-zinc-900 transition-colors p-2 rounded-full hover:bg-black/5 items-center justify-center cursor-pointer shrink-0" title="Play Queue">
+            <!-- Center & Right: Unified Controls & Audio Cluster (No awkward gaps! Download button and Audio Bar pushed together) -->
+            <div class="flex items-center justify-end gap-1 sm:gap-2.5 shrink-0">
+                <button id="bp-queue-btn" class="hidden sm:inline-flex sleek-hover transition-colors p-2 rounded-full hover:bg-black/5 items-center justify-center cursor-pointer shrink-0" title="Play Queue">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
                 </button>
-                <button id="bottom-player-fav-btn" class="hidden sm:inline-flex sleek-hover text-zinc-900 transition-transform hover:scale-110 p-2 rounded-full hover:bg-black/5 shrink-0" title="Favorite">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#18181b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                <button id="bottom-player-fav-btn" class="hidden sm:inline-flex sleek-hover transition-transform hover:scale-110 p-2 rounded-full hover:bg-black/5 shrink-0" title="Favorite">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                 </button>
-                <button id="bottom-player-prev" class="sleek-hover text-zinc-400 hover:text-zinc-800 transition-colors p-2 shrink-0" title="Previous Track">
+                <button id="bottom-player-prev" class="sleek-hover transition-colors p-2 shrink-0" title="Previous Track">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
                 </button>
                 <button id="bottom-player-play-pause" class="flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-zinc-900 border border-zinc-800 text-white transition-all duration-300 shadow-md hover:scale-105 active:scale-95 shrink-0" title="Play / Pause">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                 </button>
-                <button id="bottom-player-next" class="sleek-hover text-zinc-400 hover:text-zinc-800 transition-colors p-2 shrink-0" title="Next Track">
+                <button id="bottom-player-next" class="sleek-hover transition-colors p-2 shrink-0" title="Next Track">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
                 </button>
-                <button id="bottom-player-add-btn" class="hidden sm:inline-flex sleek-hover text-zinc-400 hover:text-zinc-800 transition-colors p-2 rounded-full hover:bg-black/5 shrink-0" title="Add to Playlist">
+                <button id="bottom-player-add-btn" class="hidden sm:inline-flex sleek-hover transition-colors p-2 rounded-full hover:bg-black/5 shrink-0" title="Add to Playlist">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
                 </button>
-                <button id="bottom-player-download-btn" class="hidden sm:inline-flex sleek-hover text-zinc-400 hover:text-zinc-800 transition-colors p-2 rounded-full hover:bg-black/5 shrink-0" title="Download Offline">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                </button>
-                <button id="bp-pip-btn" class="hidden sm:inline-flex sleek-hover text-zinc-400 hover:text-zinc-800 transition-colors p-2 rounded-full hover:bg-black/5 cursor-pointer shrink-0" title="Floating Mini-Player (PiP)">
+                <button id="bp-pip-btn" class="hidden sm:inline-flex sleek-hover transition-colors p-2 rounded-full hover:bg-black/5 cursor-pointer shrink-0" title="Floating Mini-Player (PiP)">
                     <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 9V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h4"></path><rect width="10" height="7" x="12" y="13" rx="2"></rect></svg>
+                </button>
+                <button id="bottom-player-download-btn" class="hidden sm:inline-flex sleek-hover transition-colors p-2 rounded-full hover:bg-black/5 shrink-0" title="Download Offline">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                 </button>
 
                 <!-- Mobile More Button & Popover (Phone view puts all extra options into this button) -->
@@ -2490,7 +2609,7 @@
                             <span>View Artist</span>
                         </button>
                         <button id="bp-more-fav-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#18181b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                             <span>Favorite</span>
                         </button>
                         <button id="bp-more-add-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
@@ -2507,23 +2626,23 @@
                         </button>
                     </div>
                 </div>
-            </div>
 
-            <!-- Right: Progress & Time & Volume (Hidden on phone view to keep bar compact) -->
-            <div class="hidden sm:flex flex-1 min-w-[180px] max-w-[300px] justify-end items-center gap-2">
-                <span id="bottom-player-current-time" class="text-[10px] text-zinc-400 font-medium select-none">0:00</span>
-                <div id="bottom-player-progress-bar" class="w-full max-w-[70px] sm:max-w-[100px] h-1.5 bg-zinc-200/80 rounded-full overflow-hidden relative cursor-pointer hover:h-2 transition-all">
-                    <div id="bottom-player-progress-fill" class="absolute left-0 top-0 w-0 h-full bg-zinc-800 pointer-events-none"></div>
-                </div>
-                <span id="bottom-player-duration" class="text-[10px] text-zinc-400 font-medium select-none">0:00</span>
+                <!-- Desktop Audio Bar (Time, Progress Bar, Duration, Volume) Directly Pushed Next to Download Button -->
+                <div class="hidden sm:flex items-center gap-2 pl-1 shrink-0">
+                    <span id="bottom-player-current-time" class="text-[10px] font-semibold select-none min-w-[26px] text-right">0:00</span>
+                    <div id="bottom-player-progress-bar" class="w-[65px] md:w-[90px] lg:w-[125px] h-1.5 bg-zinc-200/80 rounded-full overflow-hidden relative cursor-pointer hover:h-2 transition-all">
+                        <div id="bottom-player-progress-fill" class="absolute left-0 top-0 w-0 h-full bg-zinc-800 pointer-events-none"></div>
+                    </div>
+                    <span id="bottom-player-duration" class="text-[10px] font-semibold select-none min-w-[32px] text-left">-0:00</span>
 
-                <!-- Volume Bar (Small Button until Hovered -> Expands to the right) -->
-                <div id="bp-volume-container" class="relative flex items-center group/bpvol pl-0.5 shrink-0">
-                    <button id="bp-volume-btn" class="sleek-hover text-zinc-500 hover:text-zinc-900 transition-colors p-1 rounded-full hover:bg-black/5 flex items-center justify-center cursor-pointer shrink-0" title="Volume">
-                        <svg id="bp-volume-icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
-                    </button>
-                    <div class="w-0 opacity-0 group-hover/bpvol:w-16 sm:group-hover/bpvol:w-20 group-hover/bpvol:opacity-100 group-hover/bpvol:ml-1.5 transition-all duration-300 ease-out flex items-center overflow-hidden">
-                        <input id="bp-volume-slider" type="range" min="0" max="100" value="100" class="yolk-volume-slider w-16 sm:w-20 cursor-pointer">
+                    <!-- Volume Bar (Small Button until Hovered -> Expands to the right) -->
+                    <div id="bp-volume-container" class="relative flex items-center group/bpvol pl-0.5 shrink-0">
+                        <button id="bp-volume-btn" class="sleek-hover transition-colors p-1 rounded-full hover:bg-black/5 flex items-center justify-center cursor-pointer shrink-0" title="Volume">
+                            <svg id="bp-volume-icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+                        </button>
+                        <div class="w-0 opacity-0 group-hover/bpvol:w-16 sm:group-hover/bpvol:w-20 group-hover/bpvol:opacity-100 group-hover/bpvol:ml-1.5 transition-all duration-300 ease-out flex items-center overflow-hidden">
+                            <input id="bp-volume-slider" type="range" min="0" max="100" value="100" class="yolk-volume-slider w-16 sm:w-20 cursor-pointer">
+                        </div>
                     </div>
                 </div>
             </div>

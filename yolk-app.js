@@ -106,9 +106,37 @@ function escapeHtml(text) {
 
 function formatTime(seconds) {
     if (isNaN(seconds) || seconds < 0) return '0:00';
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    const totalSecs = Math.floor(seconds);
+    const hrs = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+    const padSecs = secs < 10 ? `0${secs}` : `${secs}`;
+    if (hrs > 0) {
+        const padMins = mins < 10 ? `0${mins}` : `${mins}`;
+        return `${hrs}:${padMins}:${padSecs}`;
+    }
+    return `${mins}:${padSecs}`;
+}
+
+function formatRemainingTime(cur, dur) {
+    if (isNaN(dur) || dur <= 0) return '-0:00';
+    const rem = Math.max(0, Math.round(dur - (cur || 0)));
+    const hrs = Math.floor(rem / 3600);
+    const mins = Math.floor((rem % 3600) / 60);
+    const secs = rem % 60;
+    const padSecs = secs < 10 ? `0${secs}` : `${secs}`;
+    if (hrs > 0) {
+        const padMins = mins < 10 ? `0${mins}` : `${mins}`;
+        return `-${hrs}:${padMins}:${padSecs}`;
+    }
+    return `-${mins}:${padSecs}`;
+}
+
+function getDownloadedBadgeSvg(size = 18) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" class="downloaded-badge-icon shrink-0">
+        <circle cx="12" cy="12" r="10" class="dl-circle"/>
+        <polyline points="7.5 12 10.5 15 16.5 9" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none" class="dl-check"/>
+    </svg>`;
 }
 
 // ==========================================
@@ -940,10 +968,9 @@ function wireTrackDownloadBtn(dlBtn, track) {
     dlBtn.dataset.trackUid = uid;
     const renderDownloadState = (isDownloaded) => {
         if (isDownloaded) {
-            dlBtn.classList.add('text-emerald-600', 'bg-emerald-50');
-            dlBtn.classList.remove('text-zinc-400');
+            dlBtn.classList.remove('text-zinc-400', 'text-emerald-600', 'bg-emerald-50');
             dlBtn.title = 'Downloaded offline (click to undownload)';
-            dlBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+            dlBtn.innerHTML = getDownloadedBadgeSvg(14);
         } else {
             dlBtn.classList.remove('text-emerald-600', 'bg-emerald-50');
             dlBtn.classList.add('text-zinc-400');
@@ -1311,11 +1338,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // 1. Update Now Playing & Bottom Bar icon buttons
         [npDownloadBtn, bpDownloadBtn].forEach(btn => {
             if (!btn) return;
-            const iconSize = btn === npDownloadBtn ? 18 : 16;
+            const iconSize = btn === npDownloadBtn ? 20 : 18;
             if (isDl) {
-                btn.style.color = '#10b981';
+                btn.style.color = '';
                 btn.title = 'Downloaded Offline (Click to Undownload)';
-                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+                btn.innerHTML = getDownloadedBadgeSvg(iconSize);
             } else {
                 btn.style.color = '';
                 btn.title = 'Download Song Offline';
@@ -1328,12 +1355,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!btn) return;
             if (isDl) {
                 btn.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                    <span style="color:#10b981;font-weight:700;">Undownload Song</span>
+                    ${getDownloadedBadgeSvg(16)}
+                    <span style="font-weight:700;">Undownload Song</span>
                 `;
             } else {
                 btn.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                     <span>Download Song</span>
                 `;
             }
@@ -2865,15 +2892,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (npCurrentTime) npCurrentTime.textContent = formatTime(cur);
         if (bpCurrentTime) bpCurrentTime.textContent = formatTime(cur);
 
-        if (npDuration) {
-            if (dur > 0) {
-                const remainingSec = Math.max(0, Math.round(dur - cur));
-                npDuration.textContent = `-${remainingSec}s`;
-            } else {
-                npDuration.textContent = '0s';
-            }
-        }
-        if (bpDuration && dur > 0) bpDuration.textContent = formatTime(dur);
+        const remainingText = formatRemainingTime(cur, dur);
+        if (npDuration) npDuration.textContent = remainingText;
+        if (bpDuration) bpDuration.textContent = remainingText;
     }
 
     // YouTube Player Engine (Fallback from pinpoint-edu)
@@ -4039,13 +4060,26 @@ document.addEventListener('DOMContentLoaded', () => {
         if (metaTheme) metaTheme.setAttribute('content', hex);
         document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', hex));
         if (shimEl) shimEl.style.backgroundColor = hex;
+        const isDesktop = window.innerWidth >= 640;
         if (topFadeBar) {
-            topFadeBar.style.opacity = '1';
-            topFadeBar.style.background = `linear-gradient(180deg, ${hex} 0%, ${hex} 48%, rgba(${clR}, ${clG}, ${clB}, 0.72) 76%, rgba(${clR}, ${clG}, ${clB}, 0) 100%)`;
+            if (isDesktop) {
+                topFadeBar.style.opacity = '0';
+                topFadeBar.style.display = 'none';
+            } else {
+                topFadeBar.style.display = 'block';
+                topFadeBar.style.opacity = '1';
+                topFadeBar.style.background = `linear-gradient(180deg, ${hex} 0%, ${hex} 48%, rgba(${clR}, ${clG}, ${clB}, 0.72) 76%, rgba(${clR}, ${clG}, ${clB}, 0) 100%)`;
+            }
         }
         if (nowPlayingTopFade) {
-            nowPlayingTopFade.style.background = `linear-gradient(180deg, ${hex} 0%, rgba(${clR}, ${clG}, ${clB}, 0.82) 55%, transparent 100%)`;
-            nowPlayingTopFade.style.opacity = '1';
+            if (isDesktop) {
+                nowPlayingTopFade.style.opacity = '0';
+                nowPlayingTopFade.style.display = 'none';
+            } else {
+                nowPlayingTopFade.style.display = 'block';
+                nowPlayingTopFade.style.background = `linear-gradient(180deg, ${hex} 0%, rgba(${clR}, ${clG}, ${clB}, 0.82) 55%, transparent 100%)`;
+                nowPlayingTopFade.style.opacity = '1';
+            }
         }
         document.documentElement.style.setProperty('background-color', hex, 'important');
         document.body.style.setProperty('background-color', hex, 'important');
@@ -5437,7 +5471,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const allDownloaded = checks.length > 0 && checks.every(Boolean);
                     if (allDownloaded) {
                         downloadAllBtn.title = 'Undownload All Playlist Songs';
-                        downloadAllBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+                        downloadAllBtn.innerHTML = getDownloadedBadgeSvg(18);
                     } else {
                         downloadAllBtn.title = 'Download Entire Playlist';
                         downloadAllBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
@@ -6683,7 +6717,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const allDownloaded = checks.length > 0 && checks.every(Boolean);
                         if (allDownloaded) {
                             albumDownloadAllBtn.title = 'Undownload Album';
-                            albumDownloadAllBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+                            albumDownloadAllBtn.innerHTML = getDownloadedBadgeSvg(18);
                         } else {
                             albumDownloadAllBtn.title = 'Download Album';
                             albumDownloadAllBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
