@@ -154,7 +154,7 @@
 
             /* More compact mobile UI layout to fit more info in phone screen */
             body.is-searching #search-block {
-                top: 54px !important;
+                top: 68px !important;
                 width: calc(100% - 16px) !important;
                 padding-left: 4px !important;
                 padding-right: 4px !important;
@@ -170,7 +170,7 @@
             #page-library-scroll,
             #page-artist-scroll,
             #page-album-scroll {
-                padding-top: 56px !important;
+                padding-top: 72px !important;
                 padding-bottom: 84px !important;
                 padding-left: 10px !important;
                 padding-right: 10px !important;
@@ -374,12 +374,75 @@
         }
 
         body.is-searching #search-block {
-            top: 84px;
+            top: 90px;
             transform: translate(-50%, 0);
             padding-bottom: 84px;
             opacity: 1;
             max-width: 1040px;
             width: calc(100% - 32px);
+        }
+
+        /* Top White Bar with Fade Effect (behind Yolk! title & top nav bar on non-Now-Playing pages) */
+        #top-white-fade-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 76px;
+            background: linear-gradient(180deg, #FCFBF8 0%, #FCFBF8 62%, rgba(252, 251, 248, 0.88) 84%, rgba(252, 251, 248, 0) 100%);
+            z-index: 28;
+            pointer-events: none;
+            transition: opacity 0.35s ease;
+        }
+        body[data-page="now-playing"] #top-white-fade-bar,
+        body:not(.is-searching)[data-page="search"] #top-white-fade-bar {
+            opacity: 0;
+        }
+        @media (min-width: 640px) {
+            #top-white-fade-bar {
+                height: 92px;
+            }
+        }
+
+        /* Custom Playlist Full-UI Tinting (Themes cards, borders, badges, and icons around the tint color) */
+        #playlist-detail-view.has-playlist-tint .playlist-hero-card,
+        #playlist-detail-view.has-playlist-tint #playlist-tracks-card {
+            background-color: var(--pl-surface-bg, rgba(255, 255, 255, 0.84)) !important;
+            border-color: var(--pl-border-color, rgba(228, 228, 231, 0.8)) !important;
+        }
+        #playlist-detail-view.has-playlist-tint #playlist-back-btn,
+        #playlist-detail-view.has-playlist-tint #playlist-download-all-btn,
+        #playlist-detail-view.has-playlist-tint #playlist-edit-btn,
+        #playlist-detail-view.has-playlist-tint #playlist-delete-btn {
+            color: var(--pl-icon-color, #27272a) !important;
+            border-color: var(--pl-border-color, rgba(228, 228, 231, 0.8)) !important;
+            background-color: rgba(255, 255, 255, 0.86) !important;
+        }
+        #playlist-detail-view.has-playlist-tint #playlist-play-all-btn {
+            background-color: var(--pl-play-bg, #18181b) !important;
+            color: var(--pl-play-icon, #ffffff) !important;
+            border: 1px solid var(--pl-border-color, transparent) !important;
+        }
+        #playlist-detail-view.has-playlist-tint #playlist-detail-icon {
+            color: var(--pl-icon-color, #18181b) !important;
+        }
+        #playlist-detail-view.has-playlist-tint .playlist-collection-badge {
+            background-color: var(--pl-badge-bg, rgba(0, 0, 0, 0.06)) !important;
+            color: var(--pl-icon-color, #3f3f46) !important;
+        }
+        #playlist-detail-view.has-playlist-tint .song-row-card {
+            background-color: rgba(255, 255, 255, 0.90) !important;
+            border-color: var(--pl-border-color, rgba(228, 228, 231, 0.85)) !important;
+        }
+        #playlist-detail-view.has-playlist-tint .song-row-card button {
+            color: var(--pl-icon-color, #52525b) !important;
+        }
+        #playlist-detail-view.has-playlist-tint .song-row-card .favorite-btn svg {
+            stroke: var(--pl-icon-color, #18181b) !important;
+        }
+        #playlist-detail-view.has-playlist-tint #playlist-tracks-footer {
+            border-color: var(--pl-border-color, rgba(228, 228, 231, 0.7)) !important;
+            color: var(--pl-icon-color, #52525b) !important;
         }
 
         .scroll-row-hover {
@@ -1094,6 +1157,7 @@
 </head>
 <body class="text-zinc-800 h-screen w-screen overflow-hidden selection:bg-zinc-200 selection:text-zinc-900 relative" data-page="search">
     <div id="safari-top-color-shim" style="position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 40; pointer-events: none; background-color: #FCFBF8;"></div>
+    <div id="top-white-fade-bar" aria-hidden="true"></div>
 
     <!-- Phone Portrait Orientation Lock Overlay -->
     <div id="portrait-lock-overlay" class="fixed inset-0 z-[99999] bg-[#FCFBF8] flex-col items-center justify-center p-6 text-center select-none">
@@ -1187,8 +1251,8 @@
 
     <!-- ==== PAGE: LIBRARY ==== -->
     <div id="page-library" class="page relative overflow-hidden">
-        <!-- Fullscreen dynamic cover tint that fades from the top to normal bg in the top-middle -->
-        <div id="playlist-bg-tint" class="pointer-events-none transition-opacity duration-700 opacity-0" style="position: absolute; top: 0; left: 0; right: 0; height: 560px; z-index: 0;"></div>
+        <!-- Fullscreen dynamic cover tint that themes the entire playlist UI -->
+        <div id="playlist-bg-tint" class="pointer-events-none transition-opacity duration-700 opacity-0" style="position: absolute; inset: 0; height: 100%; z-index: 0;"></div>
 
         <main id="page-library-scroll" class="relative z-10">
             <!-- Library Overview (Grid of Playlists & Collections) -->
@@ -1220,7 +1284,7 @@
                 </button>
 
                 <!-- Top Wide Banner: Left Cover, Right Info & Action Buttons in Bottom-Right -->
-                <div class="w-full bg-white/85 backdrop-blur-xl rounded-3xl border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-4 sm:p-7 flex flex-col sm:flex-row gap-4 sm:gap-7 items-center sm:items-stretch mb-4 sm:mb-6">
+                <div class="playlist-hero-card w-full bg-white/85 backdrop-blur-xl rounded-3xl border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-4 sm:p-7 flex flex-col sm:flex-row gap-4 sm:gap-7 items-center sm:items-stretch mb-4 sm:mb-6">
                     <!-- Left: Cover Art -->
                     <div id="playlist-detail-art" class="w-32 h-32 sm:w-48 sm:h-48 md:w-52 md:h-52 rounded-2xl bg-zinc-100 flex items-center justify-center overflow-hidden shrink-0 shadow-[0_12px_28px_rgba(0,0,0,0.1)] border border-white/60 relative group/art cursor-pointer" title="Click to upload album cover">
                         <img id="playlist-detail-img" src="" class="w-full h-full object-cover hidden" referrerpolicy="no-referrer">
@@ -1237,7 +1301,7 @@
                     <!-- Right: Info Top, Buttons Bottom-Right -->
                     <div class="flex-1 flex flex-col justify-between w-full min-w-0 text-center sm:text-left">
                         <div class="flex flex-col items-center sm:items-start min-w-0">
-                            <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/5 text-[10px] uppercase tracking-widest font-bold text-zinc-600 mb-2">
+                            <div class="playlist-collection-badge inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/5 text-[10px] uppercase tracking-widest font-bold text-zinc-600 mb-2">
                                 <span>Playlist Collection</span>
                             </div>
                             <h2 id="playlist-detail-name" class="text-2xl sm:text-3xl font-extrabold text-zinc-900 tracking-tight leading-tight line-clamp-2">Playlist Name</h2>
@@ -1263,14 +1327,17 @@
                     </div>
                 </div>
 
-                <!-- Bottom: Tracklist Container (Hugs content, scrolls only when exceeding max-height) -->
-                <div id="playlist-tracks-card" class="w-full bg-white/80 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-6 shadow-sm flex flex-col max-h-[calc(100vh-280px)] overflow-hidden transition-all">
+                <!-- Bottom: Infinitely Extended Tracklist Container with Song & Duration Data at End -->
+                <div id="playlist-tracks-card" class="w-full bg-white/80 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-6 shadow-sm flex flex-col transition-all">
                     <div class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-3 px-2 flex justify-between items-center border-b border-zinc-100 pb-2.5 shrink-0">
                         <span>Tracks</span>
                         <span id="playlist-tracks-count" class="text-[10px] font-semibold text-zinc-500"></span>
                     </div>
-                    <div id="playlist-track-list" class="flex-1 overflow-y-auto overflow-x-hidden pr-2 sleek-scrollbar flex flex-col gap-1.5 px-1 py-1">
+                    <div id="playlist-track-list" class="flex-1 flex flex-col gap-1.5 px-1 py-1">
                         <!-- Populated by JS -->
+                    </div>
+                    <div id="playlist-tracks-footer" class="mt-4 pt-3.5 border-t border-zinc-200/70 px-2 flex items-center justify-between text-xs font-semibold text-zinc-500">
+                        <span id="playlist-footer-summary">0 songs • 0 min</span>
                     </div>
                 </div>
             </div>
@@ -1562,6 +1629,9 @@
                         <div class="flex items-center justify-center md:justify-start gap-3 mt-4 sm:mt-5 flex-wrap">
                             <button id="album-play-all-btn" class="bubbly-hover flex items-center justify-center w-11 h-11 rounded-full bg-zinc-900 text-white shadow-md hover:bg-zinc-800 transition-all cursor-pointer shrink-0" title="Play Album">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                            </button>
+                            <button id="album-download-all-btn" class="bubbly-hover flex items-center justify-center w-11 h-11 rounded-full bg-white text-zinc-700 hover:bg-zinc-100 transition-all border border-zinc-200/80 shadow-sm cursor-pointer shrink-0" title="Download Album">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                             </button>
                         </div>
                     </div>
@@ -2013,6 +2083,12 @@
                 if (hash !== 'library') {
                     const tintEl = document.getElementById('playlist-bg-tint');
                     if (tintEl) tintEl.style.opacity = '0';
+                } else {
+                    const detailView = document.getElementById('playlist-detail-view');
+                    const tintEl = document.getElementById('playlist-bg-tint');
+                    if (detailView && !detailView.classList.contains('hidden') && detailView.classList.contains('has-playlist-tint') && tintEl && tintEl.style.background) {
+                        tintEl.style.opacity = '1';
+                    }
                 }
                 if (hash !== 'artist') {
                     const artistTintEl = document.getElementById('artist-bg-tint');

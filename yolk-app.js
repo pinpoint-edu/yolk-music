@@ -738,15 +738,15 @@ const YolkOfflineDB = {
         return !!(item && item.audioBlob);
     },
 
-    async downloadTrack(track) {
+    async downloadTrack(track, options = {}) {
         if (!track) return;
         const uid = getTrackUid(track);
         if (await this.isDownloaded(uid)) {
-            showToast(`"${track.title || 'Track'}" is already downloaded!`);
             return;
         }
 
-        const title = track.title || track.name || 'Track';
+        const rawTitle = track.title || track.name || 'Track';
+        const title = options.queueSuffix ? `${rawTitle} (${options.queueSuffix})` : rawTitle;
         updateDownloadProgressUI({
             title,
             percent: 0,
@@ -843,13 +843,9 @@ const YolkOfflineDB = {
                 totalBytes: contentLength,
                 isDone: true
             });
-            showToast(`✓ Downloaded "${title}" for offline play!`);
 
-            if (currentPlaylistContextId === 'downloaded' && typeof openPlaylistDetail === 'function') {
-                openPlaylistDetail('downloaded');
-            }
-            if (typeof renderLibrary === 'function') {
-                renderLibrary();
+            if (typeof window.refreshAllDownloadButtonsUI === 'function') {
+                window.refreshAllDownloadButtonsUI();
             }
         } catch (err) {
             console.error('Download offline track error:', err);
@@ -858,16 +854,57 @@ const YolkOfflineDB = {
                 isError: true,
                 errorMessage: err.message || 'Stream unavailable'
             });
-            showToast(`Download failed: ${err.message || 'Stream unavailable'}`);
         }
     }
 };
 window.YolkOfflineDB = YolkOfflineDB;
 
+// Discreet sequential background download queue (no per-song toast popups)
+const _yolkDownloadQueue = [];
+let _isProcessingDownloadQueue = false;
+
+async function processDownloadQueue() {
+    if (_isProcessingDownloadQueue) return;
+    _isProcessingDownloadQueue = true;
+    try {
+        while (_yolkDownloadQueue.length > 0) {
+            const item = _yolkDownloadQueue.shift();
+            if (!item || !item.track) continue;
+            const uid = getTrackUid(item.track);
+            if (!(await YolkOfflineDB.isDownloaded(uid))) {
+                const remaining = _yolkDownloadQueue.length;
+                const queueSuffix = remaining > 0 ? `+${remaining}` : '';
+                await YolkOfflineDB.downloadTrack(item.track, { queueSuffix });
+            }
+        }
+    } finally {
+        _isProcessingDownloadQueue = false;
+        if (typeof window.refreshAllDownloadButtonsUI === 'function') {
+            window.refreshAllDownloadButtonsUI();
+        }
+    }
+}
+
+function enqueueLibraryDownload(tracksOrSingle) {
+    if (!tracksOrSingle) return;
+    const list = Array.isArray(tracksOrSingle) ? tracksOrSingle : [tracksOrSingle];
+    const existingUids = new Set(_yolkDownloadQueue.map(q => getTrackUid(q.track)));
+    for (const track of list) {
+        if (!track) continue;
+        const uid = getTrackUid(track);
+        if (!uid || existingUids.has(uid)) continue;
+        existingUids.add(uid);
+        _yolkDownloadQueue.push({ track });
+    }
+    processDownloadQueue();
+}
+window.enqueueLibraryDownload = enqueueLibraryDownload;
+
 function wireTrackDownloadBtn(dlBtn, track) {
     if (!dlBtn || !track) return;
     const uid = getTrackUid(track);
     const title = track.title || track.name || 'Track';
+    dlBtn.dataset.trackUid = uid;
     const renderDownloadState = (isDownloaded) => {
         if (isDownloaded) {
             dlBtn.classList.add('text-emerald-600', 'bg-emerald-50');
@@ -881,6 +918,7 @@ function wireTrackDownloadBtn(dlBtn, track) {
             dlBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
         }
     };
+    dlBtn._renderDownloadState = renderDownloadState;
 
     YolkOfflineDB.isDownloaded(uid).then(renderDownloadState);
 
@@ -890,9 +928,8 @@ function wireTrackDownloadBtn(dlBtn, track) {
         if (already) {
             await YolkOfflineDB.deleteTrack(uid);
             renderDownloadState(false);
-            showToast(`Removed "${title}" from offline downloads`);
-            if (currentPlaylistContextId === 'downloaded' && typeof openPlaylistDetail === 'function') {
-                openPlaylistDetail('downloaded');
+            if (typeof window.refreshAllDownloadButtonsUI === 'function') {
+                window.refreshAllDownloadButtonsUI();
             }
         } else {
             await YolkOfflineDB.downloadTrack(track);
@@ -901,6 +938,21 @@ function wireTrackDownloadBtn(dlBtn, track) {
         }
     });
 }
+
+window.refreshAllDownloadButtonsUI = function () {
+    document.querySelectorAll('.download-track-btn').forEach(btn => {
+        const uid = btn.dataset.trackUid;
+        if (uid && typeof btn._renderDownloadState === 'function') {
+            YolkOfflineDB.isDownloaded(uid).then(btn._renderDownloadState);
+        }
+    });
+    if (typeof window._updatePlaylistDownloadAllBtn === 'function') {
+        window._updatePlaylistDownloadAllBtn();
+    }
+    if (typeof window._updateAlbumDownloadAllBtn === 'function') {
+        window._updateAlbumDownloadAllBtn();
+    }
+};
 
 document.addEventListener('DOMContentLoaded', () => {
     // DOM Elements
@@ -3298,8 +3350,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateSafariThemeTint(r, g, b, alpha = 0.38) {
         const metaTheme = document.getElementById('meta-theme-color') || document.querySelector('meta[name="theme-color"]');
         const shimEl = document.getElementById('safari-top-color-shim');
-        if (r === null || r === undefined) {
-            currentActivePageTint = null;
+        const page = document.body.getAttribute('data-page');
+        if (r === null || r === undefined || page !== 'now-playing') {
+            if (r === null || r === undefined) currentActivePageTint = null;
             if (metaTheme) metaTheme.setAttribute('content', '#FCFBF8');
             if (shimEl) shimEl.style.backgroundColor = '#FCFBF8';
             document.documentElement.style.backgroundColor = '#FCFBF8';
@@ -3368,26 +3421,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 topNav.style.borderColor = '';
                 topNav.style.boxShadow = '';
             }
-            if (page === 'library') {
-                if (currentPlaylistContextId) {
-                    const pl = playlists.find(p => p.id === currentPlaylistContextId);
-                    if (pl && pl.custom_tint) {
-                        updateSafariThemeTint(pl.custom_tint.r, pl.custom_tint.g, pl.custom_tint.b, 0.42);
-                    } else if (currentPlaylistTintRgb) {
-                        updateSafariThemeTint(currentPlaylistTintRgb.r, currentPlaylistTintRgb.g, currentPlaylistTintRgb.b, 0.42);
-                    } else {
-                        updateSafariThemeTint(null);
-                    }
-                } else {
-                    updateSafariThemeTint(null);
-                }
-            } else if (page === 'artist' || page === 'album') {
-                if (currentActivePageTint) {
-                    updateSafariThemeTint(currentActivePageTint.r, currentActivePageTint.g, currentActivePageTint.b, currentActivePageTint.alpha);
-                }
-            } else {
-                updateSafariThemeTint(null);
-            }
+            updateSafariThemeTint(null);
         }
     }
     window.updateTopNavTint = updateTopNavTint;
@@ -3689,6 +3723,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 svgElement.setAttribute('stroke', '#18181b');
             }
             showToast('Saved to Favorites');
+            // Automatically download when added to Library
+            enqueueLibraryDownload(track);
         }
         saveFavorites();
         updateNowPlayingFavButton();
@@ -3758,15 +3794,75 @@ document.addEventListener('DOMContentLoaded', () => {
         img.onerror = () => callback(null);
     }
 
+    function clearPlaylistTint() {
+        currentPlaylistTintRgb = null;
+        const tintEl = document.getElementById('playlist-bg-tint');
+        if (tintEl) {
+            tintEl.style.opacity = '0';
+            tintEl.style.background = '';
+        }
+        const detailView = document.getElementById('playlist-detail-view');
+        if (detailView) {
+            detailView.classList.remove('has-playlist-tint');
+            detailView.style.removeProperty('--pl-icon-color');
+            detailView.style.removeProperty('--pl-play-bg');
+            detailView.style.removeProperty('--pl-play-icon');
+            detailView.style.removeProperty('--pl-border-color');
+            detailView.style.removeProperty('--pl-surface-bg');
+            detailView.style.removeProperty('--pl-badge-bg');
+        }
+    }
+
+    function applyPlaylistThemeUI(r, g, b) {
+        const detailView = document.getElementById('playlist-detail-view');
+        if (!detailView) return;
+        const { h, s, l } = rgbToHsl(r, g, b);
+        const effS = Math.max(0.28, Math.min(0.92, s));
+
+        // Shift icon/button colors lighter or darker by a margin depending on the tint's brightness
+        let iconRgb, playBgRgb, playIconRgb;
+        if (l > 0.52) {
+            // Bright tint -> make icons darker by a clear margin
+            iconRgb = hslToRgb(h, effS, Math.max(0.20, l - 0.34));
+            playBgRgb = hslToRgb(h, effS, Math.max(0.24, l - 0.30));
+            playIconRgb = hslToRgb(h, Math.min(0.85, effS), Math.min(0.96, l + 0.32));
+        } else {
+            // Darker tint -> keep action icons rich in that hue and make primary play icon lighter by a margin
+            iconRgb = hslToRgb(h, effS, Math.min(0.42, Math.max(0.24, l + 0.08)));
+            playBgRgb = hslToRgb(h, effS, Math.max(0.22, Math.min(0.38, l)));
+            playIconRgb = hslToRgb(h, Math.min(0.90, effS + 0.1), Math.min(0.94, l + 0.42));
+        }
+
+        const borderRgb = hslToRgb(h, Math.min(0.65, effS), 0.76);
+        const surfaceRgb = hslToRgb(h, Math.min(0.45, effS), 0.96);
+        const badgeRgb = hslToRgb(h, Math.min(0.60, effS), 0.90);
+
+        detailView.classList.add('has-playlist-tint');
+        detailView.style.setProperty('--pl-icon-color', `rgb(${iconRgb.r}, ${iconRgb.g}, ${iconRgb.b})`);
+        detailView.style.setProperty('--pl-play-bg', `rgb(${playBgRgb.r}, ${playBgRgb.g}, ${playBgRgb.b})`);
+        detailView.style.setProperty('--pl-play-icon', `rgb(${playIconRgb.r}, ${playIconRgb.g}, ${playIconRgb.b})`);
+        detailView.style.setProperty('--pl-border-color', `rgba(${borderRgb.r}, ${borderRgb.g}, ${borderRgb.b}, 0.65)`);
+        detailView.style.setProperty('--pl-surface-bg', `rgba(${surfaceRgb.r}, ${surfaceRgb.g}, ${surfaceRgb.b}, 0.86)`);
+        detailView.style.setProperty('--pl-badge-bg', `rgba(${badgeRgb.r}, ${badgeRgb.g}, ${badgeRgb.b}, 0.78)`);
+    }
+
     function applyPlaylistTint(r, g, b) {
+        if (!currentPlaylistContextId || currentPlaylistContextId === 'favorites' || currentPlaylistContextId === 'downloaded') {
+            clearPlaylistTint();
+            return;
+        }
         currentPlaylistTintRgb = { r, g, b };
         const tintEl = document.getElementById('playlist-bg-tint');
         if (!tintEl) return;
-        tintEl.style.background = `linear-gradient(180deg, rgba(${r}, ${g}, ${b}, 0.42) 0%, rgba(${r}, ${g}, ${b}, 0.24) 32%, rgba(${r}, ${g}, ${b}, 0.08) 62%, transparent 100%)`;
-        tintEl.style.maskImage = 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)';
-        tintEl.style.webkitMaskImage = 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)';
+        tintEl.style.background = `
+            radial-gradient(ellipse at 20% 15%, rgba(${r}, ${g}, ${b}, 0.38) 0%, transparent 65%),
+            radial-gradient(ellipse at 82% 55%, rgba(${r}, ${g}, ${b}, 0.26) 0%, transparent 65%),
+            linear-gradient(180deg, rgba(${r}, ${g}, ${b}, 0.34) 0%, rgba(${r}, ${g}, ${b}, 0.20) 48%, rgba(${r}, ${g}, ${b}, 0.12) 100%)
+        `;
+        tintEl.style.maskImage = 'none';
+        tintEl.style.webkitMaskImage = 'none';
         tintEl.style.opacity = '1';
-        updateSafariThemeTint(r, g, b, 0.42);
+        applyPlaylistThemeUI(r, g, b);
     }
 
     function hslToRgb(h, s, l) {
@@ -4290,27 +4386,77 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function applyPlaylistMultiTint(colors) {
+        if (!currentPlaylistContextId || currentPlaylistContextId === 'favorites' || currentPlaylistContextId === 'downloaded') {
+            clearPlaylistTint();
+            return;
+        }
         const tintEl = document.getElementById('playlist-bg-tint');
         if (!tintEl) return;
         if (!colors || colors.length === 0) {
-            tintEl.style.opacity = '0';
-            currentPlaylistTintRgb = null;
-            updateSafariThemeTint(null);
+            clearPlaylistTint();
             return;
         }
         const [c1, c2, c3, c4] = colors;
         currentPlaylistTintRgb = c1;
         tintEl.style.background = `
-            linear-gradient(180deg, rgba(${c1.r}, ${c1.g}, ${c1.b}, 0.42) 0%, rgba(${c1.r}, ${c1.g}, ${c1.b}, 0.16) 35%, transparent 75%),
-            radial-gradient(ellipse at 18% 12%, rgba(${c1.r}, ${c1.g}, ${c1.b}, 0.48) 0%, transparent 60%),
-            radial-gradient(ellipse at 82% 16%, rgba(${c2.r}, ${c2.g}, ${c2.b}, 0.42) 0%, transparent 55%),
-            radial-gradient(ellipse at 50% 36%, rgba(${c3.r}, ${c3.g}, ${c3.b}, 0.34) 0%, transparent 60%),
-            radial-gradient(ellipse at 75% 58%, rgba(${c4.r}, ${c4.g}, ${c4.b}, 0.28) 0%, transparent 55%)
+            linear-gradient(180deg, rgba(${c1.r}, ${c1.g}, ${c1.b}, 0.36) 0%, rgba(${c1.r}, ${c1.g}, ${c1.b}, 0.18) 45%, rgba(${c2.r}, ${c2.g}, ${c2.b}, 0.12) 100%),
+            radial-gradient(ellipse at 18% 12%, rgba(${c1.r}, ${c1.g}, ${c1.b}, 0.44) 0%, transparent 64%),
+            radial-gradient(ellipse at 82% 16%, rgba(${c2.r}, ${c2.g}, ${c2.b}, 0.38) 0%, transparent 60%),
+            radial-gradient(ellipse at 32% 52%, rgba(${c3.r}, ${c3.g}, ${c3.b}, 0.30) 0%, transparent 64%),
+            radial-gradient(ellipse at 78% 76%, rgba(${c4.r}, ${c4.g}, ${c4.b}, 0.26) 0%, transparent 64%)
         `;
-        tintEl.style.maskImage = 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)';
-        tintEl.style.webkitMaskImage = 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)';
+        tintEl.style.maskImage = 'none';
+        tintEl.style.webkitMaskImage = 'none';
         tintEl.style.opacity = '1';
-        updateSafariThemeTint(c1.r, c1.g, c1.b, 0.42);
+        applyPlaylistThemeUI(c1.r, c1.g, c1.b);
+    }
+
+    function hexToRgbObj(hex) {
+        if (!hex || typeof hex !== 'string') return null;
+        const clean = hex.replace('#', '').trim();
+        if (clean.length === 3) {
+            return {
+                r: parseInt(clean[0] + clean[0], 16),
+                g: parseInt(clean[1] + clean[1], 16),
+                b: parseInt(clean[2] + clean[2], 16)
+            };
+        }
+        if (clean.length === 6) {
+            return {
+                r: parseInt(clean.substring(0, 2), 16),
+                g: parseInt(clean.substring(2, 4), 16),
+                b: parseInt(clean.substring(4, 6), 16)
+            };
+        }
+        return null;
+    }
+
+    function formatTotalDurationText(trackList) {
+        if (!Array.isArray(trackList) || trackList.length === 0) {
+            return '0 songs • 0 min';
+        }
+        let totalSec = 0;
+        for (const t of trackList) {
+            if (!t) continue;
+            const rawDur = Number(t.duration) || 0;
+            if (rawDur > 0) {
+                totalSec += rawDur > 1000 ? (rawDur / 1000) : rawDur;
+            } else {
+                totalSec += 195; // fallback ~3:15 estimate when metadata duration is 0
+            }
+        }
+        totalSec = Math.round(totalSec);
+        const hrs = Math.floor(totalSec / 3600);
+        const mins = Math.floor((totalSec % 3600) / 60);
+        const secs = totalSec % 60;
+        const songCountStr = `${trackList.length} ${trackList.length === 1 ? 'song' : 'songs'}`;
+        if (hrs > 0) {
+            return `${songCountStr} • ${hrs} hr ${mins} min`;
+        }
+        if (mins > 0) {
+            return `${songCountStr} • ${mins} min ${secs} sec`;
+        }
+        return `${songCountStr} • ${secs} sec`;
     }
 
     // Client-side image compression for playlist covers (persisted in localStorage as base64)
@@ -4367,29 +4513,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         libraryGrid.appendChild(favCard);
 
-        // 2. Downloaded Songs Card
-        const dlCard = document.createElement('div');
-        dlCard.className = 'group cursor-pointer bubbly-hover text-left';
-        dlCard.innerHTML = `
-            <div class="w-full aspect-square bg-[#F4F4F5] rounded-2xl border border-zinc-200/80 mb-2 relative overflow-hidden flex items-center justify-center shadow-sm group-hover:shadow-md transition-all">
-                <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#18181b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-            </div>
-            <h3 class="font-semibold text-xs sm:text-sm text-zinc-900 truncate">Downloaded</h3>
-            <p id="library-downloaded-count" class="text-[11px] text-zinc-500 mt-0.5">Offline</p>
-        `;
-        dlCard.addEventListener('click', () => {
-            openPlaylistDetail('downloaded');
-        });
-        libraryGrid.appendChild(dlCard);
-
-        YolkOfflineDB.getAllTracks().then(offlineTracks => {
-            const countEl = document.getElementById('library-downloaded-count');
-            if (countEl) {
-                countEl.textContent = `${offlineTracks.length} ${offlineTracks.length === 1 ? 'song' : 'songs'}`;
-            }
-        });
-
-        // 3. Custom Playlists Cards
+        // 2. Custom Playlists Cards (All library tracks automatically download offline)
         playlists.forEach((pl) => {
             const plCard = document.createElement('div');
             plCard.className = 'group cursor-pointer bubbly-hover text-left';
@@ -4440,7 +4564,8 @@ document.addEventListener('DOMContentLoaded', () => {
             playlistDesc = 'Your liked songs collection';
             trackList = favorites;
 
-            applyPlaylistTint(225, 225, 230);
+            // Remove all tints altogether for Favorites & system playlists
+            clearPlaylistTint();
 
             if (detailArt) {
                 detailArt.className = 'w-32 h-32 sm:w-48 sm:h-48 md:w-52 md:h-52 rounded-2xl bg-[#F4F4F5] flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.08)] border border-zinc-200/80 relative';
@@ -4452,25 +4577,6 @@ document.addEventListener('DOMContentLoaded', () => {
             detailArtImg.classList.add('hidden');
             detailArtIcon.classList.remove('hidden');
             detailArtIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="#18181b" stroke="#18181b" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
-            editBtn.classList.add('hidden');
-            deleteBtn.classList.add('hidden');
-        } else if (playlistId === 'downloaded') {
-            playlistName = 'Downloaded Songs';
-            playlistDesc = 'Offline songs stored directly on this device';
-            trackList = await YolkOfflineDB.getAllTracks();
-
-            applyPlaylistTint(215, 225, 238);
-
-            if (detailArt) {
-                detailArt.className = 'w-32 h-32 sm:w-48 sm:h-48 md:w-52 md:h-52 rounded-2xl bg-[#F4F4F5] flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.08)] border border-zinc-200/80 relative';
-                detailArt.title = 'Downloaded Songs';
-                detailArt.style.cursor = 'default';
-            }
-            if (detailUploadOverlay) detailUploadOverlay.classList.add('hidden');
-
-            detailArtImg.classList.add('hidden');
-            detailArtIcon.classList.remove('hidden');
-            detailArtIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#18181b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
             editBtn.classList.add('hidden');
             deleteBtn.classList.add('hidden');
         } else {
@@ -4500,6 +4606,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (pl.custom_tint && pl.custom_tint.r !== undefined) {
                 applyPlaylistTint(pl.custom_tint.r, pl.custom_tint.g, pl.custom_tint.b);
+            } else if (coverSrc && coverSrc.startsWith('data:image/svg+xml')) {
+                const decodedSvg = decodeURIComponent(coverSrc);
+                const hexMatch = decodedSvg.match(/fill="(#[0-9a-fA-F]{3,6})"/);
+                const svgRgb = hexMatch ? hexToRgbObj(hexMatch[1]) : null;
+                if (svgRgb && !(svgRgb.r > 245 && svgRgb.g > 245 && svgRgb.b > 245)) {
+                    applyPlaylistTint(svgRgb.r, svgRgb.g, svgRgb.b);
+                } else {
+                    applyPlaylistTint(250, 204, 21);
+                }
             } else if (coverSrc) {
                 extractArtworkPalette(coverSrc, (colors) => {
                     const freshPl = playlists.find(p => p.id === playlistId);
@@ -4511,7 +4626,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
             } else {
-                applyPlaylistTint(220, 220, 228);
+                applyPlaylistTint(250, 204, 21);
             }
 
             editBtn.classList.remove('hidden');
@@ -4531,15 +4646,19 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         }
 
+        const totalSummaryText = formatTotalDurationText(trackList);
         detailName.textContent = playlistName;
         detailDesc.textContent = playlistDesc;
         if (detailDesc) {
             detailDesc.classList.toggle('hidden', !playlistDesc);
         }
-        detailMeta.textContent = `${trackList.length} ${trackList.length === 1 ? 'song' : 'songs'}`;
+        detailMeta.textContent = totalSummaryText;
 
         const tracksCountEl = document.getElementById('playlist-tracks-count');
         if (tracksCountEl) tracksCountEl.textContent = `${trackList.length} ${trackList.length === 1 ? 'track' : 'tracks'}`;
+
+        const footerSummaryEl = document.getElementById('playlist-footer-summary');
+        if (footerSummaryEl) footerSummaryEl.textContent = totalSummaryText;
 
         const tracksCard = document.getElementById('playlist-tracks-card');
         if (tracksCard) {
@@ -4563,13 +4682,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const downloadAllBtn = document.getElementById('playlist-download-all-btn');
         if (downloadAllBtn) {
-            if (trackList.length === 0 || playlistId === 'downloaded') {
+            if (trackList.length === 0) {
                 downloadAllBtn.classList.add('hidden');
+                window._updatePlaylistDownloadAllBtn = null;
             } else {
                 downloadAllBtn.classList.remove('hidden');
                 const updateDownloadAllStatus = async () => {
                     const checks = await Promise.all(trackList.map(t => YolkOfflineDB.isDownloaded(getTrackUid(t))));
-                    const allDownloaded = checks.every(Boolean);
+                    const allDownloaded = checks.length > 0 && checks.every(Boolean);
                     if (allDownloaded) {
                         downloadAllBtn.title = 'Undownload All Playlist Songs';
                         downloadAllBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
@@ -4579,6 +4699,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     return allDownloaded;
                 };
+                window._updatePlaylistDownloadAllBtn = updateDownloadAllStatus;
                 updateDownloadAllStatus();
 
                 downloadAllBtn.onclick = async () => {
@@ -4588,20 +4709,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             for (const t of trackList) {
                                 await YolkOfflineDB.deleteTrack(getTrackUid(t));
                             }
-                            showToast(`Undownloaded ${trackList.length} songs`);
-                            openPlaylistDetail(playlistId);
-                        }
-                    } else {
-                        showToast(`Starting download of ${trackList.length} songs…`);
-                        for (let i = 0; i < trackList.length; i++) {
-                            const t = trackList[i];
-                            const uid = getTrackUid(t);
-                            if (!(await YolkOfflineDB.isDownloaded(uid))) {
-                                await YolkOfflineDB.downloadTrack(t);
+                            if (typeof window.refreshAllDownloadButtonsUI === 'function') {
+                                window.refreshAllDownloadButtonsUI();
                             }
                         }
-                        showToast(`✓ All songs in "${playlistName}" downloaded!`);
-                        openPlaylistDetail(playlistId);
+                    } else {
+                        enqueueLibraryDownload(trackList);
                     }
                 };
             }
@@ -4685,10 +4798,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function closePlaylistDetail() {
         currentPlaylistContextId = null;
-        currentPlaylistTintRgb = null;
-        const tintEl = document.getElementById('playlist-bg-tint');
-        if (tintEl) tintEl.style.opacity = '0';
-        updateSafariThemeTint(null);
+        window._updatePlaylistDownloadAllBtn = null;
+        clearPlaylistTint();
         playlistDetailView.classList.add('hidden');
         libraryOverview.classList.remove('hidden');
         renderLibrary();
@@ -5284,6 +5395,8 @@ document.addEventListener('DOMContentLoaded', () => {
         pl.tracks.push(track);
         savePlaylists();
         showToast(`Added to "${pl.name}"`);
+        // Automatically download when added to Library
+        enqueueLibraryDownload(track);
         if (!playlistDetailView.classList.contains('hidden') && currentPlaylistContextId === playlistId) {
             openPlaylistDetail(playlistId);
         } else {
@@ -5478,7 +5591,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         const card = document.createElement('div');
                         card.className = 'group cursor-pointer bubbly-hover text-left flex flex-col p-2 rounded-2xl hover:bg-zinc-50/80 transition-all';
                         const artSrc = album.artwork_url ? getProxyUrl(album.artwork_url, '300x300') : '';
-                        const yearBadge = [album.year, album.album_type].filter(Boolean).join(' • ') || 'Album';
+                        const albumTitle = album.name || album.title || 'Unknown Album';
+                        const yearBadge = [album.year, album.album_type || album.type].filter(Boolean).join(' • ') || 'Album';
                         card.innerHTML = `
                             <div class="w-full aspect-square bg-zinc-100 rounded-2xl border border-zinc-200/70 mb-2 relative overflow-hidden flex items-center justify-center shadow-sm group-hover:shadow-md transition-all">
                                 ${artSrc ? `<img src="${artSrc}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerpolicy="no-referrer">` : `
@@ -5487,7 +5601,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     </div>
                                 `}
                             </div>
-                            <h3 class="font-bold text-xs sm:text-sm text-zinc-900 truncate leading-tight">${escapeHtml(album.title || 'Unknown Album')}</h3>
+                            <h3 class="font-bold text-xs sm:text-sm text-zinc-900 truncate leading-tight">${escapeHtml(albumTitle)}</h3>
                             <p class="text-[11px] font-medium text-zinc-500 mt-0.5 truncate">${escapeHtml(yearBadge)}</p>
                         `;
                         card.addEventListener('click', () => {
@@ -5740,6 +5854,62 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
             }
+
+            // Wire Album Download All button
+            const albumDownloadAllBtn = document.getElementById('album-download-all-btn');
+            if (albumDownloadAllBtn) {
+                if (tracks.length === 0) {
+                    albumDownloadAllBtn.classList.add('hidden');
+                    window._updateAlbumDownloadAllBtn = null;
+                } else {
+                    albumDownloadAllBtn.classList.remove('hidden');
+                    const updateAlbumDownloadStatus = async () => {
+                        const checks = await Promise.all(tracks.map(t => YolkOfflineDB.isDownloaded(getTrackUid(t))));
+                        const allDownloaded = checks.length > 0 && checks.every(Boolean);
+                        if (allDownloaded) {
+                            albumDownloadAllBtn.title = 'Undownload Album';
+                            albumDownloadAllBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+                        } else {
+                            albumDownloadAllBtn.title = 'Download Album';
+                            albumDownloadAllBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
+                        }
+                        return allDownloaded;
+                    };
+                    window._updateAlbumDownloadAllBtn = updateAlbumDownloadStatus;
+                    updateAlbumDownloadStatus();
+
+                    albumDownloadAllBtn.onclick = async () => {
+                        const isAll = await updateAlbumDownloadStatus();
+                        const albumTitle = data.name || 'Album';
+                        if (isAll) {
+                            if (confirm(`Remove all downloaded songs from "${albumTitle}"?`)) {
+                                for (const t of tracks) {
+                                    await YolkOfflineDB.deleteTrack(getTrackUid(t));
+                                }
+                                if (typeof window.refreshAllDownloadButtonsUI === 'function') {
+                                    window.refreshAllDownloadButtonsUI();
+                                }
+                            }
+                        } else {
+                            // Also save album as a playlist in Library if not already present
+                            const existingAlbumPl = playlists.find(p => p.name && p.name.toLowerCase() === albumTitle.toLowerCase());
+                            if (!existingAlbumPl) {
+                                playlists.push({
+                                    id: 'pl_alb_' + Date.now().toString(36),
+                                    name: albumTitle,
+                                    description: data.artist_name ? `Album by ${data.artist_name}` : 'Album',
+                                    cover: artwork || '',
+                                    createdAt: new Date().toISOString(),
+                                    tracks: [...tracks]
+                                });
+                                savePlaylists();
+                                renderLibrary();
+                            }
+                            enqueueLibraryDownload(tracks);
+                        }
+                    };
+                }
+            }
         } catch (err) {
             console.error('Album view error:', err);
             if (loaderEl) loaderEl.classList.add('hidden');
@@ -5889,6 +6059,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 closeYtImportModal();
                 showToast(`Imported "${newPl.name}" (${songsOnly.length} songs)!`);
                 openPlaylistDetail(newPl.id);
+                // Automatically download imported library playlist discreetly in background
+                enqueueLibraryDownload(songsOnly);
             } catch (err) {
                 console.error('YT import error:', err);
                 showToast('Failed to import playlist.');
@@ -6105,4 +6277,17 @@ document.addEventListener('DOMContentLoaded', () => {
     renderLibrary();
     updateLibraryButtons();
     updateNowPlayingNavVisibility(!!currentTrack);
+
+    // Automatically ensure all tracks in Library (Favorites + Playlists) are downloaded offline
+    setTimeout(() => {
+        const allLibTracks = [...favorites];
+        playlists.forEach(pl => {
+            if (Array.isArray(pl.tracks)) {
+                allLibTracks.push(...pl.tracks);
+            }
+        });
+        if (allLibTracks.length > 0) {
+            enqueueLibraryDownload(allLibTracks);
+        }
+    }, 1800);
 });

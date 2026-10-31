@@ -715,12 +715,15 @@ export default async function handler(req, res) {
                         const albThumb = optimizeThumbnailUrl(item.thumbnail?.[0]?.url || item.thumbnails?.[0]?.url || item.thumbnail?.contents?.[0]?.url || artistArtwork);
                         const subtitleStr = item.year?.toString() || item.subtitle?.toString() || (secTitle.includes('single') ? 'Single / EP' : 'Album');
                         if (itemId && albTitle) {
+                            const resolvedType = secTitle.includes('single') ? 'Single' : 'Album';
                             allAlbums.push({
                                 id: itemId.startsWith('ytm-') ? itemId : `ytm-${itemId}`,
                                 name: albTitle,
+                                title: albTitle,
                                 artist_name: artistName,
                                 year: subtitleStr,
-                                type: secTitle.includes('single') ? 'Single' : 'Album',
+                                type: resolvedType,
+                                album_type: resolvedType,
                                 artwork_url: albThumb
                             });
                         }
@@ -823,9 +826,11 @@ export default async function handler(req, res) {
                                 allAlbums.push({
                                     id: itemId.startsWith('ytm-') ? itemId : `ytm-${itemId}`,
                                     name: albTitle,
+                                    title: albTitle,
                                     artist_name: albArtist,
                                     year: item.year?.toString() || item.subtitle?.toString() || 'Album',
                                     type: 'Album',
+                                    album_type: 'Album',
                                     artwork_url: optimizeThumbnailUrl(item.thumbnails?.[0]?.url || item.thumbnail?.url || artistArtwork)
                                 });
                             }

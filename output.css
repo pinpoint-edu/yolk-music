@@ -626,9 +626,6 @@
   .max-h-\[780px\] {
     max-height: 780px;
   }
-  .max-h-\[calc\(100vh-280px\)\] {
-    max-height: calc(100vh - 280px);
-  }
   .min-h-\[260px\] {
     min-height: 260px;
   }
@@ -1461,6 +1458,9 @@
   }
   .pt-3 {
     padding-top: calc(var(--spacing) * 3);
+  }
+  .pt-3\.5 {
+    padding-top: calc(var(--spacing) * 3.5);
   }
   .pt-32 {
     padding-top: calc(var(--spacing) * 32);
