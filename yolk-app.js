@@ -331,6 +331,15 @@ function updateLyricsSync(currentTime, force = false) {
     const container = document.getElementById('lyrics-container');
     if (!container || !parsedLyrics || parsedLyrics.length === 0) return;
 
+    if (!container._scrollListenersAttached) {
+        container._scrollListenersAttached = true;
+        const markManualScroll = () => {
+            container._userScrollUntil = Date.now() + 3500;
+        };
+        container.addEventListener('wheel', markManualScroll, { passive: true });
+        container.addEventListener('touchmove', markManualScroll, { passive: true });
+    }
+
     let adjustedTime = currentTime + 0.3;
     let activeIndex = -1;
 
@@ -368,7 +377,7 @@ function updateLyricsSync(currentTime, force = false) {
         }
     });
 
-    if (activeLineEl) {
+    if (activeLineEl && (force || !container._userScrollUntil || Date.now() > container._userScrollUntil)) {
         const targetScrollTop = activeLineEl.offsetTop - (container.clientHeight / 2) + (activeLineEl.offsetHeight / 2);
         container.scrollTo({
             top: Math.max(0, targetScrollTop),
@@ -1431,7 +1440,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function getRecentSearches() {
         try {
             const raw = localStorage.getItem('yolk_recent_searches');
-            return raw ? JSON.parse(raw) : [];
+            const parsed = raw ? JSON.parse(raw) : [];
+            return Array.isArray(parsed) ? parsed.slice(0, 3) : [];
         } catch (_) {
             return [];
         }
@@ -1442,7 +1452,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!term || term.length < 2) return;
         let list = getRecentSearches().filter(item => item.toLowerCase() !== term.toLowerCase());
         list.unshift(term);
-        if (list.length > 8) list = list.slice(0, 8);
+        if (list.length > 3) list = list.slice(0, 3);
         try {
             localStorage.setItem('yolk_recent_searches', JSON.stringify(list));
         } catch (_) {}
@@ -2448,15 +2458,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateNowPlayingNavVisibility(isVisible) {
         const npNav = document.getElementById('nav-now-playing');
-        if (!npNav) return;
+        const bpNpNav = document.getElementById('bp-nav-now-playing');
         const shouldShow = Boolean(isVisible && currentTrack);
-        if (shouldShow) {
-            npNav.classList.remove('nav-hidden');
-            npNav.classList.add('nav-visible');
-        } else {
-            npNav.classList.add('nav-hidden');
-            npNav.classList.remove('nav-visible');
-        }
+        [npNav, bpNpNav].forEach(el => {
+            if (!el) return;
+            if (shouldShow) {
+                el.classList.remove('nav-hidden');
+                el.classList.add('nav-visible');
+            } else {
+                el.classList.add('nav-hidden');
+                el.classList.remove('nav-visible');
+            }
+        });
     }
     window.updateNowPlayingNavVisibility = updateNowPlayingNavVisibility;
 
@@ -2630,11 +2643,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         bgArtEl.src = localCoverUrl;
                         bgArtEl.style.opacity = '1';
                     }
-                    if (typeof extractDominantColor === 'function') {
-                        extractDominantColor(localCoverUrl, (rgb) => {
-                            if (rgb) applyNowPlayingTint(rgb.r, rgb.g, rgb.b);
-                        });
-                    }
+                    extractArtworkPalette(localCoverUrl, (colors) => {
+                        applyAppleMusicNowPlayingBg(colors);
+                    });
                 }
                 if (offlineItem.lyrics) {
                     currentLyricsTrackId = uid;
@@ -3186,9 +3197,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateSafariThemeTint(r, g, b, alpha = 0.38) {
         const metaTheme = document.getElementById('meta-theme-color') || document.querySelector('meta[name="theme-color"]');
+        const shimEl = document.getElementById('safari-top-color-shim');
         if (r === null || r === undefined) {
             currentActivePageTint = null;
             if (metaTheme) metaTheme.setAttribute('content', '#FCFBF8');
+            if (shimEl) shimEl.style.backgroundColor = '#FCFBF8';
             document.documentElement.style.backgroundColor = '#FCFBF8';
             document.body.style.backgroundColor = '#FCFBF8';
             return;
@@ -3209,17 +3222,10 @@ document.addEventListener('DOMContentLoaded', () => {
             hex = `#${topR.toString(16).padStart(2, '0')}${topG.toString(16).padStart(2, '0')}${topB.toString(16).padStart(2, '0')}`;
         }
 
-        const page = document.body.getAttribute('data-page');
         if (metaTheme) metaTheme.setAttribute('content', hex);
-
-        if (page === 'now-playing') {
-            document.documentElement.style.backgroundColor = hex;
-            document.body.style.backgroundColor = hex;
-        } else {
-            // Keep body background #FCFBF8 so top header gradients fade smoothly into the page
-            document.documentElement.style.backgroundColor = '#FCFBF8';
-            document.body.style.backgroundColor = '#FCFBF8';
-        }
+        if (shimEl) shimEl.style.backgroundColor = hex;
+        document.documentElement.style.backgroundColor = hex;
+        document.body.style.backgroundColor = hex;
     }
     window.updateSafariThemeTint = updateSafariThemeTint;
 
@@ -3266,9 +3272,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (currentPlaylistContextId) {
                     const pl = playlists.find(p => p.id === currentPlaylistContextId);
                     if (pl && pl.custom_tint) {
-                        updateSafariThemeTint(pl.custom_tint.r, pl.custom_tint.g, pl.custom_tint.b, 0.38);
+                        updateSafariThemeTint(pl.custom_tint.r, pl.custom_tint.g, pl.custom_tint.b, 0.42);
                     } else if (currentPlaylistTintRgb) {
-                        updateSafariThemeTint(currentPlaylistTintRgb.r, currentPlaylistTintRgb.g, currentPlaylistTintRgb.b, 0.38);
+                        updateSafariThemeTint(currentPlaylistTintRgb.r, currentPlaylistTintRgb.g, currentPlaylistTintRgb.b, 0.42);
                     } else {
                         updateSafariThemeTint(null);
                     }
@@ -3378,15 +3384,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const coverUrl = getProxyUrl(track.artwork_url || track.image);
         if (lyricsBarThumb) {
             lyricsBarThumb.src = coverUrl || '';
-        }
-        if (coverUrl) {
-            extractDominantColor(coverUrl, (rgb) => {
-                if (rgb) {
-                    applyNowPlayingTint(rgb.r, rgb.g, rgb.b);
-                } else {
-                    applyNowPlayingTint(220, 220, 230);
-                }
-            });
         }
         if (coverUrl && imgEl) {
             imgEl.onload = () => {
@@ -3665,11 +3662,11 @@ document.addEventListener('DOMContentLoaded', () => {
         currentPlaylistTintRgb = { r, g, b };
         const tintEl = document.getElementById('playlist-bg-tint');
         if (!tintEl) return;
-        tintEl.style.background = `linear-gradient(180deg, rgba(${r}, ${g}, ${b}, 0.38) 0%, rgba(${r}, ${g}, ${b}, 0.22) 30%, rgba(${r}, ${g}, ${b}, 0.08) 60%, transparent 100%)`;
+        tintEl.style.background = `linear-gradient(180deg, rgba(${r}, ${g}, ${b}, 0.42) 0%, rgba(${r}, ${g}, ${b}, 0.24) 32%, rgba(${r}, ${g}, ${b}, 0.08) 62%, transparent 100%)`;
         tintEl.style.maskImage = 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)';
         tintEl.style.webkitMaskImage = 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)';
         tintEl.style.opacity = '1';
-        updateSafariThemeTint(r, g, b, 0.38);
+        updateSafariThemeTint(r, g, b, 0.42);
     }
 
     function hslToRgb(h, s, l) {
@@ -4146,12 +4143,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function applyAppleMusicNowPlayingBg(colors) {
         const meshEl = document.getElementById('now-playing-mesh');
         const fadeEl = document.getElementById('now-playing-top-safari-fade');
+        const bgWrapper = document.getElementById('now-playing-bg-wrapper');
         if (!meshEl) return;
 
         if (!colors || colors.length === 0) {
             meshEl.style.opacity = '0';
             meshEl.style.background = '';
             if (fadeEl) fadeEl.style.opacity = '0';
+            if (bgWrapper) bgWrapper.style.backgroundColor = '#FCFBF8';
             return;
         }
 
@@ -4170,15 +4169,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const topG = colors.topRowColor ? colors.topRowColor.g : Math.round(c1.g * 0.55 + c2.g * 0.45);
         const topB = colors.topRowColor ? colors.topRowColor.b : Math.round(c1.b * 0.55 + c2.b * 0.45);
 
+        // Soften slightly with #FCFBF8 so the Now Playing top edge and Safari status bar match seamlessly
+        const blendR = Math.round(topR * 0.62 + 252 * 0.38);
+        const blendG = Math.round(topG * 0.62 + 251 * 0.38);
+        const blendB = Math.round(topB * 0.62 + 248 * 0.38);
+
+        if (bgWrapper) {
+            bgWrapper.style.backgroundColor = `rgb(${blendR}, ${blendG}, ${blendB})`;
+        }
+
         if (fadeEl) {
-            fadeEl.style.background = `linear-gradient(180deg, rgba(${topR}, ${topG}, ${topB}, 0.75) 0%, rgba(${topR}, ${topG}, ${topB}, 0.25) 50%, transparent 100%)`;
+            fadeEl.style.background = `linear-gradient(180deg, rgb(${blendR}, ${blendG}, ${blendB}) 0%, rgba(${blendR}, ${blendG}, ${blendB}, 0.55) 45%, transparent 100%)`;
             fadeEl.style.opacity = '1';
         }
 
-        updateSafariThemeTint(topR, topG, topB, 1.0);
-
+        currentCoverColor = { r: blendR, g: blendG, b: blendB };
         if (typeof updateTopNavTint === 'function') {
-            currentCoverColor = { r: topR, g: topG, b: topB };
             updateTopNavTint();
         }
     }
@@ -4195,16 +4201,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const [c1, c2, c3, c4] = colors;
         currentPlaylistTintRgb = c1;
         tintEl.style.background = `
-            radial-gradient(ellipse at 18% 12%, rgba(${c1.r}, ${c1.g}, ${c1.b}, 0.55) 0%, transparent 60%),
-            radial-gradient(ellipse at 82% 16%, rgba(${c2.r}, ${c2.g}, ${c2.b}, 0.48) 0%, transparent 55%),
-            radial-gradient(ellipse at 50% 36%, rgba(${c3.r}, ${c3.g}, ${c3.b}, 0.40) 0%, transparent 60%),
-            radial-gradient(ellipse at 75% 58%, rgba(${c4.r}, ${c4.g}, ${c4.b}, 0.32) 0%, transparent 55%),
-            linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, transparent 100%)
+            linear-gradient(180deg, rgba(${c1.r}, ${c1.g}, ${c1.b}, 0.42) 0%, rgba(${c1.r}, ${c1.g}, ${c1.b}, 0.16) 35%, transparent 75%),
+            radial-gradient(ellipse at 18% 12%, rgba(${c1.r}, ${c1.g}, ${c1.b}, 0.48) 0%, transparent 60%),
+            radial-gradient(ellipse at 82% 16%, rgba(${c2.r}, ${c2.g}, ${c2.b}, 0.42) 0%, transparent 55%),
+            radial-gradient(ellipse at 50% 36%, rgba(${c3.r}, ${c3.g}, ${c3.b}, 0.34) 0%, transparent 60%),
+            radial-gradient(ellipse at 75% 58%, rgba(${c4.r}, ${c4.g}, ${c4.b}, 0.28) 0%, transparent 55%)
         `;
         tintEl.style.maskImage = 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)';
         tintEl.style.webkitMaskImage = 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)';
         tintEl.style.opacity = '1';
-        updateSafariThemeTint(c1.r, c1.g, c1.b, 0.45);
+        updateSafariThemeTint(c1.r, c1.g, c1.b, 0.42);
     }
 
     // Client-side image compression for playlist covers (persisted in localStorage as base64)
@@ -4337,7 +4343,7 @@ document.addEventListener('DOMContentLoaded', () => {
             applyPlaylistTint(225, 225, 230);
 
             if (detailArt) {
-                detailArt.className = 'w-44 h-44 sm:w-52 sm:h-52 md:w-60 md:h-60 rounded-2xl bg-[#F4F4F5] flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.08)] border border-zinc-200/80 relative';
+                detailArt.className = 'w-32 h-32 sm:w-48 sm:h-48 md:w-52 md:h-52 rounded-2xl bg-[#F4F4F5] flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.08)] border border-zinc-200/80 relative';
                 detailArt.title = 'Favorites';
                 detailArt.style.cursor = 'default';
             }
@@ -4356,7 +4362,7 @@ document.addEventListener('DOMContentLoaded', () => {
             applyPlaylistTint(215, 225, 238);
 
             if (detailArt) {
-                detailArt.className = 'w-44 h-44 sm:w-52 sm:h-52 md:w-60 md:h-60 rounded-2xl bg-[#F4F4F5] flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.08)] border border-zinc-200/80 relative';
+                detailArt.className = 'w-32 h-32 sm:w-48 sm:h-48 md:w-52 md:h-52 rounded-2xl bg-[#F4F4F5] flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.08)] border border-zinc-200/80 relative';
                 detailArt.title = 'Downloaded Songs';
                 detailArt.style.cursor = 'default';
             }
@@ -4375,7 +4381,7 @@ document.addEventListener('DOMContentLoaded', () => {
             trackList = pl.tracks || [];
 
             if (detailArt) {
-                detailArt.className = 'w-44 h-44 sm:w-52 sm:h-52 md:w-60 md:h-60 rounded-2xl bg-zinc-100 flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.12)] border border-white/60 relative group/art cursor-pointer';
+                detailArt.className = 'w-32 h-32 sm:w-48 sm:h-48 md:w-52 md:h-52 rounded-2xl bg-zinc-100 flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.12)] border border-white/60 relative group/art cursor-pointer';
                 detailArt.title = 'Click to upload album cover';
                 detailArt.style.cursor = 'pointer';
             }
@@ -4638,6 +4644,14 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.drawImage(cropImg, cropPanX, cropPanY, currentW, currentH);
     }
 
+    function closeCropperModal() {
+        if (cropModal) {
+            cropModal.classList.remove('active');
+            cropModal.classList.add('hidden');
+        }
+        isCropperDragging = false;
+    }
+
     function openCropper(imageSrc, onDone) {
         cropOnDoneCallback = onDone;
         cropImg = new Image();
@@ -4659,11 +4673,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 cropZoomSlider.value = cropZoom;
             }
 
-            drawCropCanvas();
-            if (cropModal) cropModal.classList.remove('hidden');
+            if (cropModal) {
+                cropModal.classList.remove('hidden');
+                cropModal.classList.add('active');
+            }
+            requestAnimationFrame(() => drawCropCanvas());
         };
         cropImg.src = imageSrc;
     }
+
+    let pinchStartDist = 0;
+    let pinchStartZoom = 1;
 
     if (cropCanvas) {
         cropCanvas.addEventListener('mousedown', (e) => {
@@ -4673,8 +4693,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         window.addEventListener('mousemove', (e) => {
             if (!isCropperDragging) return;
-            const dx = e.clientX - cropStartX;
-            const dy = e.clientY - cropStartY;
+            const rect = cropCanvas.getBoundingClientRect();
+            const scaleFactor = rect.width > 0 ? (cropCanvas.width / rect.width) : 1;
+            const dx = (e.clientX - cropStartX) * scaleFactor;
+            const dy = (e.clientY - cropStartY) * scaleFactor;
             cropStartX = e.clientX;
             cropStartY = e.clientY;
             cropPanX += dx;
@@ -4690,20 +4712,46 @@ document.addEventListener('DOMContentLoaded', () => {
                 isCropperDragging = true;
                 cropStartX = e.touches[0].clientX;
                 cropStartY = e.touches[0].clientY;
+            } else if (e.touches.length === 2) {
+                isCropperDragging = false;
+                pinchStartDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                pinchStartZoom = cropZoom;
             }
-        }, { passive: true });
-        window.addEventListener('touchmove', (e) => {
-            if (!isCropperDragging || e.touches.length !== 1) return;
-            const dx = e.touches[0].clientX - cropStartX;
-            const dy = e.touches[0].clientY - cropStartY;
-            cropStartX = e.touches[0].clientX;
-            cropStartY = e.touches[0].clientY;
-            cropPanX += dx;
-            cropPanY += dy;
-            drawCropCanvas();
-        }, { passive: true });
+        }, { passive: false });
+        cropCanvas.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 1 && isCropperDragging) {
+                e.preventDefault();
+                const rect = cropCanvas.getBoundingClientRect();
+                const scaleFactor = rect.width > 0 ? (cropCanvas.width / rect.width) : 1;
+                const dx = (e.touches[0].clientX - cropStartX) * scaleFactor;
+                const dy = (e.touches[0].clientY - cropStartY) * scaleFactor;
+                cropStartX = e.touches[0].clientX;
+                cropStartY = e.touches[0].clientY;
+                cropPanX += dx;
+                cropPanY += dy;
+                drawCropCanvas();
+            } else if (e.touches.length === 2 && pinchStartDist > 0) {
+                e.preventDefault();
+                const dist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                const prevZoom = cropZoom;
+                cropZoom = Math.min(Math.max(pinchStartZoom * (dist / pinchStartDist), cropMinZoom), cropMinZoom * 3.5);
+                if (cropZoomSlider) cropZoomSlider.value = cropZoom;
+                const centerX = cropCanvas.width / 2;
+                const centerY = cropCanvas.height / 2;
+                cropPanX = centerX - ((centerX - cropPanX) * (cropZoom / prevZoom));
+                cropPanY = centerY - ((centerY - cropPanY) * (cropZoom / prevZoom));
+                drawCropCanvas();
+            }
+        }, { passive: false });
         window.addEventListener('touchend', () => {
             isCropperDragging = false;
+            pinchStartDist = 0;
         });
 
         cropCanvas.addEventListener('wheel', (e) => {
@@ -4737,8 +4785,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (cropCancelBtn && cropModal) {
         cropCancelBtn.onclick = () => {
-            cropModal.classList.add('hidden');
+            closeCropperModal();
         };
+    }
+
+    if (cropModal) {
+        cropModal.addEventListener('click', (e) => {
+            if (e.target === cropModal) closeCropperModal();
+        });
     }
 
     if (cropApplyBtn && cropModal) {
@@ -4758,7 +4812,7 @@ document.addEventListener('DOMContentLoaded', () => {
             );
 
             const croppedBase64 = outCanvas.toDataURL('image/jpeg', 0.88);
-            cropModal.classList.add('hidden');
+            closeCropperModal();
             if (typeof cropOnDoneCallback === 'function') {
                 cropOnDoneCallback(croppedBase64);
             }
@@ -5170,6 +5224,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const trackListEl = document.getElementById('artist-track-list');
         const loaderEl = document.getElementById('artist-loader');
         const tintEl = document.getElementById('artist-bg-tint');
+        const albumsSectionEl = document.getElementById('artist-albums-section');
+        const albumsGridEl = document.getElementById('artist-albums-grid');
+        const albumsCountEl = document.getElementById('artist-albums-count');
 
         if (heroName) heroName.textContent = artistName;
         if (heroDesc) heroDesc.textContent = '';
@@ -5178,6 +5235,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (heroImg) { heroImg.src = ''; heroImg.classList.add('hidden'); }
         if (heroPlaceholder) heroPlaceholder.classList.remove('hidden');
         if (trackListEl) trackListEl.innerHTML = '';
+        if (albumsGridEl) albumsGridEl.innerHTML = '';
+        if (albumsSectionEl) albumsSectionEl.classList.add('hidden');
         if (loaderEl) loaderEl.classList.remove('hidden');
         if (tintEl) tintEl.style.opacity = '0';
 
@@ -5210,6 +5269,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             let tracks = [];
+            let albums = [];
             let description = '';
 
             // 1. Fetch from artist endpoint
@@ -5228,6 +5288,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (data.description) description = data.description;
                         if (Array.isArray(data.tracks) && data.tracks.length > 0) {
                             tracks = data.tracks.filter(t => isExactArtistMatch(t, artistName));
+                        }
+                        if (Array.isArray(data.albums) && data.albums.length > 0) {
+                            albums = data.albums;
                         }
                     }
                 }
@@ -5291,6 +5354,42 @@ document.addEventListener('DOMContentLoaded', () => {
                     tintEl.style.maskImage = 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)';
                     tintEl.style.webkitMaskImage = 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)';
                     tintEl.style.opacity = '1';
+                }
+            }
+
+            // Render Albums & Releases
+            if (albumsSectionEl && albumsGridEl) {
+                albumsGridEl.innerHTML = '';
+                if (albums.length > 0) {
+                    albumsSectionEl.classList.remove('hidden');
+                    if (albumsCountEl) {
+                        albumsCountEl.textContent = `${albums.length} ${albums.length === 1 ? 'release' : 'releases'}`;
+                    }
+                    albums.forEach((album) => {
+                        const card = document.createElement('div');
+                        card.className = 'group cursor-pointer bubbly-hover text-left flex flex-col p-2 rounded-2xl hover:bg-zinc-50/80 transition-all';
+                        const artSrc = album.artwork_url ? getProxyUrl(album.artwork_url, '300x300') : '';
+                        const yearBadge = [album.year, album.album_type].filter(Boolean).join(' • ') || 'Album';
+                        card.innerHTML = `
+                            <div class="w-full aspect-square bg-zinc-100 rounded-2xl border border-zinc-200/70 mb-2 relative overflow-hidden flex items-center justify-center shadow-sm group-hover:shadow-md transition-all">
+                                ${artSrc ? `<img src="${artSrc}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerpolicy="no-referrer">` : `
+                                    <div class="text-zinc-400">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+                                    </div>
+                                `}
+                            </div>
+                            <h3 class="font-bold text-xs sm:text-sm text-zinc-900 truncate leading-tight">${escapeHtml(album.title || 'Unknown Album')}</h3>
+                            <p class="text-[11px] font-medium text-zinc-500 mt-0.5 truncate">${escapeHtml(yearBadge)}</p>
+                        `;
+                        card.addEventListener('click', () => {
+                            if (typeof loadAlbumView === 'function' && album.id) {
+                                loadAlbumView(album.id);
+                            }
+                        });
+                        albumsGridEl.appendChild(card);
+                    });
+                } else {
+                    albumsSectionEl.classList.add('hidden');
                 }
             }
 
@@ -5422,6 +5521,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadAlbumView(albumId) {
         if (!albumId) return;
+        const resolvedId = typeof albumId === 'object' ? (albumId.id || '') : String(albumId);
+        if (!resolvedId) return;
 
         const currentHash = window.location.hash.replace('#', '') || 'search';
         if (currentHash !== 'album') {
@@ -5430,7 +5531,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         window.location.hash = '#album';
 
-        const cleanId = (albumId || '').replace('ytm-', '');
+        const cleanId = resolvedId.replace('ytm-', '');
         const heroName = document.getElementById('album-hero-name');
         const heroArtist = document.getElementById('album-hero-artist');
         const heroMeta = document.getElementById('album-hero-meta');

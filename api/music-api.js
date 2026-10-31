@@ -680,6 +680,79 @@ export default async function handler(req, res) {
         let artistDescription = '';
         let artistArtwork = '';
         const allTracks = [];
+        const allAlbums = [];
+
+        const parseArtistDataIntoLists = (artistData) => {
+            if (!artistData) return;
+            artistName = artistData.header?.title?.toString() || artistData.name?.toString() || artistName;
+            const descText = extractCleanText(artistData.header?.description || artistData.description);
+            if (descText && !artistDescription) artistDescription = descText;
+            const headerThumb = artistData.header?.thumbnail?.contents?.[0]?.url || artistData.thumbnails?.[0]?.url || '';
+            if (headerThumb && !artistArtwork) {
+                artistArtwork = optimizeThumbnailUrl(headerThumb);
+            }
+
+            const sections = artistData.sections || [];
+            sections.forEach(sec => {
+                const secTitle = (sec.header?.title?.toString() || sec.title?.toString() || '').toLowerCase();
+                const items = sec.contents || [];
+                items.forEach(item => {
+                    if (!item) return;
+                    const itemId = item.id || item.endpoint?.payload?.browseId || item.title?.endpoint?.payload?.browseId;
+                    const itemType = (item.item_type || '').toLowerCase();
+                    if (itemType === 'album' || secTitle.includes('album') || secTitle.includes('single') || (typeof itemId === 'string' && itemId.startsWith('MPRE'))) {
+                        const albTitle = item.title?.toString() || item.name?.toString();
+                        const albThumb = optimizeThumbnailUrl(item.thumbnail?.[0]?.url || item.thumbnails?.[0]?.url || item.thumbnail?.contents?.[0]?.url || artistArtwork);
+                        const subtitleStr = item.year?.toString() || item.subtitle?.toString() || (secTitle.includes('single') ? 'Single / EP' : 'Album');
+                        if (itemId && albTitle) {
+                            allAlbums.push({
+                                id: itemId.startsWith('ytm-') ? itemId : `ytm-${itemId}`,
+                                name: albTitle,
+                                artist_name: artistName,
+                                year: subtitleStr,
+                                type: secTitle.includes('single') ? 'Single' : 'Album',
+                                artwork_url: albThumb
+                            });
+                        }
+                    } else if (itemType === 'song' || secTitle.includes('song')) {
+                        const rawId = extractVideoId(item);
+                        const title = item.title?.toString() || item.name?.toString() || 'Unknown Title';
+                        const author = extractArtistName(item, artistName);
+                        if (rawId && author !== 'YT Music Artist') {
+                            allTracks.push({
+                                id: `ytm-${rawId}`,
+                                title: title,
+                                artist_name: author,
+                                artwork_url: optimizeThumbnailUrl(item.thumbnails?.[0]?.url || item.thumbnail?.[0]?.url || artistArtwork),
+                                duration: (item.duration?.seconds || 0) * 1000,
+                                downloadUrl: [{ quality: '320kbps', link: `/api/music-api?endpoint=stream&id=${encodeURIComponent(rawId)}` }],
+                                youtube_id: rawId,
+                                source: 'YTMusic'
+                            });
+                        }
+                    }
+                });
+            });
+
+            const directSongs = artistData.songs?.contents || [];
+            directSongs.forEach(item => {
+                const rawId = extractVideoId(item);
+                const title = item.title?.toString() || item.name?.toString() || 'Unknown Title';
+                const author = extractArtistName(item, artistName);
+                if (rawId && author !== 'YT Music Artist') {
+                    allTracks.push({
+                        id: `ytm-${rawId}`,
+                        title: title,
+                        artist_name: author,
+                        artwork_url: optimizeThumbnailUrl(item.thumbnails?.[0]?.url || artistArtwork),
+                        duration: (item.duration?.seconds || 0) * 1000,
+                        downloadUrl: [{ quality: '320kbps', link: `/api/music-api?endpoint=stream&id=${encodeURIComponent(rawId)}` }],
+                        youtube_id: rawId,
+                        source: 'YTMusic'
+                    });
+                }
+            });
+        };
 
         try {
             const yt = await getYoutube();
@@ -687,30 +760,7 @@ export default async function handler(req, res) {
             if (cleanArtistId.startsWith('UC') || cleanArtistId.startsWith('FEmusic')) {
                 try {
                     const artistData = await yt.music.getArtist(cleanArtistId);
-                    if (artistData) {
-                        artistName = artistData.name?.toString() || artistName;
-                        artistDescription = extractCleanText(artistData.description);
-                        artistArtwork = optimizeThumbnailUrl(artistData.thumbnails?.[0]?.url || '');
-                        
-                        const ytTracks = (artistData.songs?.contents || []).map(item => {
-                            const rawId = extractVideoId(item);
-                            const title = item.title?.toString() || item.name?.toString() || 'Unknown Title';
-                            const author = extractArtistName(item, artistName);
-                            if (author === 'YT Music Artist') return null;
-
-                            return {
-                                id: rawId ? `ytm-${rawId}` : `ytm-gen-${Math.random().toString(36).substr(2, 9)}`,
-                                title: title,
-                                artist_name: author,
-                                artwork_url: optimizeThumbnailUrl(item.thumbnails?.[0]?.url || artistArtwork),
-                                duration: (item.duration?.seconds || 0) * 1000,
-                                downloadUrl: rawId ? [{ quality: '320kbps', link: `/api/music-api?endpoint=stream&id=${encodeURIComponent(rawId)}` }] : [],
-                                youtube_id: rawId,
-                                source: 'YTMusic'
-                            };
-                        }).filter(Boolean);
-                        allTracks.push(...ytTracks);
-                    }
+                    parseArtistDataIntoLists(artistData);
                 } catch (e) {}
             }
 
@@ -718,47 +768,59 @@ export default async function handler(req, res) {
                 artistName = decodeURIComponent(cleanArtistId);
             }
 
-            // Look up artist profile picture (PFP) specifically from YouTube Music artist search if not yet found
-            if (!artistArtwork && artistName) {
+            // Look up artist profile picture (PFP), bio, and albums from YouTube Music artist browse
+            if (artistName && (!artistArtwork || allAlbums.length === 0)) {
                 try {
-                    const artistSearch = await yt.music.search(artistName, 'artist').catch(() => null);
-                    const artistsFound = artistSearch?.contents || [];
+                    const artistSearch = await yt.music.search(artistName, { type: 'artist' }).catch(() => null);
+                    const artistsFound = (artistSearch?.contents || []).flatMap(s => s.contents || [s]);
                     const matchedArtist = artistsFound.find(a => (a.name?.toString() || a.title?.toString() || '').toLowerCase().trim() === artistName.toLowerCase().trim()) || artistsFound[0];
                     if (matchedArtist) {
-                        const thumb = matchedArtist.thumbnails?.[0]?.url || matchedArtist.thumbnail?.url;
-                        if (thumb) {
+                        const thumb = matchedArtist.thumbnails?.[0]?.url || matchedArtist.thumbnail?.url || matchedArtist.thumbnail?.contents?.[0]?.url;
+                        if (thumb && !artistArtwork) {
                             artistArtwork = optimizeThumbnailUrl(thumb);
                         }
                         const browseId = matchedArtist.id || matchedArtist.endpoint?.payload?.browseId;
                         if (browseId && (browseId.startsWith('UC') || browseId.startsWith('FEmusic'))) {
                             try {
                                 const fullArtistData = await yt.music.getArtist(browseId);
-                                if (fullArtistData?.thumbnails?.[0]?.url) {
-                                    artistArtwork = optimizeThumbnailUrl(fullArtistData.thumbnails[0].url);
-                                }
-                                if (fullArtistData?.description && !artistDescription) {
-                                    artistDescription = extractCleanText(fullArtistData.description);
-                                }
+                                parseArtistDataIntoLists(fullArtistData);
                             } catch (_) {}
                         }
                     }
                 } catch (_) {}
             }
 
-            const [ytSearchRes, argonRes, audiusRes] = await Promise.all([
+            const [ytSearchRes, ytmDirectTracks] = await Promise.all([
                 yt.music.search(artistName).catch(() => null),
-                fetchWithTimeout(`https://argon.global.ssl.fastly.net/api/search?query=${encodeURIComponent(artistName)}&offset=0&limit=30`)
-                    .then(r => r.ok ? r.json() : { collection: [] })
-                    .catch(() => ({ collection: [] })),
-                fetchWithTimeout(`https://discoveryprovider.audius.co/v1/tracks/search?query=${encodeURIComponent(artistName)}&app_name=PinpointAudio`, {}, 4000)
-                    .then(r => r.ok ? r.json() : null)
-                    .catch(() => null)
+                searchYTM(artistName).catch(() => [])
             ]);
+
+            if (Array.isArray(ytmDirectTracks) && ytmDirectTracks.length > 0) {
+                allTracks.push(...ytmDirectTracks);
+            }
 
             if (ytSearchRes && ytSearchRes.contents) {
                 ytSearchRes.contents.forEach(shelf => {
+                    const shelfTitle = (shelf.title?.toString() || shelf.header?.title?.toString() || '').toLowerCase();
                     const items = shelf.contents || [];
                     items.forEach(item => {
+                        const itemType = (item.item_type || '').toLowerCase();
+                        const itemId = item.id || item.endpoint?.payload?.browseId;
+                        if (itemType.includes('album') || shelfTitle.includes('album') || (typeof itemId === 'string' && itemId.startsWith('MPRE'))) {
+                            const albTitle = item.title?.toString() || item.name?.toString();
+                            const albArtist = item.author?.name || item.artists?.[0]?.name?.toString() || artistName;
+                            if (itemId && albTitle && albArtist.toLowerCase().includes(artistName.toLowerCase())) {
+                                allAlbums.push({
+                                    id: itemId.startsWith('ytm-') ? itemId : `ytm-${itemId}`,
+                                    name: albTitle,
+                                    artist_name: albArtist,
+                                    year: item.year?.toString() || item.subtitle?.toString() || 'Album',
+                                    type: 'Album',
+                                    artwork_url: optimizeThumbnailUrl(item.thumbnails?.[0]?.url || item.thumbnail?.url || artistArtwork)
+                                });
+                            }
+                            return;
+                        }
                         const rawId = extractVideoId(item);
                         const title = item.title?.toString() || item.name?.toString();
                         if (rawId && title) {
@@ -780,52 +842,21 @@ export default async function handler(req, res) {
                 });
             }
 
-            if (argonRes.collection && Array.isArray(argonRes.collection)) {
-                const ARGON_BASE = 'https://argon.global.ssl.fastly.net';
-                argonRes.collection.forEach(item => {
-                    let artwork = item.song?.img?.big || item.song?.img?.small || (Array.isArray(item.image) ? item.image[item.image.length-1].link : item.image);
-                    if (artwork && artwork.startsWith('/api/')) artwork = ARGON_BASE + artwork;
-                    const songUrl = item.song?.url || item.url || '';
-                    const encodedId = Buffer.from(songUrl).toString('base64url');
-                    const durationSecs = (item.song?.duration?.hours || 0) * 3600 + (item.song?.duration?.minutes || 0) * 60 + (item.song?.duration?.seconds || 0);
-                    const author = item.author?.name || artistName;
-
-                    if (author !== 'YT Music Artist') {
-                        allTracks.push({
-                            id: `argon-${encodedId}`,
-                            title: item.song?.name || item.name || 'Unknown Track',
-                            artist_name: author,
-                            artwork_url: optimizeThumbnailUrl(artwork || artistArtwork),
-                            duration: durationSecs * 1000,
-                            url: songUrl,
-                            downloadUrl: [{ quality: '320kbps', link: `https://argon.global.ssl.fastly.net/api/download?track_url=${encodeURIComponent(songUrl)}` }],
-                            source: 'Argon'
-                        });
-                    }
-                });
-            }
-
-            if (audiusRes && audiusRes.data && Array.isArray(audiusRes.data)) {
-                audiusRes.data.forEach(item => {
-                    if (!item || !item.id) return;
-                    const streamUrl = `https://discoveryprovider.audius.co/v1/tracks/${item.id}/stream?app_name=PinpointAudio`;
-                    allTracks.push({
-                        id: `audius-${item.id}`,
-                        title: item.title || 'Unknown Track',
-                        artist_name: item.user?.name || artistName,
-                        artwork_url: item.artwork?.['480x480'] || item.artwork?.['150x150'] || artistArtwork,
-                        duration: (item.duration || 0) * 1000,
-                        downloadUrl: [{ quality: '320kbps', link: `/api/gateway?url=${encodeURIComponent(streamUrl)}` }],
-                        source: 'Audius'
-                    });
-                });
-            }
-
             const seen = new Set();
             const deduplicated = allTracks.filter(t => {
                 const key = `${(t.title || '').toLowerCase().trim()}|${(t.artist_name || '').toLowerCase().trim()}`;
                 if (seen.has(key)) return false;
                 seen.add(key);
+                return true;
+            });
+
+            const seenAlbums = new Set();
+            const deduplicatedAlbums = allAlbums.filter(a => {
+                const key = (a.id || '').toLowerCase().trim();
+                const titleKey = (a.name || '').toLowerCase().trim();
+                if (!key || seenAlbums.has(key) || seenAlbums.has(titleKey)) return false;
+                seenAlbums.add(key);
+                seenAlbums.add(titleKey);
                 return true;
             });
 
@@ -837,6 +868,7 @@ export default async function handler(req, res) {
                 description: artistDescription,
                 artwork_url: artistArtwork || null,
                 fallback_artwork_url: fallbackSongArt,
+                albums: deduplicatedAlbums,
                 tracks: deduplicated
             });
         } catch (e) {
@@ -1332,6 +1364,9 @@ async function resolveAudioStream(videoId, requestedFormat = 'auto') {
         return cached.streamInfo;
     }
 
+    const defaultItag = requestedFormat === 'webm' ? 251 : 140;
+    const defaultMime = requestedFormat === 'webm' ? 'audio/webm' : 'audio/mp4';
+
     // 1. Try Cloudflare Worker stream check ONLY if CF_WORKER_URL environment variable is set
     if (process.env.CF_WORKER_URL) {
         try {
@@ -1341,19 +1376,18 @@ async function resolveAudioStream(videoId, requestedFormat = 'auto') {
             });
             if (checkRes.status === 200 || checkRes.status === 206) {
                 const cfUrl = `${process.env.CF_WORKER_URL}?id=${videoId}&mode=stream`;
-                const info = { directUrl: cfUrl, proxiedUrl: cfUrl, mimeType: 'audio/mp4', clen: null, itag: null };
+                const info = { directUrl: cfUrl, proxiedUrl: cfUrl, latestVersionUrl: cfUrl, companionUrls: [], isIpRestricted: false, mimeType: 'audio/mp4', clen: null, itag: null };
                 streamUrlCache.set(cacheKey, { streamInfo: info, expires: Date.now() + 25 * 60 * 1000 });
                 return info;
             }
         } catch (_) {}
     }
 
-    // 2. High-health stream instances with fallback
+    // 2. High-health stream instances with live companion endpoints
     const streamInstances = [
         'https://yt.chocolatemoo53.com'
     ];
 
-    let lastError = null;
     for (const inst of streamInstances) {
         try {
             const vidRes = await fetch(`${inst}/api/v1/videos/${videoId}?fields=adaptiveFormats,formatStreams`, {
@@ -1377,13 +1411,12 @@ async function resolveAudioStream(videoId, requestedFormat = 'auto') {
                     chosenFormat = directAudio.find(f => f.type?.includes('mp4') || f.container === 'm4a');
                 }
                 if (!chosenFormat) {
-                    // Sort by bitrate descending
                     directAudio.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
                     chosenFormat = directAudio[0];
                 }
             }
 
-            // Tier 2: Muxed direct googlevideo streams (itag 18 / 22: full 360p video + AAC audio, bypasses SABR)
+            // Tier 2: Muxed direct googlevideo streams (itag 18 / 22)
             if (!chosenFormat && muxed.length > 0) {
                 const directMuxed = muxed.filter(f => f.url && !f.url.includes('companion') && !f.url.includes('sabr-segment'));
                 if (directMuxed.length > 0) {
@@ -1391,7 +1424,7 @@ async function resolveAudioStream(videoId, requestedFormat = 'auto') {
                 }
             }
 
-            // Tier 3: Companion-assisted audio formats (if no direct googlevideo URLs returned)
+            // Tier 3: Companion-assisted audio formats
             if (!chosenFormat) {
                 const companionAudio = adaptive.filter(f => f.type?.includes('audio') && f.url);
                 if (companionAudio.length > 0) {
@@ -1407,83 +1440,89 @@ async function resolveAudioStream(videoId, requestedFormat = 'auto') {
             if (!chosenFormat) throw new Error(`No usable audio streams on ${inst}`);
 
             const rawUrl = chosenFormat.url;
+            const resolvedItag = chosenFormat.itag || defaultItag;
             let proxiedUrl = rawUrl;
+            let isIpRestricted = false;
             try {
                 const u = new URL(rawUrl);
+                const sparams = u.searchParams.get('sparams') || '';
+                if (sparams.includes('gcr') || u.searchParams.has('gcr')) {
+                    isIpRestricted = true;
+                }
                 if (u.hostname.includes('googlevideo.com')) {
                     proxiedUrl = `${inst}${u.pathname}${u.search}`;
                 }
             } catch (_) {}
 
+            const latestVersionUrl = `${inst}/latest_version?id=${encodeURIComponent(videoId)}&itag=${encodeURIComponent(resolvedItag)}&local=true`;
+            const companionUrls = [
+                `https://yt-comp1.chocolatemoo53.com/companion/latest_version?id=${encodeURIComponent(videoId)}&itag=${encodeURIComponent(resolvedItag)}&local=true`,
+                `https://yt-comp2.chocolatemoo53.com/companion/latest_version?id=${encodeURIComponent(videoId)}&itag=${encodeURIComponent(resolvedItag)}&local=true`,
+                `https://yt-comp3.chocolatemoo53.com/companion/latest_version?id=${encodeURIComponent(videoId)}&itag=${encodeURIComponent(resolvedItag)}&local=true`
+            ];
+
             const info = {
                 directUrl: rawUrl,
                 proxiedUrl: proxiedUrl,
-                mimeType: chosenFormat.type?.split(';')[0]?.trim() || (requestedFormat === 'webm' ? 'audio/webm' : 'audio/mp4'),
+                latestVersionUrl: latestVersionUrl,
+                companionUrls: companionUrls,
+                isIpRestricted: isIpRestricted,
+                mimeType: chosenFormat.type?.split(';')[0]?.trim() || defaultMime,
                 clen: chosenFormat.clen ? parseInt(chosenFormat.clen, 10) : null,
-                itag: chosenFormat.itag
+                itag: resolvedItag
             };
 
             streamUrlCache.set(cacheKey, { streamInfo: info, expires: Date.now() + 25 * 60 * 1000 });
             return info;
-        } catch (e) {
-            lastError = e;
-        }
+        } catch (_) {}
     }
 
-    throw lastError || new Error('All stream resolvers failed');
+    // Fallback directly to latest_version companion streams if /api/v1/videos metadata timed out
+    return {
+        directUrl: null,
+        proxiedUrl: null,
+        latestVersionUrl: `https://yt.chocolatemoo53.com/latest_version?id=${encodeURIComponent(videoId)}&itag=${defaultItag}&local=true`,
+        companionUrls: [
+            `https://yt-comp1.chocolatemoo53.com/companion/latest_version?id=${encodeURIComponent(videoId)}&itag=${defaultItag}&local=true`,
+            `https://yt-comp2.chocolatemoo53.com/companion/latest_version?id=${encodeURIComponent(videoId)}&itag=${defaultItag}&local=true`,
+            `https://yt-comp3.chocolatemoo53.com/companion/latest_version?id=${encodeURIComponent(videoId)}&itag=${defaultItag}&local=true`
+        ],
+        isIpRestricted: true,
+        mimeType: defaultMime,
+        clen: null,
+        itag: defaultItag
+    };
 }
 
-async function fetchAudioBuffer(directUrl, proxiedUrl, totalBytesHint = 0) {
-    // Try ultra-fast parallel chunk download if direct Google CDN URL and size are known
-    if (directUrl && totalBytesHint > 1024 * 512) {
-        try {
-            const chunkSize = 1.5 * 1024 * 1024;
-            const chunksCount = Math.ceil(totalBytesHint / chunkSize);
-            const promises = [];
-            for (let i = 0; i < chunksCount; i++) {
-                const start = i * chunkSize;
-                const end = Math.min(start + chunkSize - 1, totalBytesHint - 1);
-                promises.push((async () => {
-                    const res = await fetch(directUrl, {
-                        headers: { 'Range': `bytes=${start}-${end}`, 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-                        signal: AbortSignal.timeout(8000)
-                    });
-                    if (!res.ok && res.status !== 206) throw new Error(`Chunk ${i} failed ${res.status}`);
-                    const ab = await res.arrayBuffer();
-                    return { index: i, buffer: Buffer.from(ab) };
-                })());
-            }
-            const parts = await Promise.all(promises);
-            parts.sort((a, b) => a.index - b.index);
-            return Buffer.concat(parts.map(p => p.buffer));
-        } catch (_) {}
+async function openUpstreamAudioStream(streamInfo, upstreamHeaders) {
+    const candidates = [];
+    if (streamInfo.isIpRestricted) {
+        // IP/region-bound streams (gcr=us) return 403 on directUrl; use fresh companion latest_version first
+        if (streamInfo.latestVersionUrl) candidates.push(streamInfo.latestVersionUrl);
+        if (Array.isArray(streamInfo.companionUrls)) candidates.push(...streamInfo.companionUrls);
+        if (streamInfo.directUrl) candidates.push(streamInfo.directUrl);
+        if (streamInfo.proxiedUrl && streamInfo.proxiedUrl !== streamInfo.directUrl) candidates.push(streamInfo.proxiedUrl);
+    } else {
+        // Non-restricted streams stream fastest directly from Google CDN, with latest_version fallback
+        if (streamInfo.directUrl) candidates.push(streamInfo.directUrl);
+        if (streamInfo.latestVersionUrl) candidates.push(streamInfo.latestVersionUrl);
+        if (Array.isArray(streamInfo.companionUrls)) candidates.push(...streamInfo.companionUrls);
+        if (streamInfo.proxiedUrl && streamInfo.proxiedUrl !== streamInfo.directUrl) candidates.push(streamInfo.proxiedUrl);
     }
 
-    // Direct single-fetch fallback
-    if (directUrl) {
+    for (const candidateUrl of candidates) {
+        if (!candidateUrl) continue;
         try {
-            const res = await fetch(directUrl, {
-                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-                signal: AbortSignal.timeout(12000)
+            const res = await fetch(candidateUrl, {
+                headers: upstreamHeaders,
+                signal: AbortSignal.timeout(7500)
             });
-            if (res.ok) {
-                return Buffer.from(await res.arrayBuffer());
+            if (res.ok || res.status === 206) {
+                return res;
             }
         } catch (_) {}
     }
-
-    // Proxied single-fetch fallback
-    if (proxiedUrl) {
-        const res = await fetch(proxiedUrl, {
-            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-            signal: AbortSignal.timeout(15000)
-        });
-        if (res.ok) {
-            return Buffer.from(await res.arrayBuffer());
-        }
-    }
-
-    throw new Error('Unable to download audio buffer from stream source');
+    return null;
 }
 
     if (endpoint === 'stream') {
@@ -1507,43 +1546,15 @@ async function fetchAudioBuffer(directUrl, proxiedUrl, totalBytesHint = 0) {
                 upstreamHeaders['Range'] = req.headers.range;
             }
 
-            // 1. Try direct Google CDN URL first for instantaneous native byte-range streaming
-            let audioStreamRes = null;
-            try {
-                audioStreamRes = await fetch(streamInfo.directUrl, { headers: upstreamHeaders, signal: AbortSignal.timeout(6000) });
-                if (!audioStreamRes.ok && audioStreamRes.status !== 206) {
-                    audioStreamRes = null;
-                }
-            } catch (_) {
-                audioStreamRes = null;
-            }
+            let audioStreamRes = await openUpstreamAudioStream(streamInfo, upstreamHeaders);
 
-            // 2. Fallback to proxied URL if direct URL returned 403 or network error
-            if (!audioStreamRes && streamInfo.proxiedUrl && streamInfo.proxiedUrl !== streamInfo.directUrl) {
-                try {
-                    audioStreamRes = await fetch(streamInfo.proxiedUrl, { headers: upstreamHeaders, signal: AbortSignal.timeout(8000) });
-                    if (!audioStreamRes.ok && audioStreamRes.status !== 206) {
-                        audioStreamRes = null;
-                    }
-                } catch (_) {
-                    audioStreamRes = null;
-                }
-            }
-
-            // 3. If both failed, invalidate cache and retry once
+            // If cached stream failed, invalidate cache and retry once with fresh resolution
             if (!audioStreamRes) {
                 streamUrlCache.delete(cacheKey);
                 streamInfo = await resolveAudioStream(videoId, requestedFormat);
-                try {
-                    audioStreamRes = await fetch(streamInfo.directUrl, { headers: upstreamHeaders, signal: AbortSignal.timeout(6000) });
-                } catch (_) {}
-                if (!audioStreamRes || (!audioStreamRes.ok && audioStreamRes.status !== 206)) {
-                    if (streamInfo.proxiedUrl) {
-                        audioStreamRes = await fetch(streamInfo.proxiedUrl, { headers: upstreamHeaders, signal: AbortSignal.timeout(8000) });
-                    }
-                }
-                if (!audioStreamRes || (!audioStreamRes.ok && audioStreamRes.status !== 206)) {
-                    return res.status(audioStreamRes ? audioStreamRes.status : 502).json({ error: 'Audio stream unavailable' });
+                audioStreamRes = await openUpstreamAudioStream(streamInfo, upstreamHeaders);
+                if (!audioStreamRes) {
+                    return res.status(502).json({ error: 'Audio stream unavailable' });
                 }
             }
 
@@ -1587,45 +1598,16 @@ async function fetchAudioBuffer(directUrl, proxiedUrl, totalBytesHint = 0) {
                 'Range': 'bytes=0-'
             };
 
-            let audioStreamRes = null;
-            // 1. Try direct Google CDN URL
-            try {
-                audioStreamRes = await fetch(streamInfo.directUrl, { headers: upstreamHeaders, signal: AbortSignal.timeout(6000) });
-                if (!audioStreamRes.ok && audioStreamRes.status !== 206) {
-                    audioStreamRes = null;
-                }
-            } catch (_) {
-                audioStreamRes = null;
-            }
+            let audioStreamRes = await openUpstreamAudioStream(streamInfo, upstreamHeaders);
 
-            // 2. Fallback to proxied URL if direct failed
-            if (!audioStreamRes && streamInfo.proxiedUrl && streamInfo.proxiedUrl !== streamInfo.directUrl) {
-                try {
-                    audioStreamRes = await fetch(streamInfo.proxiedUrl, { headers: upstreamHeaders, signal: AbortSignal.timeout(8000) });
-                    if (!audioStreamRes.ok && audioStreamRes.status !== 206) {
-                        audioStreamRes = null;
-                    }
-                } catch (_) {
-                    audioStreamRes = null;
-                }
-            }
-
-            // 3. Retry once with fresh stream resolution
             if (!audioStreamRes) {
                 streamUrlCache.delete(cacheKey);
                 streamInfo = await resolveAudioStream(videoId, requestedFormat);
-                try {
-                    audioStreamRes = await fetch(streamInfo.directUrl, { headers: upstreamHeaders, signal: AbortSignal.timeout(6000) });
-                } catch (_) {}
-                if (!audioStreamRes || (!audioStreamRes.ok && audioStreamRes.status !== 206)) {
-                    if (streamInfo.proxiedUrl) {
-                        audioStreamRes = await fetch(streamInfo.proxiedUrl, { headers: upstreamHeaders, signal: AbortSignal.timeout(8000) });
-                    }
-                }
+                audioStreamRes = await openUpstreamAudioStream(streamInfo, upstreamHeaders);
             }
 
-            if (!audioStreamRes || (!audioStreamRes.ok && audioStreamRes.status !== 206)) {
-                return res.status(audioStreamRes ? audioStreamRes.status : 502).json({ error: 'Audio download stream unavailable' });
+            if (!audioStreamRes) {
+                return res.status(502).json({ error: 'Audio download stream unavailable' });
             }
 
             // Parse total length for live client progress tracking

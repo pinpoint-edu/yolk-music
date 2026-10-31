@@ -60,7 +60,8 @@
         }
 
         /* Smooth expand/collapse animation for Now Playing nav pill */
-        #nav-now-playing {
+        #nav-now-playing,
+        #bp-nav-now-playing {
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -75,7 +76,9 @@
 
         #nav-now-playing.nav-hidden,
         #top-nav-bar #nav-now-playing.nav-hidden,
-        body.is-searching #top-nav-bar #nav-now-playing.nav-hidden {
+        body.is-searching #top-nav-bar #nav-now-playing.nav-hidden,
+        #bp-nav-now-playing.nav-hidden,
+        #bp-desktop-nav #bp-nav-now-playing.nav-hidden {
             display: none !important;
             max-width: 0 !important;
             min-width: 0 !important;
@@ -91,7 +94,8 @@
             transform: scaleX(0.5) translateX(-8px) !important;
         }
 
-        #nav-now-playing.nav-visible {
+        #nav-now-playing.nav-visible,
+        #bp-nav-now-playing.nav-visible {
             display: inline-flex !important;
             max-width: 140px !important;
             opacity: 1 !important;
@@ -100,24 +104,25 @@
             transform: scaleX(1) translateX(0) !important;
         }
 
-        /* Fixed Top-Right Navigation Header on All Screen Sizes */
+        /* Top-Right Navigation Header (Mobile Only; Desktop uses Wide Bottom Bar) */
         #main-header {
             position: fixed !important;
-            top: 14px !important;
-            right: 18px !important;
+            top: 10px !important;
+            right: 12px !important;
             left: auto !important;
             transform: none !important;
             z-index: 45 !important;
             width: auto !important;
-            max-width: fit-content !important;
+            max-width: calc(100vw - 105px) !important;
             justify-content: flex-end !important;
             margin: 0 !important;
+            display: flex !important;
         }
 
         @media (min-width: 640px) {
+            /* On Desktop, navigation lives on the left side of the Wide Bottom Bar */
             #main-header {
-                top: 24px !important;
-                right: 32px !important;
+                display: none !important;
             }
         }
 
@@ -126,61 +131,63 @@
                 max-width: 95px !important;
             }
 
-            /* Initial Home Page: Do not show navbar at all on phone until search or library */
-            body:not(.is-searching)[data-page="search"] #main-header {
-                display: none !important;
-            }
-
+            /* Always show top-right navbar on mobile (including initial home search page) */
             #main-header {
+                display: flex !important;
                 top: 10px !important;
                 right: 12px !important;
-                max-width: calc(100vw - 110px) !important;
+                max-width: calc(100vw - 105px) !important;
             }
 
-            body.is-searching[data-page="search"] #main-header,
-            body[data-page="library"] #main-header,
-            body[data-page="artist"] #main-header,
-            body[data-page="album"] #main-header,
-            body[data-page="now-playing"] #main-header {
-                display: flex !important;
+            #top-nav-bar {
+                height: 36px !important;
+                padding: 3px 5px !important;
+                gap: 3px !important;
             }
 
-            body.is-searching[data-page="search"] #top-nav-bar,
-            body[data-page="library"] #top-nav-bar,
-            body[data-page="artist"] #top-nav-bar,
-            body[data-page="album"] #top-nav-bar,
-            body[data-page="now-playing"] #top-nav-bar {
-                height: 38px !important;
-                padding: 4px 6px !important;
-                gap: 4px !important;
-            }
-
-            body.is-searching[data-page="search"] #top-nav-bar a:not(.nav-hidden),
-            body[data-page="library"] #top-nav-bar a:not(.nav-hidden),
-            body[data-page="artist"] #top-nav-bar a:not(.nav-hidden),
-            body[data-page="album"] #top-nav-bar a:not(.nav-hidden),
-            body[data-page="now-playing"] #top-nav-bar a:not(.nav-hidden) {
+            #top-nav-bar a:not(.nav-hidden) {
                 min-width: 0 !important;
                 height: 28px !important;
                 padding: 0 10px !important;
                 font-size: 11px !important;
             }
 
+            /* More compact mobile UI layout to fit more info in phone screen */
             body.is-searching #search-block {
-                top: 68px !important;
+                top: 54px !important;
+                width: calc(100% - 16px) !important;
+                padding-left: 4px !important;
+                padding-right: 4px !important;
+                padding-bottom: 82px !important;
+            }
+
+            #searchInput {
+                height: 46px !important;
+                padding-left: 18px !important;
+                padding-right: 42px !important;
             }
 
             #page-library-scroll,
             #page-artist-scroll,
             #page-album-scroll {
-                padding-top: 72px !important;
+                padding-top: 56px !important;
+                padding-bottom: 84px !important;
+                padding-left: 10px !important;
+                padding-right: 10px !important;
             }
 
             .library-shell {
-                padding-top: 8px !important;
+                padding-top: 4px !important;
+                padding-left: 2px !important;
+                padding-right: 2px !important;
             }
             #playlist-detail-view {
-                padding-top: 8px !important;
+                padding-top: 4px !important;
+            }
+            .song-row-card {
+                padding: 6px 9px !important;
+                margin-bottom: 5px !important;
+                border-radius: 13px !important;
             }
         }
 
@@ -204,7 +211,7 @@
         }
 
         #top-nav-bar a {
-            min-width: 105px !important;
+            min-width: 105px;
             white-space: nowrap !important;
             flex-shrink: 0 !important;
             text-align: center !important;
@@ -219,6 +226,7 @@
             top: 0; left: 0;
             width: 100%; height: 100%;
             transition: opacity 0.4s ease;
+            background-color: #FCFBF8;
         }
 
         .page.active {
@@ -236,17 +244,26 @@
             top: 0;
             left: 0;
             -webkit-overflow-scrolling: touch;
+            background-color: #FCFBF8;
         }
 
         #page-now-playing {
             box-sizing: border-box;
-            padding-top: 88px;
+            padding-top: 72px;
             padding-bottom: 36px;
-            padding-left: 20px;
-            padding-right: 20px;
+            padding-left: 16px;
+            padding-right: 16px;
             overflow-y: auto;
             overflow-x: hidden;
-            background-color: #ffffff;
+            background-color: transparent;
+        }
+        @media (min-width: 640px) {
+            #page-now-playing {
+                padding-top: 48px;
+                padding-bottom: 100px;
+                padding-left: 24px;
+                padding-right: 24px;
+            }
         }
 
         #page-now-playing.active {
@@ -508,33 +525,58 @@
             transform: translateY(0);
         }
 
-        /* Bottom Player */
+        /* Bottom Player — Always show artist */
         .player-artist {
-            max-height: 0;
-            opacity: 0;
-            margin-top: 0;
+            max-height: 22px !important;
+            opacity: 1 !important;
+            margin-top: 2px !important;
             overflow: hidden;
             transition: max-height 0.4s var(--parabola-ease), 
                         opacity 0.4s var(--parabola-ease), 
                         margin-top 0.4s var(--parabola-ease);
         }
 
-        #bottom-player:hover .player-artist {
-            max-height: 20px;
-            opacity: 1;
-            margin-top: 2px;
+        /* Hide bottom player on now playing page (Mobile only; Desktop keeps wide bottom navbar) */
+        @media (max-width: 639px) {
+            body[data-page="now-playing"] #bottom-player {
+                transform: translate(-50%, 150%) !important;
+                opacity: 0;
+                pointer-events: none;
+            }
+            #bottom-player.hidden-force {
+                display: none !important;
+            }
         }
 
-        /* Hide bottom player on now playing page */
-        body[data-page="now-playing"] #bottom-player {
-            transform: translate(-50%, 150%) !important;
-            opacity: 0;
-            pointer-events: none;
+        /* Desktop Wide Bottom Navbar + Music Player */
+        @media (min-width: 640px) {
+            #bottom-player,
+            #bottom-player.hidden-force,
+            body[data-page="now-playing"] #bottom-player {
+                display: flex !important;
+                width: calc(100% - 3rem) !important;
+                max-width: 1440px !important;
+                height: 68px !important;
+                padding-left: 14px !important;
+                padding-right: 20px !important;
+                transform: translate(-50%, 0) !important;
+                opacity: 1 !important;
+                pointer-events: auto !important;
+                z-index: 45 !important;
+            }
+            #bottom-player:not(.is-loading):hover {
+                height: 70px !important;
+                padding-left: 16px !important;
+                padding-right: 22px !important;
+                transform: translate(-50%, -3px) !important;
+                box-shadow: 0 20px 45px rgba(0, 0, 0, 0.12), 0 4px 14px rgba(0, 0, 0, 0.05);
+                border-color: rgba(212, 212, 216, 0.95);
+            }
         }
 
         /* Bottom Player Morphing Animation & Hover Expansion */
         #bottom-player {
-            translate: 0 0 !important;
+            translate: none !important;
             transform: translate(-50%, 0);
             transition: width 0.75s var(--parabola-ease),
                         max-width 0.75s var(--parabola-ease),
@@ -547,13 +589,15 @@
                         opacity 0.4s ease;
         }
 
-        #bottom-player:not(.is-loading):hover {
-            height: 72px;
-            padding-left: 20px;
-            padding-right: 20px;
-            transform: translate(-50%, -6px) scale(1.015);
-            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.12), 0 4px 14px rgba(0, 0, 0, 0.05);
-            border-color: rgba(212, 212, 216, 0.95);
+        @media (max-width: 639px) {
+            #bottom-player:not(.is-loading):hover {
+                height: 66px;
+                padding-left: 16px;
+                padding-right: 16px;
+                transform: translate(-50%, -4px);
+                box-shadow: 0 20px 45px rgba(0, 0, 0, 0.12), 0 4px 14px rgba(0, 0, 0, 0.05);
+                border-color: rgba(212, 212, 216, 0.95);
+            }
         }
 
         .bottom-thumb {
@@ -576,38 +620,48 @@
             height: 42px;
         }
 
-        #bottom-player.is-loading {
-            width: 56px !important;
-            max-width: 56px !important;
-            min-width: 56px !important;
-            height: 56px !important;
-            padding: 0 !important;
-            border-radius: 9999px !important;
-            justify-content: center !important;
-            align-items: center !important;
-            overflow: hidden !important;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
-            transform: translate(-50%, 0) !important;
+        @media (max-width: 639px) {
+            #bottom-player.is-loading {
+                width: 56px !important;
+                max-width: 56px !important;
+                min-width: 56px !important;
+                height: 56px !important;
+                padding: 0 !important;
+                border-radius: 9999px !important;
+                justify-content: center !important;
+                align-items: center !important;
+                overflow: hidden !important;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
+                transform: translate(-50%, 0) !important;
+            }
+            #bottom-player.is-loading #bottom-player-content {
+                opacity: 0 !important;
+                pointer-events: none !important;
+            }
+            #bottom-player.is-loading #bottom-player-spinner {
+                opacity: 1 !important;
+                pointer-events: auto !important;
+            }
+        }
+
+        @media (min-width: 640px) {
+            /* On desktop, keep the wide navbar open when loading and show spinner cleanly on the right */
+            #bottom-player.is-loading #bottom-player-spinner {
+                opacity: 1 !important;
+                left: auto !important;
+                right: 24px !important;
+                width: 36px !important;
+            }
         }
 
         #bottom-player-content {
             transition: opacity 0.25s ease;
         }
 
-        #bottom-player.is-loading #bottom-player-content {
-            opacity: 0 !important;
-            pointer-events: none !important;
-        }
-
         #bottom-player-spinner {
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.35s ease 0.2s;
-        }
-
-        #bottom-player.is-loading #bottom-player-spinner {
-            opacity: 1 !important;
-            pointer-events: auto !important;
+            transition: opacity 0.35s ease 0.1s;
         }
 
         .parabola-spin {
@@ -648,13 +702,13 @@
             width: 100%;
             max-width: 1280px;
             height: 100%;
-            max-height: calc(100vh - 100px);
+            max-height: calc(100dvh - 110px);
             margin: auto;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 28px;
+            gap: 24px;
             transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
             position: relative;
         }
@@ -677,7 +731,8 @@
             width: 100%;
             max-width: 760px;
             height: 100%;
-            max-height: calc(100vh - 110px);
+            min-height: 0 !important;
+            max-height: calc(100dvh - 130px);
             display: flex;
             flex-direction: column;
             position: relative;
@@ -693,6 +748,22 @@
                         max-width 0.5s cubic-bezier(0.16, 1, 0.3, 1),
                         flex 0.5s cubic-bezier(0.16, 1, 0.3, 1);
             will-change: transform, opacity;
+        }
+
+        /* Floating Lyrics Bottom Bar — Perfectly Centered & Deeply Frosted Translucent */
+        #np-lyrics-floating-bar {
+            translate: none !important;
+            left: 50% !important;
+            right: auto !important;
+            background: rgba(255, 255, 255, 0.26) !important;
+            backdrop-filter: blur(38px) saturate(165%) !important;
+            -webkit-backdrop-filter: blur(38px) saturate(165%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.42) !important;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.45) !important;
+            transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease !important;
+            transform: translateX(-50%) translateY(40px) !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
         }
 
         /* Mobile Lyrics Sliding & Fading Transition */
@@ -736,18 +807,13 @@
                 max-width: 100% !important;
                 width: 100% !important;
                 margin: 0 auto !important;
-                height: calc(100vh - 180px) !important;
+                height: calc(100dvh - 155px) !important;
+                max-height: calc(100dvh - 155px) !important;
             }
 
-            #np-lyrics-floating-bar {
-                transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease !important;
-                transform: translate(-50%, 40px) !important;
-                opacity: 0 !important;
-                pointer-events: none !important;
-            }
             .now-playing-container.lyrics-active ~ #np-lyrics-floating-bar,
             body[data-page="now-playing"] #np-lyrics-floating-bar:not(.hidden) {
-                transform: translate(-50%, 0) !important;
+                transform: translateX(-50%) translateY(0) !important;
                 opacity: 1 !important;
                 pointer-events: auto !important;
             }
@@ -761,6 +827,8 @@
                 justify-content: center;
                 gap: 56px;
                 padding: 0 24px;
+                height: calc(100dvh - 150px);
+                max-height: calc(100dvh - 150px);
             }
             .now-playing-container.no-lyrics .np-right-col,
             .now-playing-container.lyrics-hidden .np-right-col {
@@ -781,8 +849,8 @@
             }
             .now-playing-container.no-lyrics #now-playing-art,
             .now-playing-container.lyrics-hidden #now-playing-art {
-                width: 320px;
-                height: 320px;
+                width: 300px;
+                height: 300px;
             }
 
             .now-playing-container.lyrics-active {
@@ -800,8 +868,8 @@
                 pointer-events: auto !important;
                 flex: 1.3 !important;
                 max-width: 760px !important;
-                height: 100% !important;
-                max-height: calc(100vh - 110px) !important;
+                height: calc(100dvh - 160px) !important;
+                max-height: calc(100dvh - 160px) !important;
                 visibility: visible !important;
             }
             #np-lyrics-floating-bar {
@@ -812,31 +880,42 @@
                 display: none !important;
             }
         }
-        }
 
-        /* Lyrics Styling - Smooth Fullscreen Animations (from pinpoint-edu) */
+        /* Lyrics Styling - Smooth Fullscreen Animations & Touch/Wheel Scrollable */
         #lyrics-container {
             position: relative;
-            flex: 1;
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
             width: 100%;
             height: 100%;
-            overflow-y: auto;
-            overflow-x: hidden;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            -webkit-overflow-scrolling: touch !important;
+            touch-action: pan-y !important;
+            overscroll-behavior-y: contain !important;
+            pointer-events: auto !important;
             scroll-behavior: smooth;
             box-sizing: border-box;
             padding-top: 20px;
-            padding-bottom: 45vh;
+            padding-bottom: 42vh;
             padding-left: 8px;
             padding-right: 8px;
             mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 88%, transparent 100%);
             -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 88%, transparent 100%);
-            scrollbar-width: none;
-            -ms-overflow-style: none;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
             user-select: none;
             -webkit-user-select: none;
         }
         #lyrics-container::-webkit-scrollbar {
-            display: none;
+            width: 4px;
+        }
+        #lyrics-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #lyrics-container::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.16);
+            border-radius: 9999px;
         }
         .lyric-line {
             padding: 12px 16px;
@@ -1004,6 +1083,7 @@
     </style>
 </head>
 <body class="text-zinc-800 h-screen w-screen overflow-hidden selection:bg-zinc-200 selection:text-zinc-900 relative" data-page="search">
+    <div id="safari-top-color-shim" style="position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 40; pointer-events: none; background-color: #FCFBF8;"></div>
 
     <!-- Small Top-Left Logo -->
     <div id="smallLogo" class="fixed top-3 left-4 sm:top-6 sm:left-8 z-40 flex items-center gap-2 cursor-pointer pointer-events-auto select-none transition-transform hover:scale-105 active:scale-95" title="Return to Home">
@@ -1105,21 +1185,21 @@
                     </div>
                 </div>
 
-                <div id="library-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4 sm:gap-5">
+                <div id="library-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-2.5 sm:gap-5">
                     <!-- Populated by JS -->
                 </div>
             </div>
 
             <!-- Fullscreen Playlist Detail View (Wide Banner Style) -->
             <div id="playlist-detail-view" class="w-full max-w-[1240px] mx-auto hidden pb-16 px-1 sm:px-3">
-                <button id="playlist-back-btn" class="bubbly-hover mb-5 flex items-center justify-center w-10 h-10 rounded-full bg-white/80 hover:bg-white backdrop-blur-md border border-zinc-200/80 shadow-sm text-zinc-700 hover:text-zinc-950 transition-all cursor-pointer" title="Back to Library">
+                <button id="playlist-back-btn" class="bubbly-hover mb-3 sm:mb-5 flex items-center justify-center w-10 h-10 rounded-full bg-white/80 hover:bg-white backdrop-blur-md border border-zinc-200/80 shadow-sm text-zinc-700 hover:text-zinc-950 transition-all cursor-pointer" title="Back to Library">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                 </button>
 
                 <!-- Top Wide Banner: Left Cover, Right Info & Action Buttons in Bottom-Right -->
-                <div class="w-full bg-white/85 backdrop-blur-xl rounded-3xl border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-5 sm:p-7 flex flex-col sm:flex-row gap-5 sm:gap-7 items-center sm:items-stretch mb-6">
+                <div class="w-full bg-white/85 backdrop-blur-xl rounded-3xl border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-4 sm:p-7 flex flex-col sm:flex-row gap-4 sm:gap-7 items-center sm:items-stretch mb-4 sm:mb-6">
                     <!-- Left: Cover Art -->
-                    <div id="playlist-detail-art" class="w-40 h-40 sm:w-48 sm:h-48 md:w-52 md:h-52 rounded-2xl bg-zinc-100 flex items-center justify-center overflow-hidden shrink-0 shadow-[0_12px_28px_rgba(0,0,0,0.1)] border border-white/60 relative group/art cursor-pointer" title="Click to upload album cover">
+                    <div id="playlist-detail-art" class="w-32 h-32 sm:w-48 sm:h-48 md:w-52 md:h-52 rounded-2xl bg-zinc-100 flex items-center justify-center overflow-hidden shrink-0 shadow-[0_12px_28px_rgba(0,0,0,0.1)] border border-white/60 relative group/art cursor-pointer" title="Click to upload album cover">
                         <img id="playlist-detail-img" src="" class="w-full h-full object-cover hidden" referrerpolicy="no-referrer">
                         <div id="playlist-detail-icon" class="text-zinc-900">
                             <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
@@ -1129,7 +1209,7 @@
                             <span class="text-[10px] font-bold uppercase tracking-wider">Change Cover</span>
                         </div>
                     </div>
-                    <input type="file" id="playlist-detail-cover-input" accept="image/*" class="hidden">
+                    <input type="file" id="playlist-detail-cover-input" accept="image/*" style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;">
 
                     <!-- Right: Info Top, Buttons Bottom-Right -->
                     <div class="flex-1 flex flex-col justify-between w-full min-w-0 text-center sm:text-left">
@@ -1295,7 +1375,7 @@
         </div>
 
         <!-- Floating Lyrics Bottom Bar (Active during lyrics mode on phone only) -->
-        <div id="np-lyrics-floating-bar" class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-2xl h-[60px] bg-white/80 backdrop-blur-2xl border border-white/70 shadow-[0_16px_40px_rgba(0,0,0,0.12)] rounded-full px-4 box-border flex justify-between items-center z-40 hidden md:!hidden">
+        <div id="np-lyrics-floating-bar" class="fixed bottom-6 left-1/2 w-[calc(100%-2rem)] max-w-2xl h-[60px] border border-white/70 shadow-[0_16px_40px_rgba(0,0,0,0.12)] rounded-full px-4 box-border flex justify-between items-center z-40 hidden md:!hidden">
             <!-- Left: Mini Cover + Title + Artist -->
             <div class="flex items-center gap-3 min-w-0 flex-1 cursor-pointer" id="lyrics-bar-info">
                 <img id="lyrics-bar-thumb" src="" alt="Cover" class="w-10 h-10 rounded-xl object-cover border border-black/10 shrink-0">
@@ -1365,13 +1445,13 @@
 
         <main id="page-artist-scroll" class="relative z-10 w-full h-full overflow-y-auto">
             <div class="w-full max-w-[1680px] mx-auto pb-20 px-1 sm:px-3">
-                <button id="artist-back-btn" class="bubbly-hover mb-6 flex items-center justify-center w-10 h-10 rounded-full bg-white/80 hover:bg-white backdrop-blur-md border border-zinc-200/80 shadow-sm text-zinc-700 hover:text-zinc-950 transition-all cursor-pointer" title="Back">
+                <button id="artist-back-btn" class="bubbly-hover mb-3 sm:mb-6 flex items-center justify-center w-10 h-10 rounded-full bg-white/80 hover:bg-white backdrop-blur-md border border-zinc-200/80 shadow-sm text-zinc-700 hover:text-zinc-950 transition-all cursor-pointer" title="Back">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                 </button>
 
                 <!-- Fullscreen Hero Header like in pinpoint-edu -->
-                <div class="flex flex-col md:flex-row items-center md:items-end gap-7 p-6 sm:p-8 bg-white/70 backdrop-blur-xl rounded-3xl border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-8">
-                    <div id="artist-hero-art" class="w-44 h-44 sm:w-52 sm:h-52 md:w-56 md:h-56 rounded-full bg-zinc-100 flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.12)] border border-white/80 relative">
+                <div class="flex flex-col md:flex-row items-center md:items-end gap-4 sm:gap-7 p-4 sm:p-8 bg-white/70 backdrop-blur-xl rounded-3xl border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-5 sm:mb-8">
+                    <div id="artist-hero-art" class="w-32 h-32 sm:w-52 sm:h-52 md:w-56 md:h-56 rounded-full bg-zinc-100 flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.12)] border border-white/80 relative">
                         <img id="artist-hero-img" src="" class="w-full h-full object-cover hidden" referrerpolicy="no-referrer">
                         <div id="artist-hero-placeholder" class="text-zinc-400">
                             <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
@@ -1383,11 +1463,11 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                             <span class="uppercase tracking-wider">Verified Artist</span>
                         </div>
-                        <h1 id="artist-hero-name" class="text-3xl sm:text-4xl md:text-5xl font-extrabold text-zinc-900 tracking-tight leading-tight truncate">Artist Name</h1>
-                        <p id="artist-hero-desc" class="text-sm text-zinc-500 mt-2 line-clamp-2 max-w-xl font-medium"></p>
+                        <h1 id="artist-hero-name" class="text-2xl sm:text-4xl md:text-5xl font-extrabold text-zinc-900 tracking-tight leading-tight truncate">Artist Name</h1>
+                        <p id="artist-hero-desc" class="text-sm text-zinc-500 mt-1.5 sm:mt-2 line-clamp-2 max-w-xl font-medium"></p>
                         <p id="artist-hero-track-count" class="hidden"></p>
 
-                        <div class="flex items-center justify-center md:justify-start gap-3 mt-5 flex-wrap">
+                        <div class="flex items-center justify-center md:justify-start gap-3 mt-4 sm:mt-5 flex-wrap">
                             <button id="artist-play-all-btn" class="bubbly-hover flex items-center justify-center w-11 h-11 rounded-full bg-zinc-900 text-white shadow-md hover:bg-zinc-800 transition-all cursor-pointer shrink-0" title="Play Top Tracks">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                             </button>
@@ -1395,8 +1475,19 @@
                     </div>
                 </div>
 
+                <!-- Artist Albums Section -->
+                <div id="artist-albums-section" class="bg-white/80 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-4 sm:p-7 shadow-sm mb-5 sm:mb-6 hidden">
+                    <div class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-3.5 px-2 flex justify-between items-center border-b border-zinc-100 pb-2">
+                        <span>Albums & Releases</span>
+                        <span id="artist-albums-count" class="text-[10px] font-semibold text-zinc-400"></span>
+                    </div>
+                    <div id="artist-albums-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-4">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
                 <!-- Artist Tracks Container -->
-                <div class="bg-white/80 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-7 shadow-sm">
+                <div class="bg-white/80 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-4 sm:p-7 shadow-sm">
                     <div class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-4 px-3 flex justify-between items-center border-b border-zinc-100 pb-2">
                         <span>Popular Tracks</span>
                         <span id="artist-tracks-header-count" class="hidden"></span>
@@ -1419,13 +1510,13 @@
 
         <main id="page-album-scroll" class="relative z-10 w-full h-full overflow-y-auto">
             <div class="w-full max-w-[1680px] mx-auto pb-20 px-1 sm:px-3">
-                <button id="album-back-btn" class="bubbly-hover mb-6 flex items-center justify-center w-10 h-10 rounded-full bg-white/80 hover:bg-white backdrop-blur-md border border-zinc-200/80 shadow-sm text-zinc-700 hover:text-zinc-950 transition-all cursor-pointer" title="Back">
+                <button id="album-back-btn" class="bubbly-hover mb-3 sm:mb-6 flex items-center justify-center w-10 h-10 rounded-full bg-white/80 hover:bg-white backdrop-blur-md border border-zinc-200/80 shadow-sm text-zinc-700 hover:text-zinc-950 transition-all cursor-pointer" title="Back">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                 </button>
 
                 <!-- Fullscreen Hero Header for Album -->
-                <div class="flex flex-col md:flex-row items-center md:items-end gap-7 p-6 sm:p-8 bg-white/70 backdrop-blur-xl rounded-3xl border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-8">
-                    <div id="album-hero-art" class="w-44 h-44 sm:w-52 sm:h-52 md:w-56 md:h-56 rounded-3xl bg-zinc-100 flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.12)] border border-white/80 relative">
+                <div class="flex flex-col md:flex-row items-center md:items-end gap-4 sm:gap-7 p-4 sm:p-8 bg-white/70 backdrop-blur-xl rounded-3xl border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-5 sm:mb-8">
+                    <div id="album-hero-art" class="w-32 h-32 sm:w-52 sm:h-52 md:w-56 md:h-56 rounded-3xl bg-zinc-100 flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.12)] border border-white/80 relative">
                         <img id="album-hero-img" src="" class="w-full h-full object-cover hidden" referrerpolicy="no-referrer">
                         <div id="album-hero-placeholder" class="text-zinc-400">
                             <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
@@ -1437,15 +1528,15 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
                             <span id="album-hero-badge" class="uppercase tracking-wider">Album</span>
                         </div>
-                        <h1 id="album-hero-name" class="text-3xl sm:text-4xl md:text-5xl font-extrabold text-zinc-900 tracking-tight leading-tight truncate">Album Title</h1>
-                        <div class="flex items-center justify-center md:justify-start gap-2 mt-2 flex-wrap">
+                        <h1 id="album-hero-name" class="text-2xl sm:text-4xl md:text-5xl font-extrabold text-zinc-900 tracking-tight leading-tight truncate">Album Title</h1>
+                        <div class="flex items-center justify-center md:justify-start gap-2 mt-1.5 sm:mt-2 flex-wrap">
                             <button id="album-hero-artist" class="text-sm sm:text-base font-semibold text-zinc-800 hover:text-black hover:underline cursor-pointer transition-colors">Artist Name</button>
                             <span class="text-zinc-400">•</span>
                             <span id="album-hero-meta" class="text-xs sm:text-sm font-medium text-zinc-500">2024</span>
                         </div>
-                        <p id="album-hero-track-count" class="text-xs font-semibold text-zinc-400 mt-2">Loading tracklist...</p>
+                        <p id="album-hero-track-count" class="text-xs font-semibold text-zinc-400 mt-1.5 sm:mt-2">Loading tracklist...</p>
 
-                        <div class="flex items-center justify-center md:justify-start gap-3 mt-5 flex-wrap">
+                        <div class="flex items-center justify-center md:justify-start gap-3 mt-4 sm:mt-5 flex-wrap">
                             <button id="album-play-all-btn" class="bubbly-hover flex items-center justify-center w-11 h-11 rounded-full bg-zinc-900 text-white shadow-md hover:bg-zinc-800 transition-all cursor-pointer shrink-0" title="Play Album">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                             </button>
@@ -1454,7 +1545,7 @@
                 </div>
 
                 <!-- Album Tracks Container -->
-                <div class="bg-white/80 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-7 shadow-sm">
+                <div class="bg-white/80 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-4 sm:p-7 shadow-sm">
                     <div class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-4 px-3 flex justify-between items-center border-b border-zinc-100 pb-2">
                         <span>Tracklist</span>
                         <span id="album-tracks-header-count" class="text-[10px] font-medium text-zinc-400"></span>
@@ -1470,11 +1561,24 @@
         </main>
     </div>
 
-    <!-- Bottom Player Bar (Visible on search and library) -->
-    <div id="bottom-player" class="fixed bottom-6 left-1/2 w-[calc(100%-1.5rem)] sm:w-[calc(100%-3rem)] max-w-4xl h-[60px] sm:h-[64px] bg-white/85 backdrop-blur-lg border border-zinc-200/90 shadow-[0_8px_30px_rgb(0,0,0,0.06)] rounded-full px-3.5 sm:px-4 box-border flex justify-between items-center z-20 group hidden-force">
+    <!-- Bottom Player Bar (On Desktop: Wide Navbar + Music Player; On Mobile: Floating Player) -->
+    <div id="bottom-player" class="fixed bottom-6 left-1/2 w-[calc(100%-1.5rem)] sm:w-[calc(100%-3rem)] max-w-4xl sm:max-w-[1440px] h-[60px] sm:h-[68px] bg-white/85 backdrop-blur-lg border border-zinc-200/90 shadow-[0_8px_30px_rgb(0,0,0,0.06)] rounded-full px-3.5 sm:px-5 box-border flex justify-between items-center z-20 group hidden-force">
         <div id="bottom-player-content" class="w-full h-full flex justify-between items-center">
-            <!-- Left: Track info -->
-            <div class="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0 sm:w-1/3 sm:min-w-[170px] h-full cursor-pointer pr-1" id="bottom-player-info">
+            <!-- Desktop Left Side: Navigation Buttons (Search, Library, Now Playing) -->
+            <nav id="bp-desktop-nav" class="hidden sm:flex items-center gap-1.5 pr-4 mr-3 border-r border-zinc-200/90 shrink-0 h-11">
+                <a href="#search" id="bp-nav-search" class="yolk-active min-w-[92px] whitespace-nowrap shrink-0 text-center text-xs font-semibold px-4 h-9 flex items-center justify-center rounded-full sleek-transition">
+                    Search
+                </a>
+                <a href="#library" id="bp-nav-library" class="sleek-hover min-w-[92px] whitespace-nowrap shrink-0 text-center text-xs font-semibold px-4 h-9 flex items-center justify-center rounded-full text-zinc-600 sleek-transition">
+                    Library
+                </a>
+                <a href="#now-playing" id="bp-nav-now-playing" class="sleek-hover nav-hidden min-w-0 whitespace-nowrap shrink-0 text-center text-xs font-semibold px-4 h-9 flex items-center justify-center rounded-full text-zinc-600 sleek-transition">
+                    Now Playing
+                </a>
+            </nav>
+
+            <!-- Track info (Always shows artist on desktop & mobile) -->
+            <div class="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0 sm:min-w-[180px] h-full cursor-pointer pr-1" id="bottom-player-info">
                 <div class="bottom-thumb w-10 h-10 bg-zinc-100 border border-zinc-200 rounded-[12px] shrink-0 flex items-center justify-center shadow-inner overflow-hidden relative">
                     <img id="bottom-player-img" src="" alt="Cover" class="w-full h-full object-cover hidden" referrerpolicy="no-referrer">
                     <div id="bottom-player-placeholder" class="flex items-center justify-center text-zinc-400">
@@ -1542,7 +1646,7 @@
             </div>
 
             <!-- Right: Progress & Time & Volume (Hidden on phone view to keep bar compact) -->
-            <div class="hidden sm:flex w-1/3 min-w-[170px] justify-end items-center gap-2">
+            <div class="hidden sm:flex flex-1 min-w-[180px] max-w-[300px] justify-end items-center gap-2">
                 <span id="bottom-player-current-time" class="text-[10px] text-zinc-400 font-medium select-none">0:00</span>
                 <div id="bottom-player-progress-bar" class="w-full max-w-[70px] sm:max-w-[100px] h-1.5 bg-zinc-200/80 rounded-full overflow-hidden relative cursor-pointer hover:h-2 transition-all">
                     <div id="bottom-player-progress-fill" class="absolute left-0 top-0 w-0 h-full bg-zinc-800 pointer-events-none"></div>
@@ -1602,7 +1706,7 @@
                                     Re-crop
                                 </button>
                             </div>
-                            <input type="file" id="playlist-modal-cover-input" accept="image/*" class="hidden">
+                            <input type="file" id="playlist-modal-cover-input" accept="image/*" style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;">
                         </div>
                     </div>
 
@@ -1659,8 +1763,8 @@
             <p class="text-[11px] text-zinc-500 mb-3 text-left w-full">Drag to pan. Move slider or scroll to zoom.</p>
             
             <!-- Crop Viewport Canvas -->
-            <div class="w-60 h-60 rounded-2xl overflow-hidden bg-zinc-900 relative shadow-inner cursor-grab active:cursor-grabbing border border-zinc-200">
-                <canvas id="crop-canvas" width="240" height="240" class="w-full h-full block"></canvas>
+            <div class="w-60 h-60 rounded-2xl overflow-hidden bg-zinc-900 relative shadow-inner cursor-grab active:cursor-grabbing border border-zinc-200 touch-none select-none">
+                <canvas id="crop-canvas" width="240" height="240" class="w-full h-full block touch-none select-none"></canvas>
             </div>
             
             <!-- Zoom Slider -->
@@ -1864,6 +1968,12 @@
                 'now-playing': document.getElementById('nav-now-playing')
             };
 
+            const bpNavLinks = {
+                search: document.getElementById('bp-nav-search'),
+                library: document.getElementById('bp-nav-library'),
+                'now-playing': document.getElementById('bp-nav-now-playing')
+            };
+
             function navigate() {
                 let hash = window.location.hash.replace('#', '') || 'search';
                 if (!pages[hash]) hash = 'search';
@@ -1873,7 +1983,8 @@
 
                 const dlProg = document.getElementById('yolk-download-progress');
                 if (dlProg) {
-                    dlProg.style.bottom = (hash === 'now-playing') ? '16px' : '86px';
+                    const isDesktop = window.innerWidth >= 640;
+                    dlProg.style.bottom = (!isDesktop && hash === 'now-playing') ? '16px' : '92px';
                 }
 
                 if (hash !== 'library') {
@@ -1903,23 +2014,31 @@
 
                 // Update nav links: map album and artist to library
                 const activeNavKey = (hash === 'library' || hash === 'album' || hash === 'artist') ? 'library' : hash;
-                Object.keys(navLinks).forEach(key => {
-                    const el = navLinks[key];
-                    if (!el) return;
-                    if (key === activeNavKey) {
-                        el.classList.add('yolk-active', '!text-white');
-                        el.classList.remove('sleek-hover', 'text-zinc-600');
-                        el.style.color = '#ffffff';
-                    } else {
-                        el.classList.remove('yolk-active', '!text-white');
-                        el.classList.add('sleek-hover', 'text-zinc-600');
-                        el.style.color = '';
-                    }
+                [navLinks, bpNavLinks].forEach(group => {
+                    Object.keys(group).forEach(key => {
+                        const el = group[key];
+                        if (!el) return;
+                        if (key === activeNavKey) {
+                            el.classList.add('yolk-active', '!text-white');
+                            el.classList.remove('sleek-hover', 'text-zinc-600');
+                            el.style.color = '#ffffff';
+                        } else {
+                            el.classList.remove('yolk-active', '!text-white');
+                            el.classList.add('sleek-hover', 'text-zinc-600');
+                            el.style.color = '';
+                        }
+                    });
                 });
 
-                if (hash === 'now-playing' && navLinks['now-playing']) {
-                    navLinks['now-playing'].classList.remove('nav-hidden');
-                    navLinks['now-playing'].classList.add('nav-visible');
+                if (hash === 'now-playing') {
+                    if (navLinks['now-playing']) {
+                        navLinks['now-playing'].classList.remove('nav-hidden');
+                        navLinks['now-playing'].classList.add('nav-visible');
+                    }
+                    if (bpNavLinks['now-playing']) {
+                        bpNavLinks['now-playing'].classList.remove('nav-hidden');
+                        bpNavLinks['now-playing'].classList.add('nav-visible');
+                    }
                 }
 
                 if (typeof window.updateTopNavTint === 'function') {
@@ -1961,19 +2080,21 @@
 
             const searchInputEl = document.getElementById('searchInput');
 
-            Object.keys(navLinks).forEach(key => {
-                const link = navLinks[key];
-                if (!link) return;
-                link.addEventListener('click', (e) => {
-                    const currentHash = window.location.hash.replace('#', '') || 'search';
-                    if (currentHash === key) {
-                        e.preventDefault();
-                        if (key === 'search' && window.innerWidth < 640) {
-                            if (searchInputEl) searchInputEl.focus();
-                        } else {
-                            scrollToTopOf(key);
+            [navLinks, bpNavLinks].forEach(group => {
+                Object.keys(group).forEach(key => {
+                    const link = group[key];
+                    if (!link) return;
+                    link.addEventListener('click', (e) => {
+                        const currentHash = window.location.hash.replace('#', '') || 'search';
+                        if (currentHash === key) {
+                            e.preventDefault();
+                            if (key === 'search' && window.innerWidth < 640) {
+                                if (searchInputEl) searchInputEl.focus();
+                            } else {
+                                scrollToTopOf(key);
+                            }
                         }
-                    }
+                    });
                 });
             });
 
