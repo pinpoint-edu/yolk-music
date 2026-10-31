@@ -114,23 +114,50 @@
             transform: scaleX(1) translateX(0) !important;
         }
 
-        /* Desktop Bottom Bar Now Playing Nav Pill: Force minimum width so full text always displays */
+        /* Desktop Bottom Bar Now Playing Nav Pill: ONLY shows if a song is playing, with full minimum width */
         #bp-desktop-nav #bp-nav-now-playing {
-            display: inline-flex !important;
+            display: none !important;
             align-items: center !important;
             justify-content: center !important;
+            min-width: 0 !important;
+            max-width: 0 !important;
+            width: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            flex-shrink: 0 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+            transform: scale(0.9) !important;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
+
+        #bp-desktop-nav #bp-nav-now-playing.nav-visible {
+            display: inline-flex !important;
             min-width: 126px !important;
             max-width: none !important;
             width: auto !important;
             padding-left: 12px !important;
             padding-right: 14px !important;
-            flex-shrink: 0 !important;
-            white-space: nowrap !important;
-            overflow: visible !important;
             opacity: 1 !important;
             visibility: visible !important;
             pointer-events: auto !important;
-            transform: none !important;
+            overflow: visible !important;
+            transform: scale(1) !important;
+        }
+
+        #bp-desktop-nav #bp-nav-now-playing.nav-hidden {
+            display: none !important;
+            min-width: 0 !important;
+            max-width: 0 !important;
+            width: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
         }
 
         #bp-desktop-nav #bp-nav-now-playing span {
@@ -148,6 +175,26 @@
         #bottom-player-prev,
         #bottom-player-next {
             border-radius: 9999px !important;
+        }
+
+        /* Unified Bottom-Right Notification Stack Container */
+        #yolk-notification-container {
+            position: fixed;
+            right: 20px;
+            bottom: 96px;
+            z-index: 99999;
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: flex-end;
+            gap: 8px;
+            pointer-events: none;
+            max-width: calc(100vw - 32px);
+            transition: bottom 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @media (max-width: 639px) {
+            body[data-page="now-playing"] #yolk-notification-container {
+                bottom: 24px !important;
+            }
         }
 
         /* Nudged slightly lower so Safari top edge fade never clips title or navbar */
@@ -799,12 +846,22 @@
             }
         }
 
-        /* Quote Lyrics Button Icon — Always crisp white when active */
-        #np-lyrics-btn.is-active svg,
-        .now-playing-container.lyrics-active #np-lyrics-btn svg,
-        #lyrics-bar-lyrics-toggle svg {
+        /* In light mode: Quote Lyrics Button Icon stays black and becomes solid black (not white) */
+        body:not(.dark-mode) #np-lyrics-btn.is-active svg,
+        body:not(.dark-mode) .now-playing-container.lyrics-active #np-lyrics-btn svg,
+        body:not(.dark-mode) #lyrics-bar-lyrics-toggle svg {
+            color: #000000 !important;
+            stroke: #000000 !important;
+            fill: #000000 !important;
+        }
+
+        /* In dark mode: Quote Lyrics Button Icon is crisp solid white */
+        body.dark-mode #np-lyrics-btn.is-active svg,
+        body.dark-mode .now-playing-container.lyrics-active #np-lyrics-btn svg,
+        body.dark-mode #lyrics-bar-lyrics-toggle svg {
             color: #ffffff !important;
             stroke: #ffffff !important;
+            fill: #ffffff !important;
         }
 
         /* Downloaded Offline Badge: Solid Black in Light Mode, Dark Emerald Green in Dark Mode */
@@ -1916,6 +1973,7 @@
     </script>
     <div id="safari-top-color-shim" style="position: fixed; top: 0; left: 0; right: 0; height: 4px; z-index: 40; pointer-events: none; background-color: #FCFBF8;"></div>
     <div id="top-white-fade-bar" aria-hidden="true"></div>
+    <div id="yolk-notification-container" aria-live="polite"></div>
 
     <!-- Phone Portrait Orientation Lock Overlay -->
     <div id="portrait-lock-overlay" class="fixed inset-0 z-[99999] bg-[#FCFBF8] flex-col items-center justify-center p-6 text-center select-none">
@@ -3327,15 +3385,8 @@
                     });
                 });
 
-                if (hash === 'now-playing') {
-                    if (navLinks['now-playing']) {
-                        navLinks['now-playing'].classList.remove('nav-hidden');
-                        navLinks['now-playing'].classList.add('nav-visible');
-                    }
-                    if (bpNavLinks['now-playing']) {
-                        bpNavLinks['now-playing'].classList.remove('nav-hidden');
-                        bpNavLinks['now-playing'].classList.add('nav-visible');
-                    }
+                if (typeof window.updateNowPlayingNavVisibility === 'function') {
+                    window.updateNowPlayingNavVisibility();
                 }
 
                 if (typeof window.updateTopNavTint === 'function') {

@@ -488,6 +488,19 @@ function isFavorite(id) {
     return favorites.some(f => f.id === id);
 }
 
+// ==========================================
+// Unified Bottom-Right Notification Stack (Toasts & Downloads)
+// ==========================================
+function getNotificationContainer() {
+    let container = document.getElementById('yolk-notification-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'yolk-notification-container';
+        document.body.appendChild(container);
+    }
+    return container;
+}
+
 let activeToastTimeout = null;
 let activeToastEl = null;
 
@@ -499,8 +512,9 @@ function showToast(msg) {
         activeToastEl = null;
     }
 
+    const container = getNotificationContainer();
     const toast = document.createElement('div');
-    toast.className = 'yolk-toast';
+    toast.className = 'yolk-toast-item pointer-events-auto select-none';
     
     // Determine icon based on message content
     let iconSvg = '';
@@ -520,44 +534,39 @@ function showToast(msg) {
     `;
 
     toast.style.cssText = `
-        position: fixed;
-        top: 24px;
-        left: 50%;
-        transform: translate(-50%, -24px) scale(0.92);
-        opacity: 0;
-        background: ${isDark ? 'rgba(24, 24, 29, 0.92)' : 'rgba(255, 255, 255, 0.90)'};
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
+        background: ${isDark ? 'rgba(24, 24, 29, 0.94)' : 'rgba(255, 255, 255, 0.92)'};
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
         color: ${isDark ? '#f4f4f5' : '#18181b'};
         padding: 9px 18px;
         border-radius: 9999px;
-        border: 1px solid ${isDark ? 'rgba(63, 63, 70, 0.85)' : 'rgba(228, 228, 231, 0.85)'};
+        border: 1px solid ${isDark ? 'rgba(63, 63, 70, 0.85)' : 'rgba(228, 228, 231, 0.90)'};
         box-shadow: ${isDark ? '0 14px 34px -4px rgba(0, 0, 0, 0.55)' : '0 14px 34px -4px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.04)'};
-        z-index: 9999;
-        pointer-events: none;
-        display: flex;
+        display: inline-flex;
         align-items: center;
         gap: 8px;
         max-width: calc(100vw - 32px);
-        transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+        transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+        transform: translateY(12px) scale(0.95);
+        opacity: 0;
     `;
 
-    document.body.appendChild(toast);
+    container.appendChild(toast);
     activeToastEl = toast;
 
     // Trigger enter animation
     requestAnimationFrame(() => {
-        toast.style.transform = 'translate(-50%, 0) scale(1)';
+        toast.style.transform = 'translateY(0) scale(1)';
         toast.style.opacity = '1';
     });
 
     activeToastTimeout = setTimeout(() => {
-        toast.style.transform = 'translate(-50%, -16px) scale(0.96)';
+        toast.style.transform = 'translateY(-8px) scale(0.96)';
         toast.style.opacity = '0';
         setTimeout(() => {
             if (toast.parentNode) toast.remove();
             if (activeToastEl === toast) activeToastEl = null;
-        }, 400);
+        }, 300);
     }, 2800);
 }
 
@@ -575,29 +584,24 @@ function getSupportedAudioFormat() {
 }
 
 // ==========================================
-// Download Progress Manager (White Frosted Theme)
+// Download Progress Manager (Bottom-Right Stack)
 // ==========================================
 let downloadProgressEl = null;
 let downloadProgressDismissTimeout = null;
 
 function updateDownloadProgressUI({ title, percent, receivedBytes, totalBytes, statusText, isDone, isError, errorMessage }) {
-    const isNowPlaying = document.body.dataset.page === 'now-playing' || window.location.hash === '#now-playing';
-    const bottomPos = isNowPlaying ? '20px' : '90px';
+    const container = getNotificationContainer();
     const isDark = document.body.classList.contains('dark-mode');
     const textCol = isDark ? '#f4f4f5' : '#18181b';
 
     if (!downloadProgressEl) {
         downloadProgressEl = document.createElement('div');
         downloadProgressEl.id = 'yolk-download-progress';
+        downloadProgressEl.className = 'pointer-events-auto select-none';
         downloadProgressEl.style.cssText = `
-            position: fixed;
-            bottom: ${bottomPos};
-            right: 20px;
-            left: auto;
-            z-index: 9999;
             background: ${isDark ? 'rgba(24, 24, 29, 0.94)' : 'rgba(255, 255, 255, 0.92)'};
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
             border: 1px solid ${isDark ? 'rgba(63, 63, 70, 0.85)' : 'rgba(228, 228, 231, 0.9)'};
             border-radius: 9999px;
             padding: 8px 14px;
@@ -609,12 +613,11 @@ function updateDownloadProgressUI({ title, percent, receivedBytes, totalBytes, s
             gap: 8px;
             font-size: 12px;
             font-weight: 600;
-            transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-            transform: translateY(16px) scale(0.95);
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+            transform: translateY(12px) scale(0.95);
             opacity: 0;
-            pointer-events: auto;
         `;
-        document.body.appendChild(downloadProgressEl);
+        container.appendChild(downloadProgressEl);
         requestAnimationFrame(() => {
             if (downloadProgressEl) {
                 downloadProgressEl.style.transform = 'translateY(0) scale(1)';
@@ -622,9 +625,9 @@ function updateDownloadProgressUI({ title, percent, receivedBytes, totalBytes, s
             }
         });
     } else {
-        downloadProgressEl.style.bottom = bottomPos;
-        downloadProgressEl.style.right = '20px';
-        downloadProgressEl.style.left = 'auto';
+        if (downloadProgressEl.parentNode !== container) {
+            container.appendChild(downloadProgressEl);
+        }
         downloadProgressEl.style.background = isDark ? 'rgba(24, 24, 29, 0.94)' : 'rgba(255, 255, 255, 0.92)';
         downloadProgressEl.style.borderColor = isDark ? 'rgba(63, 63, 70, 0.85)' : 'rgba(228, 228, 231, 0.9)';
         downloadProgressEl.style.color = textCol;
@@ -682,15 +685,104 @@ function updateDownloadProgressUI({ title, percent, receivedBytes, totalBytes, s
 
 function dismissDownloadProgressUI() {
     if (!downloadProgressEl) return;
-    downloadProgressEl.style.transform = 'translateY(16px) scale(0.95)';
+    downloadProgressEl.style.transform = 'translateY(-8px) scale(0.95)';
     downloadProgressEl.style.opacity = '0';
     setTimeout(() => {
         if (downloadProgressEl) {
             downloadProgressEl.remove();
             downloadProgressEl = null;
         }
-    }, 300);
+    }, 250);
 }
+
+// ==========================================
+// Custom Frosted Glass Confirmation Modal
+// ==========================================
+function showCustomConfirm({
+    title = 'Confirm',
+    message = 'Are you sure?',
+    confirmText = 'Confirm',
+    cancelText = 'Cancel',
+    isDestructive = false,
+    icon = ''
+}) {
+    return new Promise((resolve) => {
+        const isDark = document.body.classList.contains('dark-mode');
+        const overlay = document.createElement('div');
+        overlay.className = 'fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/40 backdrop-blur-md transition-opacity duration-200 opacity-0';
+        
+        let iconHtml = icon;
+        if (!iconHtml) {
+            iconHtml = isDestructive
+                ? `<div class="w-12 h-12 rounded-full ${isDark ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-600'} flex items-center justify-center mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                   </div>`
+                : `<div class="w-12 h-12 rounded-full ${isDark ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-600'} flex items-center justify-center mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                   </div>`;
+        }
+
+        overlay.innerHTML = `
+            <div class="relative w-full max-w-sm rounded-[24px] p-6 text-center transform scale-95 transition-all duration-200 select-none shadow-[0_24px_50px_rgba(0,0,0,0.25)] border ${
+                isDark 
+                    ? 'bg-[#18181d]/95 border-white/10 text-white' 
+                    : 'bg-white/95 border-black/5 text-zinc-900'
+            } backdrop-blur-2xl">
+                <div class="flex flex-col items-center">
+                    ${iconHtml}
+                    <h3 class="text-base font-bold tracking-tight mb-1.5">${escapeHtml(title)}</h3>
+                    <p class="text-xs ${isDark ? 'text-zinc-400' : 'text-zinc-500'} leading-relaxed mb-6 font-medium">${escapeHtml(message)}</p>
+                    <div class="flex items-center gap-2.5 w-full">
+                        <button id="modal-cancel-btn" class="flex-1 h-11 rounded-full text-xs font-bold transition-all ${
+                            isDark 
+                                ? 'bg-white/10 hover:bg-white/15 text-zinc-200' 
+                                : 'bg-black/5 hover:bg-black/10 text-zinc-700'
+                        } cursor-pointer active:scale-95">${escapeHtml(cancelText)}</button>
+                        <button id="modal-confirm-btn" class="flex-1 h-11 rounded-full text-xs font-bold transition-all ${
+                            isDestructive 
+                                ? 'bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-500/20' 
+                                : isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-zinc-900 text-white hover:bg-zinc-800'
+                        } cursor-pointer active:scale-95">${escapeHtml(confirmText)}</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        const card = overlay.querySelector('div');
+        requestAnimationFrame(() => {
+            overlay.classList.remove('opacity-0');
+            card.classList.remove('scale-95');
+            card.classList.add('scale-100');
+        });
+
+        const close = (confirmed) => {
+            overlay.classList.add('opacity-0');
+            card.classList.remove('scale-100');
+            card.classList.add('scale-95');
+            setTimeout(() => {
+                if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+                resolve(confirmed);
+            }, 200);
+        };
+
+        overlay.querySelector('#modal-cancel-btn').onclick = () => close(false);
+        overlay.querySelector('#modal-confirm-btn').onclick = () => close(true);
+        overlay.onclick = (e) => {
+            if (e.target === overlay) close(false);
+        };
+
+        const handleKey = (e) => {
+            if (e.key === 'Escape') {
+                window.removeEventListener('keydown', handleKey);
+                close(false);
+            }
+        };
+        window.addEventListener('keydown', handleKey);
+    });
+}
+window.showCustomConfirm = showCustomConfirm;
 
 // ==========================================
 // IndexedDB Offline Storage Manager
@@ -1122,13 +1214,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 if (npLyricsBtn) {
                     npLyricsBtn.classList.add('is-active');
-                    npLyricsBtn.className = 'flex items-center justify-center w-9 h-9 rounded-full bg-black text-white shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0 is-active';
+                    const isDark = document.body.classList.contains('dark-mode');
+                    if (isDark) {
+                        npLyricsBtn.className = 'lyrics-glossy-btn flex items-center justify-center w-9 h-9 rounded-full bg-zinc-800/80 backdrop-blur-xl border border-white/20 shadow-md hover:scale-105 active:scale-95 transition-all text-white cursor-pointer shrink-0 is-active';
+                    } else {
+                        npLyricsBtn.className = 'lyrics-glossy-btn flex items-center justify-center w-9 h-9 rounded-full bg-white/80 backdrop-blur-xl border border-black/10 shadow-md hover:scale-105 active:scale-95 transition-all text-black cursor-pointer shrink-0 is-active';
+                    }
                     const npLyricsSvg = npLyricsBtn.querySelector('svg');
                     if (npLyricsSvg) {
-                        npLyricsSvg.classList.remove('text-black');
-                        npLyricsSvg.classList.add('text-white');
-                        npLyricsSvg.style.color = '#ffffff';
-                        npLyricsSvg.style.stroke = '#ffffff';
+                        if (isDark) {
+                            npLyricsSvg.style.color = '#ffffff';
+                            npLyricsSvg.style.stroke = '#ffffff';
+                            npLyricsSvg.style.fill = '#ffffff';
+                        } else {
+                            npLyricsSvg.style.color = '#000000';
+                            npLyricsSvg.style.stroke = '#000000';
+                            npLyricsSvg.style.fill = '#000000';
+                        }
                     }
                 }
             } else {
@@ -1140,9 +1242,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     npLyricsBtn.className = 'lyrics-glossy-btn flex items-center justify-center w-9 h-9 rounded-full bg-white/50 backdrop-blur-md border border-white/80 shadow-xs hover:bg-white/80 hover:scale-105 active:scale-95 transition-all text-black cursor-pointer shrink-0';
                     const npLyricsSvg = npLyricsBtn.querySelector('svg');
                     if (npLyricsSvg) {
-                        npLyricsSvg.classList.remove('text-white');
                         npLyricsSvg.style.color = '';
                         npLyricsSvg.style.stroke = '';
+                        npLyricsSvg.style.fill = 'none';
                     }
                 }
             }
@@ -3222,7 +3324,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showSpinner(false);
                 isPlaying = true;
                 updatePlayPauseButtons();
-                updateNowPlayingNavVisibility(true);
+                updateNowPlayingNavVisibility();
                 if (shouldCrossfadeIn && crossfadeSeconds > 0) {
                     const rampMs = Math.max(750, Math.min(crossfadeSeconds * 650, 3800));
                     const steps = 28;
@@ -3263,23 +3365,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function updateNowPlayingNavVisibility(isVisible) {
+    function updateNowPlayingNavVisibility() {
         const npNav = document.getElementById('nav-now-playing');
         const bpNpNav = document.getElementById('bp-nav-now-playing');
-        const shouldShow = Boolean(isVisible && currentTrack);
-        if (npNav) {
+        const shouldShow = Boolean(isPlaying && currentTrack);
+        [npNav, bpNpNav].forEach(el => {
+            if (!el) return;
             if (shouldShow) {
-                npNav.classList.remove('nav-hidden');
-                npNav.classList.add('nav-visible');
+                el.classList.remove('nav-hidden');
+                el.classList.add('nav-visible');
             } else {
-                npNav.classList.add('nav-hidden');
-                npNav.classList.remove('nav-visible');
+                el.classList.add('nav-hidden');
+                el.classList.remove('nav-visible');
             }
-        }
-        if (bpNpNav) {
-            bpNpNav.classList.remove('nav-hidden');
-            bpNpNav.classList.add('nav-visible');
-        }
+        });
     }
     window.updateNowPlayingNavVisibility = updateNowPlayingNavVisibility;
 
@@ -3469,7 +3568,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateNowPlayingUI(track);
         updateBottomPlayerUI(track);
         updateNowPlayingFavButton();
-        updateNowPlayingNavVisibility(true);
+        updateNowPlayingNavVisibility();
         if (typeof window.updateCurrentTrackDownloadUI === 'function') window.updateCurrentTrackDownloadUI();
         if (typeof updateQueueModalUI === 'function') updateQueueModalUI();
 
@@ -4090,6 +4189,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (npPlayPauseBtn) npPlayPauseBtn.innerHTML = isPlaying ? pauseIcon : playIcon;
         if (bpPlayPauseBtn) bpPlayPauseBtn.innerHTML = isPlaying ? bpPauseIcon : bpPlayIcon;
         if (lyricsBarPlayPause) lyricsBarPlayPause.innerHTML = isPlaying ? bpPauseIcon : bpPlayIcon;
+        updateNowPlayingNavVisibility();
     }
 
     function updateNowPlayingFavButton() {
@@ -5569,8 +5669,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     openEditPlaylistModal(pl);
                 };
 
-                deleteBtn.onclick = () => {
-                    if (confirm(`Are you sure you want to delete the playlist "${pl.name}"?`)) {
+                deleteBtn.onclick = async () => {
+                    const ok = await showCustomConfirm({
+                        title: 'Delete Playlist',
+                        message: `Are you sure you want to delete "${pl.name}"? This action cannot be undone.`,
+                        confirmText: 'Delete Playlist',
+                        cancelText: 'Keep Playlist',
+                        isDestructive: true
+                    });
+                    if (ok) {
                         playlists = playlists.filter(p => p.id !== playlistId);
                         savePlaylists();
                         showToast('Playlist deleted');
@@ -5675,13 +5782,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 downloadAllBtn.onclick = async () => {
                     const isAll = await updateDownloadAllStatus();
                     if (isAll) {
-                        if (confirm(`Remove all downloaded songs in "${playlistName}" from offline storage?`)) {
+                        const ok = await showCustomConfirm({
+                            title: 'Remove Offline Songs',
+                            message: `Remove all downloaded songs in "${playlistName}" from offline storage?`,
+                            confirmText: 'Remove Downloads',
+                            cancelText: 'Keep Offline',
+                            isDestructive: true
+                        });
+                        if (ok) {
                             for (const t of trackList) {
                                 await YolkOfflineDB.deleteTrack(getTrackUid(t));
                             }
                             if (typeof window.refreshAllDownloadButtonsUI === 'function') {
                                 window.refreshAllDownloadButtonsUI();
                             }
+                            showToast('Removed playlist songs from downloads');
                         }
                     } else {
                         enqueueLibraryDownload(trackList);
@@ -6972,13 +7087,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         const isAll = await updateAlbumDownloadStatus();
                         const albumTitle = data.name || 'Album';
                         if (isAll) {
-                            if (confirm(`Remove all downloaded songs from "${albumTitle}"?`)) {
+                            const ok = await showCustomConfirm({
+                                title: 'Remove Offline Album',
+                                message: `Remove all downloaded songs from "${albumTitle}"?`,
+                                confirmText: 'Remove Downloads',
+                                cancelText: 'Keep Offline',
+                                isDestructive: true
+                            });
+                            if (ok) {
                                 for (const t of tracks) {
                                     await YolkOfflineDB.deleteTrack(getTrackUid(t));
                                 }
                                 if (typeof window.refreshAllDownloadButtonsUI === 'function') {
                                     window.refreshAllDownloadButtonsUI();
                                 }
+                                showToast('Removed album songs from downloads');
                             }
                         } else {
                             // Also save album as a playlist in Library if not already present
@@ -7817,9 +7940,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast('No offline downloads to delete');
                 return;
             }
-            if (!confirm(`Delete all ${allRecords.length} downloaded offline songs from this device? (Your playlists & favorites will remain intact.)`)) {
-                return;
-            }
+            const ok = await showCustomConfirm({
+                title: 'Clear All Downloads',
+                message: `Delete all ${allRecords.length} downloaded offline songs from this device? Your playlists and favorites will remain intact.`,
+                confirmText: 'Clear All',
+                cancelText: 'Cancel',
+                isDestructive: true
+            });
+            if (!ok) return;
             _yolkDownloadQueue.length = 0;
             for (const rec of allRecords) {
                 await YolkOfflineDB.deleteTrack(rec.uid);
@@ -8704,10 +8832,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (progFill) progFill.style.width = `${pct}%`;
         if (curEl) curEl.textContent = formatTime(cur);
         if (durEl) durEl.textContent = formatTime(dur);
-        if (playBtn) {
+        if (playBtn && playBtn._lastPlayingState !== isPlaying) {
+            playBtn._lastPlayingState = isPlaying;
             playBtn.innerHTML = isPlaying
-                ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`
-                : `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="margin-left:2px"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
+                ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="pointer-events:none;"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`
+                : `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="margin-left:2px;pointer-events:none;"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
         }
         if (favBtn && currentTrack) {
             const fav = isFavorite(currentTrack.id);
@@ -8973,6 +9102,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             display: flex; align-items: center; justify-content: center;
                             transition: transform 0.15s ease, opacity 0.15s ease;
                         }
+                        button svg { pointer-events: none !important; }
                         button:hover { transform: scale(1.1); }
                         button:active { transform: scale(0.94); }
                         .icon-btn {
@@ -9016,7 +9146,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     </div>
                 `;
-                doc.getElementById('pip-play').onclick = () => togglePlayPause();
+                const playBtnEl = doc.getElementById('pip-play');
+                const triggerPlayPause = (e) => {
+                    if (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                    togglePlayPause();
+                    updateDocumentPipDOM();
+                };
+                playBtnEl.onclick = triggerPlayPause;
+                playBtnEl.onpointerup = (e) => {
+                    if (e.pointerType === 'touch') triggerPlayPause(e);
+                };
                 doc.getElementById('pip-prev').onclick = () => playPrev();
                 doc.getElementById('pip-next').onclick = () => playNext();
                 doc.getElementById('pip-fav').onclick = () => {
@@ -9057,6 +9199,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 pipVideoEl.setAttribute('webkit-playsinline', '');
                 pipVideoEl.style.cssText = 'position:fixed;bottom:0;right:0;width:1px;height:1px;opacity:0.001;pointer-events:none;z-index:-1;';
                 document.body.appendChild(pipVideoEl);
+
+                // Handle native video PiP pause / play controls
+                pipVideoEl.addEventListener('pause', () => {
+                    if (isPlaying) {
+                        togglePlayPause();
+                    }
+                });
+                pipVideoEl.addEventListener('play', () => {
+                    if (!isPlaying) {
+                        togglePlayPause();
+                    }
+                });
             }
             if (!pipVideoEl.srcObject && typeof pipStreamCanvas.captureStream === 'function') {
                 pipVideoEl.srcObject = pipStreamCanvas.captureStream(30);
@@ -9183,7 +9337,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial render of library and controls
     renderLibrary();
     updateLibraryButtons();
-    updateNowPlayingNavVisibility(!!currentTrack);
+    updateNowPlayingNavVisibility();
 
     // Now Playing Inactivity / Idle Auto-Hide
     let nowPlayingIdleTimeout = null;
