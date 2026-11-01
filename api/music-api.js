@@ -1,5 +1,6 @@
 import extractCobaltMedia from './cobalt-engine.js';
 import { Readable } from 'stream';
+import { isAppleMusicPlaylistUrl, extractAppleMusicPlaylistId, scrapeAppleMusicPlaylist, convertAppleMusicToYTM } from './apple-music.js';
 
 const MUSIC_API_BASE = 'https://bhindi1.ddns.net/music/api';
 
@@ -486,7 +487,7 @@ export default async function handler(req, res) {
   const { pathname } = new URL(req.url || '/', `http://${req.headers?.host || 'localhost'}`);
   const pathParts = pathname.split('/').filter(Boolean);
   const endpointFromPath = pathParts[pathParts.length - 1];
-  let { q, query, offset, limit, id, endpoint: endpointFromQuery } = req.query || {};
+  let { q, query, offset, limit, id, url, endpoint: endpointFromQuery } = req.query || {};
   let endpoint = (endpointFromQuery || endpointFromPath);
   if (endpoint && (endpoint.startsWith('stream/') || endpoint.startsWith('stream'))) {
     if (endpoint.includes('/')) {
@@ -1136,6 +1137,27 @@ export default async function handler(req, res) {
             });
         } catch (e) {
             return res.status(500).json({ error: 'Failed to load artist details', message: e.message });
+        }
+    }
+
+    // Apple Music Public Playlist Importer
+    if (endpoint === 'apple-music-playlist' || (endpoint === 'playlist' && isAppleMusicPlaylistUrl(id || url || q))) {
+        const target = id || url || q || pathParts[pathParts.length - 1];
+        try {
+            const scraped = await scrapeAppleMusicPlaylist(target);
+            const converted = await convertAppleMusicToYTM(scraped, searchYTM);
+            const amId = extractAppleMusicPlaylistId(target) || Date.now().toString();
+            return res.status(200).json({
+                id: 'pl_am_' + amId,
+                name: converted.name || 'Apple Music Playlist',
+                description: converted.description || '',
+                artwork_url: converted.artwork_url || '',
+                source: 'AppleMusic',
+                tracks: converted.tracks || []
+            });
+        } catch (err) {
+            console.error('Apple Music playlist import error:', err);
+            return res.status(500).json({ error: err.message || 'Failed to import Apple Music playlist' });
         }
     }
 

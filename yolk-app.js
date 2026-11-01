@@ -1296,21 +1296,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
     }
-    const morePopoversBackdrop = document.getElementById('more-popovers-backdrop');
-
     function openMorePopover(el) {
         if (!el) return;
         el.classList.remove('hidden');
         requestAnimationFrame(() => {
             el.classList.add('popover-open');
         });
-        if (morePopoversBackdrop) {
-            morePopoversBackdrop.classList.remove('hidden');
-            requestAnimationFrame(() => {
-                morePopoversBackdrop.classList.remove('opacity-0');
-                morePopoversBackdrop.classList.add('opacity-100');
-            });
-        }
     }
 
     function closeMorePopover(el) {
@@ -1321,18 +1312,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 el.classList.add('hidden');
             }
         }, 220);
-        setTimeout(() => {
-            const anyOpen = document.querySelectorAll('.more-glass-popover.popover-open').length > 0;
-            if (!anyOpen && morePopoversBackdrop) {
-                morePopoversBackdrop.classList.remove('opacity-100');
-                morePopoversBackdrop.classList.add('opacity-0');
-                setTimeout(() => {
-                    if (!document.querySelectorAll('.more-glass-popover.popover-open').length) {
-                        morePopoversBackdrop.classList.add('hidden');
-                    }
-                }, 200);
-            }
-        }, 20);
     }
 
     function toggleMorePopover(el) {
@@ -1342,14 +1321,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             openMorePopover(el);
         }
-    }
-
-    if (morePopoversBackdrop) {
-        morePopoversBackdrop.addEventListener('click', () => {
-            closeMorePopover(lyricsBarMorePopover);
-            closeMorePopover(npMobileMorePopover);
-            closeMorePopover(bpMobileMorePopover);
-        });
     }
 
     if (lyricsBarMoreBtn) {
@@ -1743,19 +1714,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Attach Universal Circular Blue Loop Drag Gesture
+    // Attach Universal Circular Blue Loop Controls (Scroll & Vertical Drag)
     function attachCircularVolumeControl(containerEl) {
         if (!containerEl) return;
-        let startX = 0;
         let startY = 0;
         let startVol = 1.0;
         let isDragging = false;
         let hasMoved = false;
 
+        // Hover scroll: scroll up increases volume, scroll down decreases volume
+        containerEl.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const step = e.deltaY < 0 ? 0.04 : -0.04;
+            const targetVol = Math.max(0, Math.min(1, currentVolume + step));
+            setMasterVolume(targetVol);
+        }, { passive: false });
+
         containerEl.addEventListener('pointerdown', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            startX = e.clientX;
             startY = e.clientY;
             startVol = currentVolume;
             isDragging = true;
@@ -1770,14 +1748,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!isDragging) return;
             e.preventDefault();
             e.stopPropagation();
-            const dx = e.clientX - startX;
             const dy = e.clientY - startY;
-            if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+            if (Math.abs(dy) > 3) {
                 hasMoved = true;
             }
-            // Drag right (dx > 0) or up (dy < 0) turns volume up (closes blue loop clockwise)
-            // Drag left (dx < 0) or down (dy > 0) turns volume down (opens blue loop counter-clockwise)
-            const delta = (dx - dy) / 135;
+            // Drag up (dy < 0) turns volume up (closes blue loop clockwise)
+            // Drag down (dy > 0) turns volume down (opens blue loop counter-clockwise)
+            // Strictly vertical dragging (no horizontal left-to-right)
+            const delta = -dy / 100;
             const targetVol = Math.max(0, Math.min(1, startVol + delta));
             setMasterVolume(targetVol);
         });
@@ -8021,30 +7999,42 @@ document.addEventListener('DOMContentLoaded', () => {
         ytImportSubmitBtn.addEventListener('click', async () => {
             const rawVal = ytImportInput.value.trim();
             if (!rawVal) {
-                showToast('Please enter a YouTube playlist link or ID.');
+                showToast('Please enter a YouTube or Apple Music playlist link.');
                 return;
             }
 
-            // Extract playlist ID
-            let playlistId = rawVal;
-            const match = rawVal.match(/[?&]list=([a-zA-Z0-9_-]+)/);
-            if (match) {
-                playlistId = match[1];
-            } else if (rawVal.includes('/playlist/')) {
-                const parts = rawVal.split('/playlist/');
-                playlistId = parts[parts.length - 1].split('?')[0];
+            const isAppleMusic = rawVal.includes('music.apple.com') || /^pl\.[a-zA-Z0-9_-]+$/.test(rawVal);
+
+            let reqUrl;
+            if (isAppleMusic) {
+                reqUrl = `${API_BASE}?endpoint=apple-music-playlist&url=${encodeURIComponent(rawVal)}`;
+            } else {
+                // Extract YouTube playlist ID
+                let playlistId = rawVal;
+                const match = rawVal.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+                if (match) {
+                    playlistId = match[1];
+                } else if (rawVal.includes('/playlist/')) {
+                    const parts = rawVal.split('/playlist/');
+                    playlistId = parts[parts.length - 1].split('?')[0];
+                }
+                playlistId = playlistId.replace(/^VL/, '');
+                reqUrl = `${API_BASE}?endpoint=playlist&id=${encodeURIComponent(playlistId)}`;
             }
-            playlistId = playlistId.replace(/^VL/, '');
 
             if (ytImportStatus) {
                 ytImportStatus.classList.remove('hidden');
                 ytImportStatus.classList.add('flex');
             }
-            if (ytImportStatusText) ytImportStatusText.textContent = 'Extracting songs from YouTube…';
+            if (ytImportStatusText) {
+                ytImportStatusText.textContent = isAppleMusic 
+                    ? 'Extracting Apple Music tracks & matching…' 
+                    : 'Extracting songs from YouTube…';
+            }
             ytImportSubmitBtn.disabled = true;
 
             try {
-                const res = await fetch(`${API_BASE}?endpoint=playlist&id=${encodeURIComponent(playlistId)}`);
+                const res = await fetch(reqUrl);
                 const data = await res.json();
 
                 if (!res.ok || !data || !Array.isArray(data.tracks) || data.tracks.length === 0) {
@@ -8056,7 +8046,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const songsOnly = data.tracks.filter(t => {
                     const title = (t.title || t.name || '').toLowerCase();
                     const dur = t.duration || 0;
-                    return t.youtube_id && dur > 0 && !title.includes('podcast') && !title.includes('full album');
+                    return (t.youtube_id || isAppleMusic) && dur >= 0 && !title.includes('podcast') && !title.includes('full album');
                 });
 
                 if (songsOnly.length === 0) {
@@ -8074,11 +8064,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const newPl = {
                     id: 'pl_' + Date.now(),
-                    name: data.name || 'Imported YT Playlist',
+                    name: data.name || (isAppleMusic ? 'Imported Apple Music Playlist' : 'Imported YT Playlist'),
                     description: cleanDesc,
                     cover: data.artwork_url || (songsOnly[0]?.artwork_url || ''),
-                    color: '#18181b',
-                    icon: 'music',
+                    color: isAppleMusic ? '#fa243c' : '#18181b',
+                    icon: isAppleMusic ? 'apple' : 'music',
+                    source: isAppleMusic ? 'AppleMusic' : 'YouTube',
                     tracks: songsOnly
                 };
 
@@ -8086,12 +8077,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 savePlaylists();
                 renderLibrary();
                 closeYtImportModal();
-                showToast(`Imported "${newPl.name}" (${songsOnly.length} songs)!`);
+                showToast(`Imported ${isAppleMusic ? 'Apple Music' : 'YouTube'} playlist "${newPl.name}" (${songsOnly.length} songs)!`);
                 openPlaylistDetail(newPl.id);
                 // Automatically download imported library playlist discreetly in background
                 enqueueLibraryDownload(songsOnly);
             } catch (err) {
-                console.error('YT import error:', err);
+                console.error('Playlist import error:', err);
                 showToast('Failed to import playlist.');
             } finally {
                 if (ytImportStatus) {
