@@ -846,7 +846,16 @@
             }
         }
 
-        /* In light mode: Quote Lyrics Button Icon stays black and becomes solid black (not white) */
+        /* In light mode: Quote Lyrics Button backdrop is frosted light glass with solid black icon */
+        body:not(.dark-mode) #lyrics-bar-lyrics-toggle,
+        body:not(.dark-mode) #np-lyrics-btn.is-active,
+        body:not(.dark-mode) .now-playing-container.lyrics-active #np-lyrics-btn {
+            background: rgba(255, 255, 255, 0.88) !important;
+            backdrop-filter: blur(20px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+            border: 1px solid rgba(0, 0, 0, 0.12) !important;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+        }
         body:not(.dark-mode) #np-lyrics-btn.is-active svg,
         body:not(.dark-mode) .now-playing-container.lyrics-active #np-lyrics-btn svg,
         body:not(.dark-mode) #lyrics-bar-lyrics-toggle svg {
@@ -855,7 +864,16 @@
             fill: #000000 !important;
         }
 
-        /* In dark mode: Quote Lyrics Button Icon is crisp solid white */
+        /* In dark mode: Quote Lyrics Button backdrop is translucent dark glass with solid white icon */
+        body.dark-mode #lyrics-bar-lyrics-toggle,
+        body.dark-mode #np-lyrics-btn.is-active,
+        body.dark-mode .now-playing-container.lyrics-active #np-lyrics-btn {
+            background: rgba(39, 39, 42, 0.82) !important;
+            backdrop-filter: blur(20px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.16) !important;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+        }
         body.dark-mode #np-lyrics-btn.is-active svg,
         body.dark-mode .now-playing-container.lyrics-active #np-lyrics-btn svg,
         body.dark-mode #lyrics-bar-lyrics-toggle svg {
@@ -1029,6 +1047,40 @@
             border: 1px solid rgba(255, 255, 255, 0.14) !important;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
             color: #f4f4f5 !important;
+        }
+
+        /* Draggable Song Seekbars Scrubbing Animation */
+        #now-playing-progress-bar,
+        #bottom-player-progress-bar,
+        #lyrics-bar-progress-bar {
+            touch-action: none !important;
+            user-select: none !important;
+        }
+        #now-playing-progress-bar.is-scrubbing,
+        #bottom-player-progress-bar.is-scrubbing,
+        #lyrics-bar-progress-bar.is-scrubbing {
+            height: 9px !important;
+            box-shadow: 0 0 16px rgba(0, 0, 0, 0.28) !important;
+        }
+        body.dark-mode #now-playing-progress-bar.is-scrubbing,
+        body.dark-mode #bottom-player-progress-bar.is-scrubbing,
+        body.dark-mode #lyrics-bar-progress-bar.is-scrubbing {
+            box-shadow: 0 0 16px rgba(255, 255, 255, 0.35) !important;
+        }
+        #now-playing-progress-bar.is-scrubbing #now-playing-progress-fill,
+        #bottom-player-progress-bar.is-scrubbing #bottom-player-progress-fill,
+        #lyrics-bar-progress-bar.is-scrubbing #lyrics-bar-progress-fill {
+            transition: none !important;
+        }
+        .pl-preset-option.is-selected {
+            border-color: #000000 !important;
+            box-shadow: 0 0 0 2px #000000 !important;
+            background-color: #f4f4f5 !important;
+        }
+        body.dark-mode .pl-preset-option.is-selected {
+            border-color: #ffffff !important;
+            box-shadow: 0 0 0 2px #ffffff !important;
+            background-color: #27272a !important;
         }
 
         /* Bottom Player Morphing Animation & Hover Expansion */
@@ -2129,7 +2181,7 @@
                             </div>
                             <h2 id="playlist-detail-name" class="text-xl sm:text-3xl font-extrabold text-zinc-900 tracking-tight leading-tight line-clamp-2">Playlist Name</h2>
                             <p id="playlist-detail-meta" class="text-xs sm:text-sm font-bold text-zinc-500 mt-1">0 songs • 0 min</p>
-                            <p id="playlist-detail-desc" class="text-xs sm:text-sm text-zinc-500 mt-1.5 line-clamp-2 font-medium max-w-xl">Playlist description</p>
+                            <p id="playlist-detail-desc" class="text-xs sm:text-sm text-zinc-500 mt-1.5 line-clamp-2 font-medium max-w-xl cursor-pointer hover:text-zinc-800 transition-colors" title="Click to view full description">Playlist description</p>
                         </div>
                     </div>
 
@@ -2214,7 +2266,7 @@
                     <button id="now-playing-fav-btn" class="sleek-hover text-black transition-transform hover:scale-110 p-2 cursor-pointer shrink-0" title="Favorite">
                         <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                     </button>
-                    <button id="now-playing-download-btn" class="sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="Download Offline">
+                    <button id="now-playing-download-btn" class="hidden sm:inline-flex sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="Download Offline">
                         <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                     </button>
                     <button id="now-playing-prev" class="sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="Previous Track">
@@ -2283,8 +2335,7 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                                 <span>Download Offline</span>
                             </button>
-                            <button id="np-mobile-more-pip-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 9V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h4"></path><rect width="10" height="7" x="12" y="13" rx="2"></rect></svg>
+                            <button id="np-mobile-more-pip-btn" class="hidden !hidden">
                                 <span>Floating Mini-Player</span>
                             </button>
                         </div>
@@ -2346,7 +2397,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                 </button>
 
-                <button id="lyrics-bar-lyrics-toggle" class="flex items-center justify-center w-8 h-8 rounded-full bg-black text-white hover:scale-105 active:scale-95 transition-all shadow-sm cursor-pointer" title="Close Lyrics">
+                <button id="lyrics-bar-lyrics-toggle" class="flex items-center justify-center w-8 h-8 rounded-full hover:scale-105 active:scale-95 transition-all shadow-sm cursor-pointer" title="Close Lyrics">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path></svg>
                 </button>
 
@@ -2906,83 +2957,188 @@
         </div>
     </div>
 
-    <!-- Modal: Create / Edit Playlist -->
+    <!-- Modal: Create / Edit Playlist (Apple Music-style Customization & Information tabs) -->
     <div id="playlist-modal" class="modal-overlay fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="modal-card bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border border-zinc-100 max-h-[92vh] flex flex-col">
-            <h3 id="playlist-modal-title" class="text-xl font-bold text-zinc-900 mb-3 shrink-0">New Playlist</h3>
-            <div class="flex-1 overflow-y-auto pr-1 flex flex-col gap-4">
-                <!-- Cover Artwork Section -->
-                <div class="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex flex-col gap-3">
-                    <div class="flex items-center gap-4">
-                        <div id="modal-cover-preview" class="w-20 h-20 rounded-2xl bg-white border-2 border-dashed border-zinc-300 overflow-hidden shrink-0 flex items-center justify-center relative shadow-sm cursor-pointer group hover:border-black transition-colors" title="Click to upload & crop photo">
+        <div class="modal-card bg-white rounded-3xl p-5 sm:p-6 w-full max-w-lg shadow-2xl border border-zinc-100 max-h-[92vh] flex flex-col">
+            <div class="flex items-center justify-between shrink-0 mb-2">
+                <h3 id="playlist-modal-title" class="text-xl font-bold text-zinc-900">New Playlist</h3>
+                <button type="button" id="playlist-modal-x" class="p-1.5 rounded-full text-zinc-400 hover:text-zinc-800 hover:bg-zinc-100 transition-colors cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+
+            <!-- Tab Switcher: Customization vs Information -->
+            <div class="flex items-center p-1 bg-zinc-100 rounded-2xl mb-3 shrink-0">
+                <button type="button" id="pl-tab-customize" class="flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all bg-white text-zinc-900 shadow-xs cursor-pointer">
+                    Customization
+                </button>
+                <button type="button" id="pl-tab-info" class="flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all text-zinc-500 hover:text-zinc-800 cursor-pointer">
+                    Information
+                </button>
+            </div>
+
+            <!-- Tab 1: Customization Content -->
+            <div id="pl-tab-customize-content" class="flex-1 overflow-y-auto pr-1 flex flex-col gap-4">
+                <!-- Preset Default Artwork Options (Apple Music Style) -->
+                <div>
+                    <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block mb-2">Default Cover Style</label>
+                    <div id="pl-preset-covers-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <!-- Stripes preset -->
+                        <div data-preset="stripes" class="pl-preset-option group cursor-pointer border-2 border-zinc-200 rounded-2xl p-1.5 transition-all hover:border-black flex flex-col items-center gap-1.5 bg-zinc-50 is-selected">
+                            <div class="w-full aspect-square rounded-xl overflow-hidden shadow-xs relative bg-zinc-900">
+                                <canvas class="pl-preset-canvas w-full h-full block" width="240" height="240" data-preset="stripes"></canvas>
+                            </div>
+                            <span class="text-[11px] font-bold text-zinc-700">Stripes</span>
+                        </div>
+                        <!-- Vinyl preset -->
+                        <div data-preset="vinyl" class="pl-preset-option group cursor-pointer border-2 border-zinc-200 rounded-2xl p-1.5 transition-all hover:border-black flex flex-col items-center gap-1.5 bg-zinc-50">
+                            <div class="w-full aspect-square rounded-xl overflow-hidden shadow-xs relative bg-zinc-900">
+                                <canvas class="pl-preset-canvas w-full h-full block" width="240" height="240" data-preset="vinyl"></canvas>
+                            </div>
+                            <span class="text-[11px] font-bold text-zinc-700">Vinyl</span>
+                        </div>
+                        <!-- Waves preset -->
+                        <div data-preset="waves" class="pl-preset-option group cursor-pointer border-2 border-zinc-200 rounded-2xl p-1.5 transition-all hover:border-black flex flex-col items-center gap-1.5 bg-zinc-50">
+                            <div class="w-full aspect-square rounded-xl overflow-hidden shadow-xs relative bg-zinc-900">
+                                <canvas class="pl-preset-canvas w-full h-full block" width="240" height="240" data-preset="waves"></canvas>
+                            </div>
+                            <span class="text-[11px] font-bold text-zinc-700">Waves</span>
+                        </div>
+                        <!-- Aura preset -->
+                        <div data-preset="aura" class="pl-preset-option group cursor-pointer border-2 border-zinc-200 rounded-2xl p-1.5 transition-all hover:border-black flex flex-col items-center gap-1.5 bg-zinc-50">
+                            <div class="w-full aspect-square rounded-xl overflow-hidden shadow-xs relative bg-zinc-900">
+                                <canvas class="pl-preset-canvas w-full h-full block" width="240" height="240" data-preset="aura"></canvas>
+                            </div>
+                            <span class="text-[11px] font-bold text-zinc-700">Aura</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Custom Photo Upload option -->
+                <div class="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div id="modal-cover-preview" class="w-13 h-13 rounded-xl bg-white border border-zinc-200 overflow-hidden shrink-0 flex items-center justify-center relative cursor-pointer hover:border-black transition-colors" title="Upload custom photo">
                             <img id="modal-cover-img" src="" class="w-full h-full object-cover hidden">
-                            <div id="modal-cover-placeholder" class="text-zinc-400 group-hover:text-black transition-colors flex flex-col items-center gap-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                                <span class="text-[9px] font-bold uppercase tracking-wider text-zinc-400 group-hover:text-black">Upload</span>
-                            </div>
-                            <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-bold text-center px-1">
-                                Change / Crop
+                            <div id="modal-cover-placeholder" class="text-zinc-400 flex flex-col items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
                             </div>
                         </div>
-
-                        <div class="flex-1 min-w-0 flex flex-col gap-1.5">
-                            <div class="flex items-center justify-between">
-                                <span class="text-xs font-bold text-black uppercase tracking-wider">Playlist Artwork</span>
-                                <button type="button" id="modal-cover-remove-btn" class="text-xs font-semibold text-red-500 hover:text-red-700 hidden cursor-pointer">Remove</button>
-                            </div>
-                            <p class="text-[11px] text-zinc-500">Upload any photo to crop 1:1, or choose a color & icon below.</p>
-                            
-                            <div class="flex items-center gap-2 mt-0.5">
-                                <button type="button" id="modal-cover-upload-btn" class="px-3.5 py-1.5 text-xs font-bold bg-black text-white hover:bg-zinc-800 rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                                    <span>Upload & Crop Photo</span>
-                                </button>
-                                <button type="button" id="modal-cover-recrop-btn" class="px-3 py-1.5 text-xs font-bold bg-white text-black border border-zinc-200 hover:bg-zinc-100 rounded-xl transition-all hidden cursor-pointer">
-                                    Re-crop
-                                </button>
-                            </div>
-                            <input type="file" id="playlist-modal-cover-input" accept="image/*" style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;">
+                        <div class="flex flex-col min-w-0">
+                            <span class="text-xs font-bold text-zinc-900">Custom Photo</span>
+                            <span class="text-[11px] text-zinc-500">Upload your own cover art</span>
                         </div>
                     </div>
-
-                    <!-- Direct Color & Icon Selector (Always visible) -->
-                    <div class="pt-3 border-t border-zinc-200/80 flex flex-col gap-2.5">
-                        <div class="flex items-center justify-between">
-                            <span class="text-[10px] font-bold text-zinc-600 uppercase tracking-wider">Or Pick Color & Icon</span>
-                        </div>
-                        <div id="playlist-color-palette" class="flex flex-wrap gap-2 items-center">
-                            <!-- Populated dynamically with colors including White -->
-                        </div>
-                        <div id="playlist-icon-grid" class="grid grid-cols-8 gap-1.5 max-h-32 overflow-y-auto p-1.5 bg-white rounded-xl border border-zinc-200/80">
-                            <!-- Populated dynamically with 40 icons -->
-                        </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <button type="button" id="modal-cover-upload-btn" class="px-3 py-1.5 text-xs font-bold bg-white text-zinc-800 border border-zinc-200 hover:bg-zinc-100 rounded-xl transition-all cursor-pointer">
+                            Upload
+                        </button>
+                        <button type="button" id="modal-cover-recrop-btn" class="px-2.5 py-1.5 text-xs font-bold bg-white text-zinc-800 border border-zinc-200 hover:bg-zinc-100 rounded-xl transition-all hidden cursor-pointer">
+                            Crop
+                        </button>
+                        <button type="button" id="modal-cover-remove-btn" class="px-2.5 py-1.5 text-xs font-semibold text-red-500 hover:text-red-700 hidden cursor-pointer">
+                            Reset
+                        </button>
                     </div>
+                    <input type="file" id="playlist-modal-cover-input" accept="image/*" style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;">
                 </div>
 
-                <!-- Custom Playlist Background Tint -->
-                <div class="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex items-center justify-between">
-                    <div>
-                        <span class="text-xs font-bold text-zinc-900 block">Playlist Background Tint</span>
-                        <span id="modal-tint-status" class="text-[11px] text-zinc-500 font-medium">Automatic (from artwork)</span>
+                <!-- Playlist Tint (renamed from playlist background tint) -->
+                <div class="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex flex-col gap-3">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-bold text-zinc-900 block">Playlist Tint</span>
+                            <span id="modal-tint-status" class="text-[11px] text-zinc-500 font-medium">Automatic (from artwork)</span>
+                        </div>
+                        <button type="button" id="modal-open-tint-wheel-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-zinc-200 text-xs font-bold text-zinc-800 hover:bg-zinc-100 shadow-xs transition-all cursor-pointer">
+                            <span id="modal-tint-dot" class="w-3.5 h-3.5 rounded-full border border-black/20 inline-block" style="background-color: #FDE047;"></span>
+                            <span>Choose Tint</span>
+                        </button>
                     </div>
-                    <button type="button" id="modal-open-tint-wheel-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-zinc-200 text-xs font-bold text-zinc-800 hover:bg-zinc-100 shadow-xs transition-all cursor-pointer">
-                        <span id="modal-tint-dot" class="w-3.5 h-3.5 rounded-full border border-black/20 inline-block" style="background-color: #FDE047;"></span>
-                        <span>Choose Tint</span>
-                    </button>
-                </div>
-
-                <div>
-                    <label class="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-1">Playlist Name</label>
-                    <input id="playlist-name-input" type="text" placeholder="e.g. Chill Vibes, Night Drive" class="w-full h-11 px-4 rounded-xl border border-zinc-200 text-sm focus:outline-none focus:border-zinc-400 transition-all">
-                </div>
-                <div>
-                    <label class="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-1">Description (Optional)</label>
-                    <input id="playlist-desc-input" type="text" placeholder="Add an optional description" class="w-full h-11 px-4 rounded-xl border border-zinc-200 text-sm focus:outline-none focus:border-zinc-400 transition-all">
+                    <!-- Quick Tint Preset Swatches -->
+                    <div id="pl-quick-tints" class="flex items-center gap-2 flex-wrap pt-1 border-t border-zinc-200/60">
+                        <button type="button" class="pl-quick-tint-btn w-6 h-6 rounded-full border border-black/15 hover:scale-110 transition-transform cursor-pointer" style="background-color: #F59E0B;" data-hex="#F59E0B" title="Amber"></button>
+                        <button type="button" class="pl-quick-tint-btn w-6 h-6 rounded-full border border-black/15 hover:scale-110 transition-transform cursor-pointer" style="background-color: #EF4444;" data-hex="#EF4444" title="Red"></button>
+                        <button type="button" class="pl-quick-tint-btn w-6 h-6 rounded-full border border-black/15 hover:scale-110 transition-transform cursor-pointer" style="background-color: #EC4899;" data-hex="#EC4899" title="Pink"></button>
+                        <button type="button" class="pl-quick-tint-btn w-6 h-6 rounded-full border border-black/15 hover:scale-110 transition-transform cursor-pointer" style="background-color: #8B5CF6;" data-hex="#8B5CF6" title="Purple"></button>
+                        <button type="button" class="pl-quick-tint-btn w-6 h-6 rounded-full border border-black/15 hover:scale-110 transition-transform cursor-pointer" style="background-color: #3B82F6;" data-hex="#3B82F6" title="Blue"></button>
+                        <button type="button" class="pl-quick-tint-btn w-6 h-6 rounded-full border border-black/15 hover:scale-110 transition-transform cursor-pointer" style="background-color: #10B981;" data-hex="#10B981" title="Emerald"></button>
+                        <button type="button" class="pl-quick-tint-btn w-6 h-6 rounded-full border border-black/15 hover:scale-110 transition-transform cursor-pointer" style="background-color: #FDE047;" data-hex="#FDE047" title="Yellow"></button>
+                        <button type="button" class="pl-quick-tint-btn w-6 h-6 rounded-full border border-black/15 hover:scale-110 transition-transform cursor-pointer" style="background-color: #FFFFFF;" data-hex="#FFFFFF" title="White"></button>
+                    </div>
                 </div>
             </div>
-            <div class="flex items-center justify-end gap-3 mt-4 pt-3 border-t border-zinc-100 shrink-0">
-                <button id="playlist-modal-cancel" class="px-5 py-2 rounded-full text-zinc-600 text-sm font-medium hover:bg-zinc-100 transition-all cursor-pointer">Cancel</button>
-                <button id="playlist-modal-save" class="px-6 py-2 rounded-full bg-zinc-900 text-white text-sm font-semibold shadow hover:bg-zinc-800 transition-all cursor-pointer">Save</button>
+
+            <!-- Tab 2: Information Content (Live Preview & Inline Click-to-Edit) -->
+            <div id="pl-tab-info-content" class="flex-1 overflow-y-auto pr-1 flex flex-col gap-4 hidden">
+                <div class="p-4 rounded-3xl border border-zinc-200/80 bg-zinc-50/70 flex flex-col gap-3 shadow-xs">
+                    <div class="flex items-center gap-3.5">
+                        <!-- Live Art Preview -->
+                        <div id="pl-info-preview-art" class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden shadow-md shrink-0 border border-black/10 bg-zinc-900 relative">
+                            <canvas id="pl-info-preview-canvas" width="240" height="240" class="w-full h-full object-cover block"></canvas>
+                            <img id="pl-info-preview-img" src="" class="w-full h-full object-cover hidden">
+                        </div>
+
+                        <!-- Right Metadata: Click to Edit Name & Description -->
+                        <div class="flex-1 min-w-0 flex flex-col gap-1 text-left">
+                            <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/5 text-[9px] font-bold text-zinc-600 uppercase tracking-widest w-fit">
+                                <span>PLAYLIST</span>
+                            </div>
+                            <!-- Inline Editable Title -->
+                            <input id="playlist-name-input" type="text" placeholder="Playlist Name" class="w-full font-extrabold text-base sm:text-lg text-zinc-900 bg-transparent border border-transparent hover:border-zinc-300 focus:border-zinc-400 focus:bg-white rounded-lg px-1.5 py-0.5 focus:outline-none transition-all truncate" title="Click to edit name">
+                            
+                            <!-- Inline Editable / Expandable Description -->
+                            <div id="pl-info-desc-wrapper" class="relative group/desc cursor-pointer" title="Click to edit full description">
+                                <input id="playlist-desc-input" type="text" placeholder="Add an optional description..." class="w-full text-xs text-zinc-500 bg-transparent border border-transparent hover:border-zinc-300 focus:border-zinc-400 focus:bg-white rounded-lg px-1.5 py-0.5 focus:outline-none transition-all truncate">
+                            </div>
+
+                            <p id="pl-info-track-meta" class="text-[11px] font-bold text-zinc-400 px-1.5">0 songs • Yolk Playlist</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Non-clickable Songs Example Preview -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex items-center justify-between px-1">
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-500">Songs Preview (Non-clickable)</span>
+                        <span id="pl-info-songs-count" class="text-[11px] text-zinc-400 font-semibold">0 tracks</span>
+                    </div>
+                    <div id="pl-info-sample-tracks" class="flex flex-col gap-1 max-h-48 overflow-y-auto pr-1 pointer-events-none select-none opacity-90 rounded-2xl p-2 bg-zinc-50 border border-zinc-200/60">
+                        <!-- Populated dynamically with actual playlist tracks or placeholder -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Action Buttons -->
+            <div class="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-zinc-100 shrink-0">
+                <div class="flex items-center gap-1.5 text-[11px] text-zinc-400">
+                    <span id="pl-modal-hint">Customization & Live Preview</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="playlist-modal-cancel" type="button" class="px-5 py-2 rounded-full text-zinc-600 text-sm font-semibold hover:bg-zinc-100 transition-all cursor-pointer">Cancel</button>
+                    <button id="playlist-modal-save" type="button" class="px-6 py-2 rounded-full bg-zinc-900 text-white text-sm font-semibold shadow hover:bg-zinc-800 transition-all cursor-pointer">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: View Full Description (Scrollable if long) -->
+    <div id="playlist-full-desc-modal" class="modal-overlay fixed inset-0 bg-black/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4 hidden">
+        <div class="modal-card bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border border-zinc-100 flex flex-col max-h-[85vh]">
+            <div class="flex items-center justify-between mb-3 shrink-0">
+                <div>
+                    <h3 id="full-desc-title" class="text-base font-bold text-zinc-900">About Playlist</h3>
+                    <p class="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Description</p>
+                </div>
+                <button type="button" id="full-desc-close-btn" class="p-1.5 rounded-full text-zinc-400 hover:text-zinc-800 hover:bg-zinc-100 transition-colors cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <div id="full-desc-content" class="flex-1 overflow-y-auto pr-2 text-sm text-zinc-700 leading-relaxed whitespace-pre-wrap rounded-2xl bg-zinc-50 p-4 border border-zinc-200/80">
+            </div>
+            <div class="flex items-center justify-end mt-4 pt-3 border-t border-zinc-100 shrink-0">
+                <button type="button" id="full-desc-done-btn" class="px-5 py-2 rounded-full bg-zinc-900 text-white text-xs font-bold shadow hover:bg-zinc-800 transition-all cursor-pointer">
+                    Close
+                </button>
             </div>
         </div>
     </div>
@@ -3022,7 +3178,7 @@
         <div class="modal-card bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl border border-zinc-100 flex flex-col items-center">
             <div class="w-full flex items-center justify-between mb-3">
                 <div>
-                    <h3 class="text-base font-bold text-zinc-900">Playlist Background Tint</h3>
+                    <h3 class="text-base font-bold text-zinc-900">Playlist Tint</h3>
                     <p class="text-xs text-zinc-500 mt-0.5">Pick any color on the wheel for your playlist tint</p>
                 </div>
                 <button id="tint-wheel-close-btn" class="p-1 rounded-full text-zinc-400 hover:text-zinc-800 hover:bg-zinc-100 transition-colors cursor-pointer">

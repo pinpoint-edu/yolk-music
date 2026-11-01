@@ -3128,6 +3128,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Progress UI Update Helper
     function updateProgressUI(cur, dur) {
+        if (window._isScrubbingProgressBar) return;
         const percent = (dur > 0) ? Math.min(100, Math.max(0, (cur / dur) * 100)) : 0;
         if (npProgressFill) npProgressFill.style.width = `${percent}%`;
         if (bpProgressFill) bpProgressFill.style.width = `${percent}%`;
@@ -3886,31 +3887,50 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Progress Bar Scrubbing
+    // Progress Bar Scrubbing with Draggable Support & Rapid Time Updating
+    let _isScrubbingActive = false;
+    window._isScrubbingProgressBar = false;
+
     function setupScrubbing(barEl) {
         if (!barEl) return;
-        barEl.addEventListener('click', (e) => {
+        let isPointerDown = false;
+        let capturedPointerId = null;
+
+        const updateScrubAtPointer = (clientX) => {
             const rect = barEl.getBoundingClientRect();
-            const clickPos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            if (rect.width <= 0) return null;
+            const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+            const dur = getEffectiveAudioDuration() || (currentTrack?.duration ? currentTrack.duration / 1000 : 0);
+            const scrubSec = ratio * dur;
 
-            if (activeSource === 'youtube' && ytPlayer && typeof ytPlayer.getDuration === 'function') {
-                let dur = ytPlayer.getDuration() || (currentTrack?.duration ? currentTrack.duration / 1000 : 0);
-                if (dur > 0) {
-                    const seekTo = clickPos * dur;
-                    ytPlayer.seekTo(seekTo, true);
-                    updateProgressUI(seekTo, dur);
-                    updateLyricsSync(seekTo);
-                    if (!isPlaying && typeof ytPlayer.playVideo === 'function') {
-                        userPausedIntentionally = false;
-                        ytPlayer.playVideo();
-                    }
+            // Instantly update fills
+            if (npProgressFill) npProgressFill.style.width = `${ratio * 100}%`;
+            if (bpProgressFill) bpProgressFill.style.width = `${ratio * 100}%`;
+            const lyricsProgFill = document.getElementById('lyrics-bar-progress-fill');
+            if (lyricsProgFill) lyricsProgFill.style.width = `${ratio * 100}%`;
+
+            // Rapidly update current time and duration labels
+            if (npCurrentTime) npCurrentTime.textContent = formatTime(scrubSec);
+            if (bpCurrentTime) bpCurrentTime.textContent = formatTime(scrubSec);
+            const remTime = formatRemainingTime(scrubSec, dur);
+            if (npDuration) npDuration.textContent = remTime;
+            if (bpDuration) bpDuration.textContent = remTime;
+
+            updateLyricsSync(scrubSec);
+            return { ratio, dur, scrubSec };
+        };
+
+        const commitSeek = (ratio, dur) => {
+            if (dur <= 0) return;
+            const targetSec = ratio * dur;
+            if (activeSource === 'youtube' && ytPlayer && typeof ytPlayer.seekTo === 'function') {
+                ytPlayer.seekTo(targetSec, true);
+                if (!isPlaying && typeof ytPlayer.playVideo === 'function') {
+                    userPausedIntentionally = false;
+                    ytPlayer.playVideo();
                 }
-                return;
-            }
-
-            const dur = getEffectiveAudioDuration();
-            if (dur > 0) {
-                currentAudio.currentTime = clickPos * dur;
+            } else {
+                currentAudio.currentTime = targetSec;
                 updateMediaSessionPosition();
                 if (!isPlaying) {
                     userPausedIntentionally = false;
@@ -3920,10 +3940,55 @@ document.addEventListener('DOMContentLoaded', () => {
                     }).catch(() => {});
                 }
             }
+        };
+
+        barEl.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0 && e.pointerType === 'mouse') return;
+            isPointerDown = true;
+            _isScrubbingActive = true;
+            window._isScrubbingProgressBar = true;
+            capturedPointerId = e.pointerId;
+            try { barEl.setPointerCapture(e.pointerId); } catch (_) {}
+
+            barEl.classList.add('is-scrubbing');
+            if (npProgressBar) npProgressBar.classList.add('is-scrubbing');
+            if (bpProgressBar) bpProgressBar.classList.add('is-scrubbing');
+
+            updateScrubAtPointer(e.clientX);
         });
+
+        barEl.addEventListener('pointermove', (e) => {
+            if (!isPointerDown) return;
+            updateScrubAtPointer(e.clientX);
+        });
+
+        const finishDrag = (e) => {
+            if (!isPointerDown) return;
+            isPointerDown = false;
+            _isScrubbingActive = false;
+            window._isScrubbingProgressBar = false;
+            if (capturedPointerId !== null) {
+                try { barEl.releasePointerCapture(capturedPointerId); } catch (_) {}
+                capturedPointerId = null;
+            }
+
+            barEl.classList.remove('is-scrubbing');
+            if (npProgressBar) npProgressBar.classList.remove('is-scrubbing');
+            if (bpProgressBar) bpProgressBar.classList.remove('is-scrubbing');
+
+            const result = updateScrubAtPointer(e.clientX);
+            if (result && result.dur > 0) {
+                commitSeek(result.ratio, result.dur);
+                triggerHaptic('light');
+            }
+        };
+
+        barEl.addEventListener('pointerup', finishDrag);
+        barEl.addEventListener('pointercancel', finishDrag);
     }
     setupScrubbing(npProgressBar);
     setupScrubbing(bpProgressBar);
+    setupScrubbing(document.getElementById('lyrics-bar-progress-bar'));
 
     // Playback Navigation (Next, Prev, Play/Pause)
     function togglePlayPause() {
@@ -5417,6 +5482,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         currentCoverColor = { r: blendR, g: blendG, b: blendB };
         updateNowPlayingIconContrast(blendR, blendG, blendB);
+        if (typeof updateSafariThemeTint === 'function') {
+            updateSafariThemeTint(blendR, blendG, blendB, 1.0);
+        }
         if (typeof updateTopNavTint === 'function') {
             updateTopNavTint();
         }
@@ -5571,6 +5639,29 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         libraryGrid.appendChild(favCard);
 
+        // 2. (Library Songs) Card - Shows every individual song downloaded offline
+        const libSongsCard = document.createElement('div');
+        libSongsCard.className = 'group cursor-pointer bubbly-hover text-left';
+        libSongsCard.innerHTML = `
+            <div class="w-full aspect-square bg-[#F4F4F5] rounded-2xl border border-zinc-200/80 mb-2 relative overflow-hidden flex items-center justify-center shadow-sm group-hover:shadow-md transition-all text-zinc-900">
+                <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-zinc-900"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            </div>
+            <h3 class="font-semibold text-xs sm:text-sm text-zinc-900 truncate">(Library Songs)</h3>
+            <p id="lib-songs-card-count" class="text-[11px] text-zinc-500 mt-0.5">Downloaded songs</p>
+        `;
+        libSongsCard.addEventListener('click', () => {
+            openPlaylistDetail('library-songs');
+        });
+        libraryGrid.appendChild(libSongsCard);
+
+        YolkOfflineDB.getAllTracks().then(allOffline => {
+            const countEl = document.getElementById('lib-songs-card-count');
+            if (countEl) {
+                const count = (allOffline || []).length;
+                countEl.textContent = `${count} ${count === 1 ? 'song' : 'songs'}`;
+            }
+        }).catch(() => {});
+
         // 2. Custom Playlists Cards (All library tracks automatically download offline)
         playlists.forEach((pl) => {
             const plCard = document.createElement('div');
@@ -5638,6 +5729,37 @@ document.addEventListener('DOMContentLoaded', () => {
             detailArtIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="52" height="52" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" class="text-zinc-900"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
             editBtn.classList.add('hidden');
             deleteBtn.classList.add('hidden');
+        } else if (playlistId === 'library-songs') {
+            isFav = false;
+            playlistName = '(Library Songs)';
+            playlistDesc = 'Every individual song downloaded offline on this device';
+            clearPlaylistTint();
+
+            if (detailArt) {
+                detailArt.className = 'w-28 h-28 sm:w-40 sm:h-40 md:w-44 md:h-44 rounded-2xl bg-[#F4F4F5] flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.08)] border border-zinc-200/80 relative';
+                detailArt.title = '(Library Songs)';
+                detailArt.style.cursor = 'default';
+            }
+            if (detailUploadOverlay) detailUploadOverlay.classList.add('hidden');
+
+            detailArtImg.classList.add('hidden');
+            detailArtIcon.classList.remove('hidden');
+            detailArtIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-zinc-900"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
+            editBtn.classList.add('hidden');
+            deleteBtn.classList.add('hidden');
+
+            const offlineRecords = await YolkOfflineDB.getAllTracks();
+            trackList = offlineRecords.map(rec => ({
+                id: rec.id || rec.uid,
+                youtube_id: rec.youtube_id,
+                title: rec.title,
+                artist_name: rec.artist_name || 'Unknown Artist',
+                album_name: rec.album_name || '',
+                duration: rec.duration,
+                duration_formatted: rec.duration_formatted,
+                artwork_url: rec.artworkBlob ? URL.createObjectURL(rec.artworkBlob) : (rec.artwork_url || ''),
+                _offline: true
+            }));
         } else {
             const pl = playlists.find(p => p.id === playlistId);
             if (!pl) return;
@@ -5728,6 +5850,11 @@ document.addEventListener('DOMContentLoaded', () => {
         detailDesc.textContent = playlistDesc;
         if (detailDesc) {
             detailDesc.classList.toggle('hidden', !playlistDesc);
+            detailDesc.onclick = () => {
+                if (playlistDesc) {
+                    openFullDescModal(playlistName, playlistDesc);
+                }
+            };
         }
         detailMeta.textContent = totalSummaryText;
 
@@ -5759,7 +5886,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const downloadAllBtn = document.getElementById('playlist-download-all-btn');
         if (downloadAllBtn) {
-            if (trackList.length === 0) {
+            if (trackList.length === 0 || playlistId === 'library-songs') {
                 downloadAllBtn.classList.add('hidden');
                 window._updatePlaylistDownloadAllBtn = null;
             } else {
@@ -6219,56 +6346,200 @@ document.addEventListener('DOMContentLoaded', () => {
         return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
     }
 
-    function renderColorPalette() {
-        const paletteEl = document.getElementById('playlist-color-palette');
-        if (!paletteEl) return;
-        paletteEl.innerHTML = '';
-        PALETTE_16_COLORS.forEach(c => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            const isSelected = selectedCoverColor.toLowerCase() === c.hex.toLowerCase();
-            const isWhite = c.hex.toLowerCase() === '#ffffff';
-            const whiteBorder = isWhite ? 'border border-zinc-300 shadow-2xs' : '';
-            btn.className = `w-7 h-7 rounded-full cursor-pointer transition-transform hover:scale-110 relative flex items-center justify-center shrink-0 ${whiteBorder} ${isSelected ? 'ring-2 ring-zinc-900 ring-offset-2' : ''}`;
-            btn.style.backgroundColor = c.hex;
-            btn.title = c.name;
-            if (isSelected) {
-                const checkColor = isWhite ? '#18181b' : 'white';
-                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${checkColor}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+    // Apple Music Preset Cover Canvas Renderer
+    function drawAppleMusicPreset(canvas, preset, title, tintHex) {
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width;
+        const h = canvas.height;
+        ctx.clearRect(0, 0, w, h);
+
+        const rgb = hexToRgbObj(tintHex || '#F59E0B') || { r: 245, g: 158, b: 11 };
+
+        if (preset === 'stripes') {
+            // Diagonal Striped Graphics (Apple Music inspired)
+            const bgGrad = ctx.createLinearGradient(0, 0, w, h);
+            bgGrad.addColorStop(0, `rgb(${Math.round(rgb.r * 0.18 + 12 * 0.82)}, ${Math.round(rgb.g * 0.18 + 12 * 0.82)}, ${Math.round(rgb.b * 0.18 + 14 * 0.82)})`);
+            bgGrad.addColorStop(1, '#09090b');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, w, h);
+
+            ctx.save();
+            ctx.translate(w / 2, h / 2);
+            ctx.rotate(-Math.PI / 4);
+
+            const stripeWidths = [18, 32, 14, 48, 22, 38, 16];
+            const opacities = [0.45, 0.85, 0.35, 0.95, 0.55, 0.75, 0.40];
+            let offset = -w;
+            stripeWidths.forEach((sw, i) => {
+                const alpha = opacities[i % opacities.length];
+                ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+                ctx.fillRect(offset, -h * 1.5, sw, h * 3);
+                offset += sw + 16;
+            });
+            ctx.restore();
+        } else if (preset === 'vinyl') {
+            // Circular Vinyl Graphic with center spindle and grooved rings
+            const bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.55, 10, w * 0.5, h * 0.55, w * 0.75);
+            bgGrad.addColorStop(0, `rgb(${Math.round(rgb.r * 0.25 + 24 * 0.75)}, ${Math.round(rgb.g * 0.25 + 24 * 0.75)}, ${Math.round(rgb.b * 0.25 + 28 * 0.75)})`);
+            bgGrad.addColorStop(1, '#09090b');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, w, h);
+
+            const centerX = w * 0.58;
+            const centerY = h * 0.62;
+            const maxRadius = w * 0.42;
+
+            // Outer vinyl disc
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, maxRadius, 0, Math.PI * 2);
+            ctx.fillStyle = '#111114';
+            ctx.fill();
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            ctx.stroke();
+
+            // Concentric grooves
+            for (let r = maxRadius - 6; r > maxRadius * 0.38; r -= 5.5) {
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, r, 0, Math.PI * 2);
+                ctx.strokeStyle = (r % 11 === 0) ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.035)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
             }
-            btn.onclick = () => {
-                selectedCoverColor = c.hex;
-                renderColorPalette();
-                pendingModalCover = generateColorIconCover(selectedCoverColor, selectedCoverIcon.svg);
-                updateModalCoverUI();
-            };
-            paletteEl.appendChild(btn);
-        });
+
+            // Specular sheen arcs
+            const sheenGrad = ctx.createLinearGradient(centerX - maxRadius, centerY - maxRadius, centerX + maxRadius, centerY + maxRadius);
+            sheenGrad.addColorStop(0, 'rgba(255, 255, 255, 0.06)');
+            sheenGrad.addColorStop(0.5, 'transparent');
+            sheenGrad.addColorStop(1, 'rgba(255, 255, 255, 0.06)');
+            ctx.fillStyle = sheenGrad;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, maxRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Center label with playlist tint
+            const labelRadius = maxRadius * 0.34;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, labelRadius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+            ctx.stroke();
+
+            // Center spindle hole
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, labelRadius * 0.22, 0, Math.PI * 2);
+            ctx.fillStyle = '#09090b';
+            ctx.fill();
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = '#d4d4d8';
+            ctx.stroke();
+        } else if (preset === 'waves') {
+            // Soundwave Geometric Ribbons
+            const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+            bgGrad.addColorStop(0, '#0c0c0e');
+            bgGrad.addColorStop(1, `rgb(${Math.round(rgb.r * 0.35 + 12 * 0.65)}, ${Math.round(rgb.g * 0.35 + 12 * 0.65)}, ${Math.round(rgb.b * 0.35 + 14 * 0.65)})`);
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, w, h);
+
+            for (let i = 0; i < 5; i++) {
+                ctx.beginPath();
+                const waveY = h * 0.45 + i * 16;
+                ctx.moveTo(0, waveY);
+                for (let x = 0; x <= w; x += 10) {
+                    const y = waveY + Math.sin((x / w) * Math.PI * 3 + i * 0.8) * (18 + i * 4);
+                    ctx.lineTo(x, y);
+                }
+                ctx.lineTo(w, h);
+                ctx.lineTo(0, h);
+                ctx.closePath();
+                const waveAlpha = (0.18 + i * 0.16).toFixed(2);
+                ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${waveAlpha})`;
+                ctx.fill();
+            }
+        } else {
+            // Aura / Gradient Mesh (Apple Music fluid glow)
+            ctx.fillStyle = '#0f0f13';
+            ctx.fillRect(0, 0, w, h);
+
+            const rad1 = ctx.createRadialGradient(w * 0.25, h * 0.3, 10, w * 0.25, h * 0.3, w * 0.6);
+            rad1.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.85)`);
+            rad1.addColorStop(1, 'transparent');
+            ctx.fillStyle = rad1;
+            ctx.fillRect(0, 0, w, h);
+
+            const rad2 = ctx.createRadialGradient(w * 0.8, h * 0.75, 10, w * 0.8, h * 0.75, w * 0.55);
+            rad2.addColorStop(0, `rgba(${Math.min(255, rgb.r + 40)}, ${Math.max(0, rgb.g - 30)}, ${Math.min(255, rgb.b + 60)}, 0.65)`);
+            rad2.addColorStop(1, 'transparent');
+            ctx.fillStyle = rad2;
+            ctx.fillRect(0, 0, w, h);
+
+            const rad3 = ctx.createRadialGradient(w * 0.5, h * 0.6, 5, w * 0.5, h * 0.6, w * 0.45);
+            rad3.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.5)`);
+            rad3.addColorStop(1, 'transparent');
+            ctx.fillStyle = rad3;
+            ctx.fillRect(0, 0, w, h);
+        }
+
+        // Apple Music Typography: Playlist Title in Top Left
+        const displayTitle = (title && title.trim()) ? title.trim() : 'Playlist';
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+        ctx.shadowBlur = 6;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 2;
+        ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+
+        const maxTextWidth = w - 36;
+        const words = displayTitle.split(' ');
+        let line = '';
+        let y = 18;
+        let lineCount = 0;
+
+        for (let n = 0; n < words.length; n++) {
+            const testLine = line + (line ? ' ' : '') + words[n];
+            const metrics = ctx.measureText(testLine);
+            if (metrics.width > maxTextWidth && n > 0) {
+                ctx.fillText(line, 18, y);
+                line = words[n];
+                y += 24;
+                lineCount++;
+                if (lineCount >= 2 && n < words.length - 1) {
+                    let elLine = line;
+                    while (n < words.length && ctx.measureText(elLine + '...').width <= maxTextWidth) {
+                        n++;
+                        if (n < words.length) elLine += ' ' + words[n];
+                    }
+                    ctx.fillText(line + '...', 18, y);
+                    line = '';
+                    break;
+                }
+            } else {
+                line = testLine;
+            }
+        }
+        if (line) {
+            ctx.fillText(line, 18, y);
+        }
+        ctx.restore();
     }
 
-    function renderIconGrid() {
-        const iconGridEl = document.getElementById('playlist-icon-grid');
-        if (!iconGridEl) return;
-        iconGridEl.innerHTML = '';
-        PLAYLIST_40_ICONS.forEach(iconObj => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            const isSelected = selectedCoverIcon.id === iconObj.id;
-            btn.className = `w-8 h-8 rounded-lg flex items-center justify-center transition-all cursor-pointer ${isSelected ? 'bg-zinc-900 text-white shadow-xs' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'}`;
-            btn.title = iconObj.name;
-            btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconObj.svg}</svg>`;
-            btn.onclick = () => {
-                selectedCoverIcon = iconObj;
-                renderIconGrid();
-                pendingModalCover = generateColorIconCover(selectedCoverColor, selectedCoverIcon.svg);
-                updateModalCoverUI();
-            };
-            iconGridEl.appendChild(btn);
-        });
+    function generatePresetCoverDataUrl(preset, title, tintHex) {
+        const offscreen = document.createElement('canvas');
+        offscreen.width = 480;
+        offscreen.height = 480;
+        drawAppleMusicPreset(offscreen, preset, title, tintHex);
+        return offscreen.toDataURL('image/jpeg', 0.88);
     }
 
-    // Modal: Create & Edit Playlist with Cover Upload & Custom Art
+    // Modal: Create & Edit Playlist with Apple Music Presets & Information Preview
     let pendingModalCover = null;
+    let selectedPresetCover = 'stripes';
     let lastUploadedRawImage = null;
     const modalCoverPreview = document.getElementById('modal-cover-preview');
     const modalCoverImg = document.getElementById('modal-cover-img');
@@ -6277,6 +6548,94 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalCoverRecropBtn = document.getElementById('modal-cover-recrop-btn');
     const modalCoverRemoveBtn = document.getElementById('modal-cover-remove-btn');
     const playlistModalCoverInput = document.getElementById('playlist-modal-cover-input');
+    const playlistModalX = document.getElementById('playlist-modal-x');
+    const plTabCustomize = document.getElementById('pl-tab-customize');
+    const plTabInfo = document.getElementById('pl-tab-info');
+    const plTabCustomizeContent = document.getElementById('pl-tab-customize-content');
+    const plTabInfoContent = document.getElementById('pl-tab-info-content');
+    const plInfoPreviewCanvas = document.getElementById('pl-info-preview-canvas');
+    const plInfoPreviewImg = document.getElementById('pl-info-preview-img');
+    const plInfoTrackMeta = document.getElementById('pl-info-track-meta');
+    const plInfoSongsCount = document.getElementById('pl-info-songs-count');
+    const plInfoSampleTracks = document.getElementById('pl-info-sample-tracks');
+    const plInfoDescWrapper = document.getElementById('pl-info-desc-wrapper');
+
+    function renderAllPresetCanvases(title, tintHex) {
+        const name = (title !== undefined) ? title : (playlistNameInput?.value || '');
+        const hex = tintHex || pendingModalTint?.hex || '#F59E0B';
+        document.querySelectorAll('.pl-preset-canvas').forEach(canvas => {
+            const preset = canvas.getAttribute('data-preset') || 'stripes';
+            drawAppleMusicPreset(canvas, preset, name, hex);
+        });
+        if (plInfoPreviewCanvas && !pendingModalCover) {
+            drawAppleMusicPreset(plInfoPreviewCanvas, selectedPresetCover, name, hex);
+        }
+    }
+
+    function switchPlaylistModalTab(tabName) {
+        const isCust = tabName === 'customize';
+        if (plTabCustomize) {
+            plTabCustomize.className = `flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${isCust ? 'bg-white text-zinc-900 shadow-xs' : 'text-zinc-500 hover:text-zinc-800'}`;
+        }
+        if (plTabInfo) {
+            plTabInfo.className = `flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${!isCust ? 'bg-white text-zinc-900 shadow-xs' : 'text-zinc-500 hover:text-zinc-800'}`;
+        }
+        if (plTabCustomizeContent) plTabCustomizeContent.classList.toggle('hidden', !isCust);
+        if (plTabInfoContent) {
+            plTabInfoContent.classList.toggle('hidden', isCust);
+            if (!isCust) updateInfoTabLivePreview();
+        }
+    }
+
+    function updateInfoTabLivePreview() {
+        const name = playlistNameInput?.value.trim() || 'Playlist';
+        const hex = pendingModalTint?.hex || '#F59E0B';
+
+        if (pendingModalCover) {
+            if (plInfoPreviewImg) {
+                plInfoPreviewImg.src = pendingModalCover;
+                plInfoPreviewImg.classList.remove('hidden');
+            }
+            if (plInfoPreviewCanvas) plInfoPreviewCanvas.classList.add('hidden');
+        } else {
+            if (plInfoPreviewImg) plInfoPreviewImg.classList.add('hidden');
+            if (plInfoPreviewCanvas) {
+                plInfoPreviewCanvas.classList.remove('hidden');
+                drawAppleMusicPreset(plInfoPreviewCanvas, selectedPresetCover, name, hex);
+            }
+        }
+
+        const sampleTracks = (playlistToEditPending?.tracks) || (currentPlaylistContextId && currentPlaylistContextId !== 'favorites' ? playlists.find(p => p.id === currentPlaylistContextId)?.tracks : null) || [];
+        const trackCount = sampleTracks.length;
+        if (plInfoTrackMeta) plInfoTrackMeta.textContent = `${trackCount} ${trackCount === 1 ? 'song' : 'songs'} • Yolk Playlist`;
+        if (plInfoSongsCount) plInfoSongsCount.textContent = `${trackCount} ${trackCount === 1 ? 'track' : 'tracks'}`;
+
+        if (plInfoSampleTracks) {
+            plInfoSampleTracks.innerHTML = '';
+            if (sampleTracks.length === 0) {
+                plInfoSampleTracks.innerHTML = `<div class="py-6 text-center text-xs text-zinc-400">Songs added to this playlist will appear here.</div>`;
+            } else {
+                sampleTracks.slice(0, 10).forEach(t => {
+                    const row = document.createElement('div');
+                    row.className = 'flex items-center justify-between p-2 rounded-xl bg-white/70 border border-zinc-100 text-left';
+                    const cover = t.artwork_url || t.image ? getProxyUrl(t.artwork_url || t.image, '64x64') : '';
+                    row.innerHTML = `
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="w-7 h-7 rounded-lg bg-zinc-200 overflow-hidden shrink-0 flex items-center justify-center">
+                                ${cover ? `<img src="${cover}" class="w-full h-full object-cover">` : `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>`}
+                            </div>
+                            <div class="min-w-0">
+                                <div class="text-xs font-bold text-zinc-800 truncate">${escapeHtml(t.title || t.name || 'Song')}</div>
+                                <div class="text-[10px] text-zinc-400 truncate">${escapeHtml(t.artist_name || t.artist || 'Artist')}</div>
+                            </div>
+                        </div>
+                        <span class="text-[10px] text-zinc-400 font-medium shrink-0 ml-2">${t.duration_formatted || (t.duration ? formatTime(t.duration / 1000) : '')}</span>
+                    `;
+                    plInfoSampleTracks.appendChild(row);
+                });
+            }
+        }
+    }
 
     function updateModalCoverUI() {
         if (pendingModalCover) {
@@ -6290,6 +6649,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isPhoto = lastUploadedRawImage || (pendingModalCover && !pendingModalCover.startsWith('data:image/svg+xml'));
                 modalCoverRecropBtn.classList.toggle('hidden', !isPhoto);
             }
+            document.querySelectorAll('.pl-preset-option').forEach(opt => opt.classList.remove('is-selected'));
         } else {
             if (modalCoverImg) {
                 modalCoverImg.src = '';
@@ -6298,7 +6658,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (modalCoverPlaceholder) modalCoverPlaceholder.classList.remove('hidden');
             if (modalCoverRemoveBtn) modalCoverRemoveBtn.classList.add('hidden');
             if (modalCoverRecropBtn) modalCoverRecropBtn.classList.add('hidden');
+            document.querySelectorAll('.pl-preset-option').forEach(opt => {
+                opt.classList.toggle('is-selected', opt.getAttribute('data-preset') === selectedPresetCover);
+            });
         }
+        renderAllPresetCanvases(playlistNameInput?.value, pendingModalTint?.hex);
     }
 
     if (modalCoverPreview && playlistModalCoverInput) {
@@ -6328,6 +6692,7 @@ document.addEventListener('DOMContentLoaded', () => {
         modalCoverRemoveBtn.addEventListener('click', () => {
             pendingModalCover = null;
             lastUploadedRawImage = null;
+            selectedPresetCover = 'stripes';
             updateModalCoverUI();
         });
     }
@@ -6349,20 +6714,86 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Preset Options Selection
+    document.querySelectorAll('.pl-preset-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+            selectedPresetCover = opt.getAttribute('data-preset') || 'stripes';
+            pendingModalCover = null;
+            lastUploadedRawImage = null;
+            updateModalCoverUI();
+        });
+    });
+
+    // Quick Tint Buttons
+    document.querySelectorAll('.pl-quick-tint-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const hex = btn.getAttribute('data-hex') || '#F59E0B';
+            const rgb = hexToRgbObj(hex);
+            pendingModalTint = { hex, r: rgb.r, g: rgb.g, b: rgb.b };
+            if (modalTintDot) modalTintDot.style.backgroundColor = hex;
+            if (modalTintStatus) modalTintStatus.textContent = `Custom (${hex})`;
+            renderAllPresetCanvases(playlistNameInput?.value, hex);
+            if (plInfoPreviewCanvas && !pendingModalCover) {
+                drawAppleMusicPreset(plInfoPreviewCanvas, selectedPresetCover, playlistNameInput?.value, hex);
+            }
+        });
+    });
+
+    if (playlistNameInput) {
+        playlistNameInput.addEventListener('input', () => {
+            renderAllPresetCanvases(playlistNameInput.value, pendingModalTint?.hex);
+        });
+    }
+
+    if (plTabCustomize) plTabCustomize.onclick = () => switchPlaylistModalTab('customize');
+    if (plTabInfo) plTabInfo.onclick = () => switchPlaylistModalTab('info');
+    if (playlistModalX) playlistModalX.onclick = closePlaylistModal;
+
+    // Expandable / Clickable Description Popover Modal
+    const fullDescModal = document.getElementById('playlist-full-desc-modal');
+    const fullDescTitle = document.getElementById('full-desc-title');
+    const fullDescContent = document.getElementById('full-desc-content');
+    const fullDescCloseBtn = document.getElementById('full-desc-close-btn');
+    const fullDescDoneBtn = document.getElementById('full-desc-done-btn');
+
+    function openFullDescModal(title, descText) {
+        if (!fullDescModal) return;
+        if (fullDescTitle) fullDescTitle.textContent = title || 'Playlist Description';
+        if (fullDescContent) fullDescContent.textContent = descText || 'No description provided.';
+        fullDescModal.classList.remove('hidden');
+    }
+    window.openFullDescModal = openFullDescModal;
+
+    if (fullDescCloseBtn) fullDescCloseBtn.onclick = () => fullDescModal?.classList.add('hidden');
+    if (fullDescDoneBtn) fullDescDoneBtn.onclick = () => fullDescModal?.classList.add('hidden');
+    if (fullDescModal) {
+        fullDescModal.onclick = (e) => {
+            if (e.target === fullDescModal) fullDescModal.classList.add('hidden');
+        };
+    }
+
+    if (plInfoDescWrapper) {
+        plInfoDescWrapper.addEventListener('click', () => {
+            const currentDesc = playlistDescInput?.value.trim() || '';
+            const currentName = playlistNameInput?.value.trim() || 'Playlist';
+            if (currentDesc.length > 40) {
+                openFullDescModal(currentName, currentDesc);
+            }
+        });
+    }
+
     function openCreatePlaylistModal() {
         playlistToEditPending = null;
         pendingModalTint = null;
+        selectedPresetCover = 'stripes';
+        pendingModalCover = null;
+        lastUploadedRawImage = null;
         if (modalTintDot) modalTintDot.style.backgroundColor = '#FDE047';
         if (modalTintStatus) modalTintStatus.textContent = 'Automatic (from artwork)';
         playlistModalTitle.textContent = 'New Playlist';
         playlistNameInput.value = '';
         playlistDescInput.value = '';
-        lastUploadedRawImage = null;
-        selectedCoverColor = PALETTE_16_COLORS[Math.floor(Math.random() * PALETTE_16_COLORS.length)].hex;
-        selectedCoverIcon = PLAYLIST_40_ICONS[Math.floor(Math.random() * PLAYLIST_40_ICONS.length)];
-        pendingModalCover = generateColorIconCover(selectedCoverColor, selectedCoverIcon.svg);
-        renderColorPalette();
-        renderIconGrid();
+        switchPlaylistModalTab('customize');
         updateModalCoverUI();
         playlistModal.classList.add('active');
         setTimeout(() => playlistNameInput.focus(), 50);
@@ -6371,15 +6802,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function openEditPlaylistModal(pl) {
         playlistToEditPending = pl;
         pendingModalTint = pl.custom_tint || null;
+        selectedPresetCover = pl.preset_style || 'stripes';
+        pendingModalCover = pl.cover || null;
+        lastUploadedRawImage = (pendingModalCover && !pendingModalCover.startsWith('data:image/svg+xml')) ? pendingModalCover : null;
         if (modalTintDot) modalTintDot.style.backgroundColor = pendingModalTint ? pendingModalTint.hex : '#FDE047';
         if (modalTintStatus) modalTintStatus.textContent = pendingModalTint ? `Custom (${pendingModalTint.hex})` : 'Automatic (from artwork)';
         playlistModalTitle.textContent = 'Edit Playlist';
         playlistNameInput.value = pl.name || '';
         playlistDescInput.value = (pl.description && pl.description !== '[object Object]' && pl.description !== 'undefined') ? pl.description : '';
-        pendingModalCover = pl.cover || null;
-        lastUploadedRawImage = (pendingModalCover && !pendingModalCover.startsWith('data:image/svg+xml')) ? pendingModalCover : null;
-        renderColorPalette();
-        renderIconGrid();
+        switchPlaylistModalTab('customize');
         updateModalCoverUI();
         playlistModal.classList.add('active');
         setTimeout(() => playlistNameInput.focus(), 50);
@@ -6410,11 +6841,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            let finalCover = pendingModalCover;
+            if (!finalCover && selectedPresetCover) {
+                finalCover = generatePresetCoverDataUrl(selectedPresetCover, name, pendingModalTint?.hex);
+            }
+
             if (playlistToEditPending) {
                 const targetId = playlistToEditPending.id;
                 playlistToEditPending.name = name;
                 playlistToEditPending.description = desc;
-                playlistToEditPending.cover = pendingModalCover;
+                playlistToEditPending.cover = finalCover;
+                playlistToEditPending.preset_style = selectedPresetCover;
                 playlistToEditPending.custom_tint = pendingModalTint;
                 savePlaylists();
                 showToast('Playlist updated');
@@ -6429,7 +6866,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     id: 'pl_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
                     name: name,
                     description: desc,
-                    cover: pendingModalCover,
+                    cover: finalCover,
+                    preset_style: selectedPresetCover,
                     custom_tint: pendingModalTint,
                     createdAt: new Date().toISOString(),
                     tracks: []
@@ -6452,11 +6890,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (addToPlaylistNewBtn) addToPlaylistNewBtn.classList.remove('hidden');
 
         const trackUid = getTrackUid(track);
+        const userPlaylists = playlists.filter(pl => !pl.isAlbum && !(pl.id && pl.id.startsWith('pl_alb_')));
 
-        if (playlists.length === 0) {
+        if (userPlaylists.length === 0) {
             addToPlaylistOptions.innerHTML = `<div class="py-4 text-center text-xs text-zinc-400">No custom playlists yet. Create one below!</div>`;
         } else {
-            playlists.forEach(pl => {
+            userPlaylists.forEach(pl => {
                 const alreadyIn = Array.isArray(pl.tracks) && pl.tracks.some(t => getTrackUid(t) === trackUid);
                 const btn = document.createElement('button');
                 btn.className = 'w-full flex items-center justify-between p-3 rounded-2xl border border-zinc-100 hover:border-zinc-300 hover:bg-zinc-50 transition-all text-left cursor-pointer';
@@ -7543,6 +7982,14 @@ document.addEventListener('DOMContentLoaded', () => {
         updateLibraryButtons();
         updateNowPlayingBgArt();
         updateTopNavTint();
+        if (typeof updateSafariThemeTint === 'function') {
+            const page = document.body.getAttribute('data-page');
+            if (page === 'now-playing' && currentCoverColor) {
+                updateSafariThemeTint(currentCoverColor.r, currentCoverColor.g, currentCoverColor.b, 1.0);
+            } else {
+                updateSafariThemeTint(null);
+            }
+        }
         if (typeof updateNowPlayingIconContrast === 'function') {
             if (currentCoverColor) {
                 updateNowPlayingIconContrast(currentCoverColor.r, currentCoverColor.g, currentCoverColor.b);
@@ -7620,9 +8067,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let visualizerStyle = 'bars';
 
     function ensureWebAudioEqualizer(forceInit = false) {
+        const isMobile = window.innerWidth < 640 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
         const hasNonZero = eqEnabled && eqBands.some(g => Math.abs(g) > 0.05);
-        if (!yolkAudioCtx && !hasNonZero && !forceInit && !visualizerEnabled) {
-            // Keep native HTMLAudioElement direct pipeline untouched when EQ and visualizer are off
+        if (!yolkAudioCtx && !hasNonZero && !forceInit && (!visualizerEnabled || isMobile)) {
+            // Keep native HTMLAudioElement direct pipeline untouched when EQ is off on mobile to guarantee uninterrupted background audio playback outside the app
             return;
         }
         try {
@@ -7685,6 +8133,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible' && yolkAudioCtx && yolkAudioCtx.state === 'suspended' && isPlaying) {
             yolkAudioCtx.resume().catch(() => {});
+        }
+        if (isPlaying && 'mediaSession' in navigator) {
+            navigator.mediaSession.playbackState = 'playing';
         }
     });
 
@@ -9200,14 +9651,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 pipVideoEl.style.cssText = 'position:fixed;bottom:0;right:0;width:1px;height:1px;opacity:0.001;pointer-events:none;z-index:-1;';
                 document.body.appendChild(pipVideoEl);
 
-                // Handle native video PiP pause / play controls
+                // Handle native video PiP pause / play controls (Only when PiP is actually open and document is visible)
                 pipVideoEl.addEventListener('pause', () => {
-                    if (isPlaying) {
+                    const isPipActive = Boolean(
+                        document.pictureInPictureElement === pipVideoEl ||
+                        (pipVideoEl && pipVideoEl.webkitPresentationMode === 'picture-in-picture')
+                    );
+                    if (isPlaying && isPipActive && document.visibilityState === 'visible') {
                         togglePlayPause();
                     }
                 });
                 pipVideoEl.addEventListener('play', () => {
-                    if (!isPlaying) {
+                    const isPipActive = Boolean(
+                        document.pictureInPictureElement === pipVideoEl ||
+                        (pipVideoEl && pipVideoEl.webkitPresentationMode === 'picture-in-picture')
+                    );
+                    if (!isPlaying && isPipActive && document.visibilityState === 'visible') {
                         togglePlayPause();
                     }
                 });
