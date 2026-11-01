@@ -1100,62 +1100,11 @@ function enqueueLibraryDownload(tracksOrSingle) {
 }
 window.enqueueLibraryDownload = enqueueLibraryDownload;
 
-function wireTrackDownloadBtn(dlBtn, track) {
-    if (!dlBtn || !track) return;
-    const uid = getTrackUid(track);
-    const title = track.title || track.name || 'Track';
-    dlBtn.dataset.trackUid = uid;
-    const renderDownloadState = (isDownloaded) => {
-        if (isDownloaded) {
-            dlBtn.classList.remove('text-zinc-400', 'text-emerald-600', 'bg-emerald-50');
-            dlBtn.title = 'Downloaded offline (click to undownload)';
-            dlBtn.innerHTML = getDownloadedBadgeSvg(14);
-        } else {
-            dlBtn.classList.remove('text-emerald-600', 'bg-emerald-50');
-            dlBtn.classList.add('text-zinc-400');
-            dlBtn.title = 'Download offline';
-            dlBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
-        }
-    };
-    dlBtn._renderDownloadState = renderDownloadState;
-
-    YolkOfflineDB.isDownloaded(uid).then(renderDownloadState);
-
-    dlBtn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const already = await YolkOfflineDB.isDownloaded(uid);
-        if (already) {
-            await YolkOfflineDB.deleteTrack(uid);
-            renderDownloadState(false);
-            if (typeof window.refreshAllDownloadButtonsUI === 'function') {
-                window.refreshAllDownloadButtonsUI();
-            }
-        } else {
-            await YolkOfflineDB.downloadTrack(track);
-            const nowDownloaded = await YolkOfflineDB.isDownloaded(uid);
-            renderDownloadState(nowDownloaded);
-        }
-    });
-}
+function wireTrackDownloadBtn() {}
 
 window.refreshAllDownloadButtonsUI = function () {
-    document.querySelectorAll('.download-track-btn').forEach(btn => {
-        const uid = btn.dataset.trackUid;
-        if (uid && typeof btn._renderDownloadState === 'function') {
-            YolkOfflineDB.isDownloaded(uid).then(btn._renderDownloadState);
-        }
-    });
-    if (typeof window._updatePlaylistDownloadAllBtn === 'function') {
-        window._updatePlaylistDownloadAllBtn();
-    }
-    if (typeof window._updateAlbumDownloadAllBtn === 'function') {
-        window._updateAlbumDownloadAllBtn();
-    }
     if (typeof window.refreshStorageManagerUI === 'function') {
         window.refreshStorageManagerUI();
-    }
-    if (typeof window.updateCurrentTrackDownloadUI === 'function') {
-        window.updateCurrentTrackDownloadUI();
     }
 };
 
@@ -1194,7 +1143,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const lyricsBarMorePopover = document.getElementById('lyrics-bar-more-popover');
     const lyricsMoreAddBtn = document.getElementById('lyrics-more-add-btn');
     const lyricsMoreQueueBtn = document.getElementById('lyrics-more-queue-btn');
-    const lyricsMoreDownloadBtn = document.getElementById('lyrics-more-download-btn');
     const lyricsMoreVolumeSlider = document.getElementById('lyrics-more-volume-slider');
     const lyricsBarTitle = document.getElementById('lyrics-bar-title');
     const lyricsBarArtist = document.getElementById('lyrics-bar-artist');
@@ -1207,7 +1155,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const npMobileMoreAlbumBtn = document.getElementById('np-mobile-more-album-btn');
     const npMobileMoreAddBtn = document.getElementById('np-mobile-more-add-btn');
     const npMobileMoreQueueBtn = document.getElementById('np-mobile-more-queue-btn');
-    const npMobileMoreDownloadBtn = document.getElementById('np-mobile-more-download-btn');
     const npMobileMoreVolumeSlider = document.getElementById('np-mobile-more-volume-slider');
 
     const bpMobileMoreBtn = document.getElementById('bp-mobile-more-btn');
@@ -1217,7 +1164,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const bpMoreFavBtn = document.getElementById('bp-more-fav-btn');
     const bpMoreAddBtn = document.getElementById('bp-more-add-btn');
     const bpMoreQueueBtn = document.getElementById('bp-more-queue-btn');
-    const bpMoreDownloadBtn = document.getElementById('bp-more-download-btn');
     const bpMoreVolumeSlider = document.getElementById('bp-more-volume-slider');
 
     const lyricsMoreArtistBtn = document.getElementById('lyrics-more-artist-btn');
@@ -1502,62 +1448,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    const npDownloadBtn = document.getElementById('now-playing-download-btn');
-    const bpDownloadBtn = document.getElementById('bottom-player-download-btn');
-
-    async function updateCurrentTrackDownloadUI() {
-        const uid = currentTrack ? getTrackUid(currentTrack) : '';
-        const isDl = uid ? await YolkOfflineDB.isDownloaded(uid) : false;
-
-        // 1. Update Now Playing & Bottom Bar icon buttons
-        [npDownloadBtn, bpDownloadBtn].forEach(btn => {
-            if (!btn) return;
-            const iconSize = btn === npDownloadBtn ? 20 : 18;
-            if (isDl) {
-                btn.style.color = '';
-                btn.title = 'Downloaded Offline (Click to Undownload)';
-                btn.innerHTML = getDownloadedBadgeSvg(iconSize);
-            } else {
-                btn.style.color = '';
-                btn.title = 'Download Song Offline';
-                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
-            }
-        });
-
-        // 2. Update More Popover download buttons
-        [npMobileMoreDownloadBtn, bpMoreDownloadBtn, lyricsMoreDownloadBtn].forEach(btn => {
-            if (!btn) return;
-            if (isDl) {
-                btn.innerHTML = `
-                    ${getDownloadedBadgeSvg(16)}
-                    <span style="font-weight:700;">Undownload Song</span>
-                `;
-            } else {
-                btn.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                    <span>Download Song</span>
-                `;
-            }
-        });
-    }
+    function updateCurrentTrackDownloadUI() {}
     window.updateCurrentTrackDownloadUI = updateCurrentTrackDownloadUI;
-
-    async function toggleCurrentTrackDownload() {
-        if (!currentTrack) return;
-        const uid = getTrackUid(currentTrack);
-        const already = await YolkOfflineDB.isDownloaded(uid);
-        if (already) {
-            await YolkOfflineDB.deleteTrack(uid);
-            await updateCurrentTrackDownloadUI();
-            if (typeof window.refreshAllDownloadButtonsUI === 'function') {
-                window.refreshAllDownloadButtonsUI();
-            }
-            showToast('Removed from offline downloads');
-        } else {
-            await YolkOfflineDB.downloadTrack(currentTrack);
-            await updateCurrentTrackDownloadUI();
-        }
-    }
 
     if (npAlbumBtn) {
         npAlbumBtn.onclick = () => navigateToTrackAlbum();
@@ -1572,12 +1464,6 @@ document.addEventListener('DOMContentLoaded', () => {
         lyricsMoreAlbumBtn.onclick = () => {
             if (lyricsBarMorePopover) lyricsBarMorePopover.classList.add('hidden');
             navigateToTrackAlbum();
-        };
-    }
-    if (lyricsMoreDownloadBtn) {
-        lyricsMoreDownloadBtn.onclick = () => {
-            if (lyricsBarMorePopover) lyricsBarMorePopover.classList.add('hidden');
-            toggleCurrentTrackDownload();
         };
     }
     if (npMobileMoreArtistBtn) {
@@ -1602,12 +1488,6 @@ document.addEventListener('DOMContentLoaded', () => {
         npMobileMoreQueueBtn.onclick = () => {
             if (npMobileMorePopover) npMobileMorePopover.classList.add('hidden');
             if (typeof openQueueModal === 'function') openQueueModal();
-        };
-    }
-    if (npMobileMoreDownloadBtn) {
-        npMobileMoreDownloadBtn.onclick = () => {
-            if (npMobileMorePopover) npMobileMorePopover.classList.add('hidden');
-            toggleCurrentTrackDownload();
         };
     }
     if (bpMoreArtistBtn) {
@@ -1642,23 +1522,6 @@ document.addEventListener('DOMContentLoaded', () => {
         bpMoreQueueBtn.onclick = () => {
             if (bpMobileMorePopover) bpMobileMorePopover.classList.add('hidden');
             if (typeof openQueueModal === 'function') openQueueModal();
-        };
-    }
-    if (bpMoreDownloadBtn) {
-        bpMoreDownloadBtn.onclick = () => {
-            if (bpMobileMorePopover) bpMobileMorePopover.classList.add('hidden');
-            toggleCurrentTrackDownload();
-        };
-    }
-    if (npDownloadBtn) {
-        npDownloadBtn.onclick = () => {
-            toggleCurrentTrackDownload();
-        };
-    }
-    if (bpDownloadBtn) {
-        bpDownloadBtn.onclick = (e) => {
-            e.stopPropagation();
-            toggleCurrentTrackDownload();
         };
     }
     if (npMobileMoreVolumeSlider) {
@@ -1873,6 +1736,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const playlistModalTitle = document.getElementById('playlist-modal-title');
     const playlistNameInput = document.getElementById('playlist-name-input');
     const playlistDescInput = document.getElementById('playlist-desc-input');
+    const plNameInputCustom = document.getElementById('pl-name-input-custom');
+    const plDescInputCustom = document.getElementById('pl-desc-input-custom');
     const playlistModalCancel = document.getElementById('playlist-modal-cancel');
     const playlistModalSave = document.getElementById('playlist-modal-save');
 
@@ -7047,9 +6912,35 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    if (plNameInputCustom) {
+        plNameInputCustom.addEventListener('input', () => {
+            if (playlistNameInput) playlistNameInput.value = plNameInputCustom.value;
+            renderAllPresetCanvases(plNameInputCustom.value, pendingModalTint?.hex);
+        });
+        plNameInputCustom.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (playlistModalSave) playlistModalSave.click();
+            }
+        });
+    }
+
     if (playlistNameInput) {
         playlistNameInput.addEventListener('input', () => {
+            if (plNameInputCustom) plNameInputCustom.value = playlistNameInput.value;
             renderAllPresetCanvases(playlistNameInput.value, pendingModalTint?.hex);
+        });
+    }
+
+    if (plDescInputCustom) {
+        plDescInputCustom.addEventListener('input', () => {
+            if (playlistDescInput) playlistDescInput.value = plDescInputCustom.value;
+        });
+    }
+
+    if (playlistDescInput) {
+        playlistDescInput.addEventListener('input', () => {
+            if (plDescInputCustom) plDescInputCustom.value = playlistDescInput.value;
         });
     }
 
@@ -7098,15 +6989,25 @@ document.addEventListener('DOMContentLoaded', () => {
         lastUploadedRawImage = null;
         if (modalTintDot) modalTintDot.style.backgroundColor = '#FFE600';
         if (modalTintStatus) modalTintStatus.textContent = 'Automatic (from artwork)';
-        playlistModalTitle.textContent = 'New Playlist';
-        playlistNameInput.value = '';
-        playlistDescInput.value = '';
-        setPlaylistCoverChoice('questionnaire');
+        if (playlistModalTitle) playlistModalTitle.textContent = 'New Playlist';
+        if (playlistNameInput) playlistNameInput.value = '';
+        if (playlistDescInput) playlistDescInput.value = '';
+        if (plNameInputCustom) plNameInputCustom.value = '';
+        if (plDescInputCustom) plDescInputCustom.value = '';
+        setPlaylistCoverChoice('presets');
         switchPlaylistModalTab('customize');
         updateModalCoverUI();
-        playlistModal.classList.remove('hidden');
-        playlistModal.classList.add('active');
-        setTimeout(() => playlistNameInput.focus(), 50);
+        if (playlistModal) {
+            playlistModal.classList.remove('hidden');
+            playlistModal.classList.add('active');
+        }
+        setTimeout(() => {
+            if (plNameInputCustom) {
+                plNameInputCustom.focus();
+            } else if (playlistNameInput) {
+                playlistNameInput.focus();
+            }
+        }, 70);
     }
 
     function openEditPlaylistModal(pl) {
@@ -7117,9 +7018,13 @@ document.addEventListener('DOMContentLoaded', () => {
         lastUploadedRawImage = (pendingModalCover && !pendingModalCover.startsWith('data:image/svg+xml')) ? pendingModalCover : null;
         if (modalTintDot) modalTintDot.style.backgroundColor = pendingModalTint ? pendingModalTint.hex : '#FFE600';
         if (modalTintStatus) modalTintStatus.textContent = pendingModalTint ? `Custom (${pendingModalTint.hex})` : 'Automatic (from artwork)';
-        playlistModalTitle.textContent = 'Edit Playlist';
-        playlistNameInput.value = pl.name || '';
-        playlistDescInput.value = (pl.description && pl.description !== '[object Object]' && pl.description !== 'undefined') ? pl.description : '';
+        if (playlistModalTitle) playlistModalTitle.textContent = 'Edit Playlist';
+        const plName = pl.name || '';
+        const plDesc = (pl.description && pl.description !== '[object Object]' && pl.description !== 'undefined') ? pl.description : '';
+        if (playlistNameInput) playlistNameInput.value = plName;
+        if (playlistDescInput) playlistDescInput.value = plDesc;
+        if (plNameInputCustom) plNameInputCustom.value = plName;
+        if (plDescInputCustom) plDescInputCustom.value = plDesc;
         if (pendingModalCover && !pendingModalCover.startsWith('data:image/svg+xml')) {
             setPlaylistCoverChoice('upload');
         } else {
@@ -7127,14 +7032,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         switchPlaylistModalTab('customize');
         updateModalCoverUI();
-        playlistModal.classList.remove('hidden');
-        playlistModal.classList.add('active');
-        setTimeout(() => playlistNameInput.focus(), 50);
+        if (playlistModal) {
+            playlistModal.classList.remove('hidden');
+            playlistModal.classList.add('active');
+        }
+        setTimeout(() => {
+            if (plNameInputCustom) {
+                plNameInputCustom.focus();
+            } else if (playlistNameInput) {
+                playlistNameInput.focus();
+            }
+        }, 70);
     }
 
     function closePlaylistModal() {
-        playlistModal.classList.remove('active');
-        playlistModal.classList.add('hidden');
+        if (playlistModal) {
+            playlistModal.classList.remove('active');
+            playlistModal.classList.add('hidden');
+        }
         playlistToEditPending = null;
         pendingModalCover = null;
         lastUploadedRawImage = null;
@@ -7142,6 +7057,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (createPlaylistBtn) {
+        createPlaylistBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openCreatePlaylistModal();
+        });
         createPlaylistBtn.onclick = openCreatePlaylistModal;
     }
 
@@ -7151,10 +7071,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (playlistModalSave) {
         playlistModalSave.onclick = () => {
-            const name = playlistNameInput.value.trim();
-            const desc = playlistDescInput.value.trim();
+            const name = (plNameInputCustom?.value || playlistNameInput?.value || '').trim();
+            const desc = (plDescInputCustom?.value || playlistDescInput?.value || '').trim();
             if (!name) {
                 showToast('Please enter a playlist name.');
+                if (plNameInputCustom) plNameInputCustom.focus();
+                else if (playlistNameInput) playlistNameInput.focus();
                 return;
             }
 
@@ -7287,6 +7209,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (addToPlaylistNewBtn) {
+        addToPlaylistNewBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            closeAddToPlaylistModal();
+            openCreatePlaylistModal();
+        });
         addToPlaylistNewBtn.onclick = () => {
             closeAddToPlaylistModal();
             openCreatePlaylistModal();
@@ -7651,9 +7579,6 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="flex items-center gap-1 shrink-0">
                 ${durStr ? `<span class="text-[11px] text-zinc-400 font-semibold mr-1.5 hidden sm:inline">${durStr}</span>` : ''}
-                <button class="download-track-btn text-zinc-400 hover:text-zinc-900 transition-colors p-2 rounded-full hover:bg-zinc-100 cursor-pointer" title="Download offline">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                </button>
                 <button class="add-to-queue-btn text-zinc-400 hover:text-zinc-900 transition-colors p-2 rounded-full hover:bg-zinc-100 cursor-pointer" title="Add to Queue">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
                 </button>
@@ -7811,70 +7736,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // Wire Album Download All button
-            const albumDownloadAllBtn = document.getElementById('album-download-all-btn');
-            if (albumDownloadAllBtn) {
-                if (tracks.length === 0) {
-                    albumDownloadAllBtn.classList.add('hidden');
-                    window._updateAlbumDownloadAllBtn = null;
-                } else {
-                    albumDownloadAllBtn.classList.remove('hidden');
-                    const updateAlbumDownloadStatus = async () => {
-                        const checks = await Promise.all(tracks.map(t => YolkOfflineDB.isDownloaded(getTrackUid(t))));
-                        const allDownloaded = checks.length > 0 && checks.every(Boolean);
-                        if (allDownloaded) {
-                            albumDownloadAllBtn.title = 'Undownload Album';
-                            albumDownloadAllBtn.innerHTML = getDownloadedBadgeSvg(18);
-                        } else {
-                            albumDownloadAllBtn.title = 'Download Album';
-                            albumDownloadAllBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
-                        }
-                        return allDownloaded;
-                    };
-                    window._updateAlbumDownloadAllBtn = updateAlbumDownloadStatus;
-                    updateAlbumDownloadStatus();
-
-                    albumDownloadAllBtn.onclick = async () => {
-                        const isAll = await updateAlbumDownloadStatus();
-                        const albumTitle = data.name || 'Album';
-                        if (isAll) {
-                            const ok = await showCustomConfirm({
-                                title: 'Remove Offline Album',
-                                message: `Remove all downloaded songs from "${albumTitle}"?`,
-                                confirmText: 'Remove Downloads',
-                                cancelText: 'Keep Offline',
-                                isDestructive: true
-                            });
-                            if (ok) {
-                                for (const t of tracks) {
-                                    await YolkOfflineDB.deleteTrack(getTrackUid(t));
-                                }
-                                if (typeof window.refreshAllDownloadButtonsUI === 'function') {
-                                    window.refreshAllDownloadButtonsUI();
-                                }
-                                showToast('Removed album songs from downloads');
-                            }
-                        } else {
-                            // Also save album as a playlist in Library if not already present
-                            const existingAlbumPl = playlists.find(p => p.name && p.name.toLowerCase() === albumTitle.toLowerCase());
-                            if (!existingAlbumPl) {
-                                playlists.push({
-                                    id: 'pl_alb_' + Date.now().toString(36),
-                                    name: albumTitle,
-                                    description: data.artist_name ? `Album by ${data.artist_name}` : 'Album',
-                                    cover: artwork || '',
-                                    createdAt: new Date().toISOString(),
-                                    tracks: [...tracks],
-                                    isAlbum: true
-                                });
-                                savePlaylists();
-                                renderLibrary();
-                            }
-                            enqueueLibraryDownload(tracks);
-                        }
-                    };
-                }
-            }
+            window._updateAlbumDownloadAllBtn = null;
         } catch (err) {
             console.error('Album view error:', err);
             if (loaderEl) loaderEl.classList.add('hidden');

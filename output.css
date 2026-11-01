@@ -1913,9 +1913,6 @@
   .text-current {
     color: currentcolor;
   }
-  .text-emerald-600 {
-    color: var(--color-emerald-600);
-  }
   .text-emerald-700 {
     color: var(--color-emerald-700);
   }
@@ -2485,6 +2482,9 @@
   }
   .focus\:border-zinc-400:focus {
     border-color: var(--color-zinc-400);
+  }
+  .focus\:border-zinc-500:focus {
+    border-color: var(--color-zinc-500);
   }
   .focus\:border-zinc-800:focus {
     border-color: var(--color-zinc-800);
