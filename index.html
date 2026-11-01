@@ -73,102 +73,76 @@
             font-size: 16px !important;
         }
 
-        /* Smooth expand/collapse animation for Top-Nav Now Playing nav icon pill */
-        #nav-now-playing {
+        /* Universal Circular Blue Loop Volume Widget */
+        .yolk-circular-volume {
+            position: relative;
+            width: 32px;
+            height: 32px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            white-space: nowrap;
-            overflow: hidden;
-            transition: max-width 0.45s cubic-bezier(0.16, 1, 0.3, 1),
-                        width 0.45s cubic-bezier(0.16, 1, 0.3, 1),
-                        opacity 0.35s ease,
-                        padding 0.35s ease,
-                        transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
-            transform-origin: left center;
+            border-radius: 9999px;
+            cursor: pointer;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
         }
-
-        #nav-now-playing.nav-hidden,
-        #top-nav-bar #nav-now-playing.nav-hidden,
-        body.is-searching #top-nav-bar #nav-now-playing.nav-hidden {
-            display: none !important;
-            max-width: 0 !important;
-            min-width: 0 !important;
-            width: 0 !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            opacity: 0 !important;
-            pointer-events: none !important;
-            visibility: hidden !important;
-            transform: scaleX(0.5) translateX(-8px) !important;
+        .yolk-circular-volume:active,
+        .yolk-circular-volume.is-dragging {
+            transform: scale(0.96);
         }
-
-        #nav-now-playing.nav-visible,
-        #top-nav-bar #nav-now-playing.nav-visible {
-            display: inline-flex !important;
-            max-width: 48px !important;
-            width: 36px !important;
-            opacity: 1 !important;
-            pointer-events: auto !important;
-            visibility: visible !important;
-            transform: scaleX(1) translateX(0) !important;
+        .yolk-circular-volume svg.vol-loop-svg {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            transform: rotate(-90deg);
         }
-
-        /* Desktop Bottom Bar Now Playing Nav Pill: ONLY shows if a song is playing, with full minimum width */
-        #bp-desktop-nav #bp-nav-now-playing {
-            display: none !important;
-            align-items: center !important;
-            justify-content: center !important;
-            min-width: 0 !important;
-            max-width: 0 !important;
-            width: 0 !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            flex-shrink: 0 !important;
-            white-space: nowrap !important;
-            overflow: hidden !important;
-            opacity: 0 !important;
-            visibility: hidden !important;
-            pointer-events: none !important;
-            transform: scale(0.9) !important;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        .yolk-circular-volume circle.vol-loop-track {
+            fill: none;
+            stroke: currentColor;
+            stroke-opacity: 0.14;
+            stroke-width: 2.4;
+            transition: stroke-opacity 0.2s ease;
         }
-
-        #bp-desktop-nav #bp-nav-now-playing.nav-visible {
-            display: inline-flex !important;
-            min-width: 126px !important;
-            max-width: none !important;
-            width: auto !important;
-            padding-left: 12px !important;
-            padding-right: 14px !important;
-            opacity: 1 !important;
-            visibility: visible !important;
-            pointer-events: auto !important;
-            overflow: visible !important;
-            transform: scale(1) !important;
+        .yolk-circular-volume circle.vol-loop-fill {
+            fill: none;
+            stroke: #3b82f6;
+            stroke-width: 2.6;
+            stroke-linecap: round;
+            stroke-dasharray: 75.398; /* 2 * PI * 12 */
+            stroke-dashoffset: 0;
+            transition: stroke-dashoffset 0.05s linear, stroke 0.2s ease;
         }
-
-        #bp-desktop-nav #bp-nav-now-playing.nav-hidden {
-            display: none !important;
-            min-width: 0 !important;
-            max-width: 0 !important;
-            width: 0 !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            opacity: 0 !important;
-            visibility: hidden !important;
-            pointer-events: none !important;
+        .yolk-circular-volume:hover circle.vol-loop-track,
+        .yolk-circular-volume.is-dragging circle.vol-loop-track {
+            stroke-opacity: 0.26;
         }
-
-        #bp-desktop-nav #bp-nav-now-playing span {
-            display: inline !important;
-            white-space: nowrap !important;
-            overflow: visible !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            font-size: 12px !important;
-            font-weight: 700 !important;
-            margin-left: 2px !important;
+        .yolk-circular-volume:hover circle.vol-loop-fill,
+        .yolk-circular-volume.is-dragging circle.vol-loop-fill {
+            stroke: #2563eb;
+            filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.45));
+        }
+        body.dark-mode .yolk-circular-volume circle.vol-loop-track {
+            stroke-opacity: 0.22;
+        }
+        body.dark-mode .yolk-circular-volume circle.vol-loop-fill {
+            stroke: #60a5fa;
+        }
+        body.dark-mode .yolk-circular-volume:hover circle.vol-loop-fill,
+        body.dark-mode .yolk-circular-volume.is-dragging circle.vol-loop-fill {
+            stroke: #38bdf8;
+            filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.5));
+        }
+        .yolk-circular-volume .vol-icon-center {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
         }
 
         /* Bottom Player previous & next track circular hover */
@@ -538,6 +512,18 @@
             opacity: 0 !important;
             pointer-events: none !important;
         }
+        /* Top-Left Small Logo Icon Glow (Circle gradient sits strictly BEHIND icon) */
+        #smallLogo-icon-glow {
+            background: radial-gradient(circle, rgba(255, 253, 245, 0.95) 0%, rgba(255, 252, 240, 0.60) 60%, rgba(255, 252, 240, 0.20) 100%) !important;
+            box-shadow: none !important;
+            border-radius: 9999px !important;
+        }
+        body.dark-mode #smallLogo-icon-glow {
+            background: radial-gradient(circle, rgba(255, 253, 245, 0.35) 0%, rgba(255, 252, 240, 0.15) 60%, rgba(255, 252, 240, 0) 100%) !important;
+            box-shadow: none !important;
+            border-radius: 9999px !important;
+        }
+
         @media (min-width: 640px) {
             #top-white-fade-bar,
             #safari-top-color-shim,
@@ -561,16 +547,6 @@
             body.dark-mode #smallLogo {
                 background: transparent !important;
                 box-shadow: none !important;
-            }
-            #smallLogo-icon-glow {
-                background: radial-gradient(circle, rgba(255, 253, 245, 0.95) 0%, rgba(255, 252, 240, 0.60) 60%, rgba(255, 252, 240, 0.20) 100%) !important;
-                box-shadow: none !important;
-                border-radius: 9999px !important;
-            }
-            body.dark-mode #smallLogo-icon-glow {
-                background: radial-gradient(circle, rgba(255, 253, 245, 0.35) 0%, rgba(255, 252, 240, 0.15) 60%, rgba(255, 252, 240, 0) 100%) !important;
-                box-shadow: none !important;
-                border-radius: 9999px !important;
             }
         }
 
@@ -795,14 +771,33 @@
                         margin-top 0.4s var(--parabola-ease);
         }
 
-        /* Hide bottom player on now playing page (Mobile only; Desktop keeps wide bottom navbar) */
+        /* Unified bottom player for mobile: exact same bar in and not in Now Playing, translucent frosted glass */
         @media (max-width: 639px) {
+            #bottom-player {
+                background: rgba(255, 255, 255, 0.76) !important;
+                backdrop-filter: blur(28px) saturate(180%) !important;
+                -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+                border: 1px solid rgba(255, 255, 255, 0.6) !important;
+                box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08) !important;
+            }
+            body.dark-mode #bottom-player {
+                background: rgba(18, 18, 22, 0.68) !important;
+                backdrop-filter: blur(28px) saturate(180%) !important;
+                -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+                border: 1px solid rgba(255, 255, 255, 0.12) !important;
+                box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45) !important;
+            }
             body[data-page="now-playing"] #bottom-player {
-                transform: translate(-50%, 150%) !important;
-                opacity: 0;
-                pointer-events: none;
+                display: flex !important;
+                transform: translate(-50%, 0) !important;
+                opacity: 1 !important;
+                pointer-events: auto !important;
+                z-index: 45 !important;
             }
             #bottom-player.hidden-force {
+                display: none !important;
+            }
+            #np-lyrics-floating-bar {
                 display: none !important;
             }
         }
@@ -1525,40 +1520,87 @@
         .lyric-dots {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 14px;
+            gap: 9px;
+            padding: 8px 16px;
             border-radius: 9999px;
             background: rgba(0, 0, 0, 0.06);
             transition: background-color 0.3s ease;
         }
+        body.dark-mode .lyric-dots {
+            background: rgba(255, 255, 255, 0.08);
+        }
         .dots-line.active .lyric-dots {
             background: rgba(0, 0, 0, 0.12);
         }
+        body.dark-mode .dots-line.active .lyric-dots {
+            background: rgba(255, 255, 255, 0.14);
+        }
         .lyric-dot {
-            width: 7px;
-            height: 7px;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
-            background-color: #000000;
-            transition: transform 0.2s ease, background-color 0.2s ease, opacity 0.2s ease;
+            background-color: #71717a;
+            opacity: 0.28;
+            transform: scale(0.82);
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, background-color 0.25s ease;
         }
-        .dots-line.active .lyric-dot {
-            animation: modernDotPulse 1.4s ease-in-out infinite;
+        body.dark-mode .lyric-dot {
+            background-color: #a1a1aa;
         }
-        .dots-line.active .lyric-dot:nth-child(1) { animation-delay: 0s; }
-        .dots-line.active .lyric-dot:nth-child(2) { animation-delay: 0.2s; }
-        .dots-line.active .lyric-dot:nth-child(3) { animation-delay: 0.4s; }
+        .dots-line.active .lyric-dot:nth-child(1) {
+            animation: dotStepActivate1 2.2s ease-in-out infinite;
+        }
+        .dots-line.active .lyric-dot:nth-child(2) {
+            animation: dotStepActivate2 2.2s ease-in-out infinite;
+        }
+        .dots-line.active .lyric-dot:nth-child(3) {
+            animation: dotStepActivate3 2.2s ease-in-out infinite;
+        }
 
-        @keyframes modernDotPulse {
-            0%, 100% {
-                transform: scale(0.85);
-                opacity: 0.35;
-                background-color: #71717a;
-            }
-            50% {
-                transform: scale(1.35);
-                opacity: 1;
-                background-color: #18181b;
-            }
+        @keyframes dotStepActivate1 {
+            0% { transform: scale(0.82); opacity: 0.28; background-color: #71717a; }
+            10% { transform: scale(1.35); opacity: 1; background-color: #18181b; }
+            20%, 88% { transform: scale(1.05); opacity: 0.95; background-color: #18181b; }
+            96%, 100% { transform: scale(0.82); opacity: 0.28; background-color: #71717a; }
+        }
+        @keyframes dotStepActivate2 {
+            0%, 28% { transform: scale(0.82); opacity: 0.28; background-color: #71717a; }
+            38% { transform: scale(1.35); opacity: 1; background-color: #18181b; }
+            48%, 88% { transform: scale(1.05); opacity: 0.95; background-color: #18181b; }
+            96%, 100% { transform: scale(0.82); opacity: 0.28; background-color: #71717a; }
+        }
+        @keyframes dotStepActivate3 {
+            0%, 56% { transform: scale(0.82); opacity: 0.28; background-color: #71717a; }
+            66% { transform: scale(1.35); opacity: 1; background-color: #18181b; }
+            76%, 88% { transform: scale(1.05); opacity: 0.95; background-color: #18181b; }
+            96%, 100% { transform: scale(0.82); opacity: 0.28; background-color: #71717a; }
+        }
+        body.dark-mode .dots-line.active .lyric-dot:nth-child(1) {
+            animation-name: dotStepActivateDark1;
+        }
+        body.dark-mode .dots-line.active .lyric-dot:nth-child(2) {
+            animation-name: dotStepActivateDark2;
+        }
+        body.dark-mode .dots-line.active .lyric-dot:nth-child(3) {
+            animation-name: dotStepActivateDark3;
+        }
+        @keyframes dotStepActivateDark1 {
+            0% { transform: scale(0.82); opacity: 0.28; background-color: #71717a; }
+            10% { transform: scale(1.35); opacity: 1; background-color: #f4f4f5; }
+            20%, 88% { transform: scale(1.05); opacity: 0.95; background-color: #f4f4f5; }
+            96%, 100% { transform: scale(0.82); opacity: 0.28; background-color: #71717a; }
+        }
+        @keyframes dotStepActivateDark2 {
+            0%, 28% { transform: scale(0.82); opacity: 0.28; background-color: #71717a; }
+            38% { transform: scale(1.35); opacity: 1; background-color: #f4f4f5; }
+            48%, 88% { transform: scale(1.05); opacity: 0.95; background-color: #f4f4f5; }
+            96%, 100% { transform: scale(0.82); opacity: 0.28; background-color: #71717a; }
+        }
+        @keyframes dotStepActivateDark3 {
+            0%, 56% { transform: scale(0.82); opacity: 0.28; background-color: #71717a; }
+            66% { transform: scale(1.35); opacity: 1; background-color: #f4f4f5; }
+            76%, 88% { transform: scale(1.05); opacity: 0.95; background-color: #f4f4f5; }
+            96%, 100% { transform: scale(0.82); opacity: 0.28; background-color: #71717a; }
         }
         .lyric-section-label {
             font-size: 0.75rem;
@@ -2040,16 +2082,19 @@
         <p class="text-xs font-medium text-zinc-500 mt-1 max-w-xs">Rotate your phone back to portrait to view Yolk!</p>
     </div>
 
+    <!-- Ambient Fullscreen Blur Backdrop for More Menu Popovers -->
+    <div id="more-popovers-backdrop" class="fixed inset-0 bg-black/25 backdrop-blur-[6px] z-40 hidden transition-opacity duration-200"></div>
+
     <!-- Small Top-Left Logo (Circle gradient sits BEHIND the icon, not bigger than it) -->
     <div id="smallLogo" class="fixed top-5 left-4 sm:top-7 sm:left-8 z-40 flex items-center gap-2.5 cursor-pointer pointer-events-auto select-none transition-transform hover:scale-105 active:scale-95" title="Return to Home">
         <div class="relative flex items-center justify-center shrink-0 w-6 h-6">
             <div id="smallLogo-icon-glow" class="absolute inset-[2px] rounded-full pointer-events-none"></div>
             <img src="/yolk-circle.png" alt="" class="w-6 h-6 object-contain relative z-10 pointer-events-none select-none">
         </div>
-        <span class="text-xl font-bold text-black tracking-tight">Yolk!</span>
+        <span class="text-xl font-bold text-zinc-900 dark:text-white tracking-tight transition-colors">Yolk!</span>
     </div>
 
-    <!-- Top Navigation Bar (Icon-Only Pills: Search, Library, Settings, Now Playing) -->
+    <!-- Top Navigation Bar (Icon-Only Pills: Search, Library, Settings) -->
     <header id="main-header" class="fixed top-5 right-4 sm:top-7 sm:right-8 z-30 flex justify-end max-w-fit transition-all duration-300">
         <nav id="top-nav-bar" class="flex gap-1 items-center flex-nowrap shrink-0 bg-white/75 backdrop-blur-md p-1.5 h-[42px] rounded-full border border-zinc-200 shadow-sm transition-all duration-500">
             <a href="#search" id="nav-search" title="Search" aria-label="Search" class="yolk-active w-9 h-8 shrink-0 flex items-center justify-center rounded-full sleek-transition">
@@ -2060,9 +2105,6 @@
             </a>
             <a href="#settings" id="nav-settings" title="Settings" aria-label="Settings" class="sleek-hover w-9 h-8 shrink-0 flex items-center justify-center rounded-full text-zinc-600 sleek-transition">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-            </a>
-            <a href="#now-playing" id="nav-now-playing" title="Now Playing" aria-label="Now Playing" class="sleek-hover nav-hidden w-9 h-8 shrink-0 flex items-center justify-center rounded-full text-zinc-600 sleek-transition">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10v3"></path><path d="M6 6v11"></path><path d="M10 3v18"></path><path d="M14 8v7"></path><path d="M18 5v13"></path><path d="M22 10v3"></path></svg>
             </a>
         </nav>
     </header>
@@ -2137,10 +2179,10 @@
                         <p class="text-sm text-zinc-500 mt-1">Playlists, collections, and saved tracks</p>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button id="import-yt-playlist-btn" class="bubbly-hover flex items-center justify-center w-10 h-10 rounded-full bg-white hover:bg-zinc-50 text-zinc-800 border border-zinc-200/90 shadow-sm hover:border-zinc-300 transition-all cursor-pointer shrink-0" title="Import YouTube Playlist">
+                        <button id="import-yt-playlist-btn" class="bubbly-hover flex items-center justify-center w-10 h-10 rounded-full bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-100 border border-zinc-200/90 dark:border-zinc-700 shadow-sm transition-all cursor-pointer shrink-0" title="Import YouTube Playlist">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-red-600"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
                         </button>
-                        <button id="create-playlist-btn" class="bubbly-hover flex items-center justify-center w-10 h-10 rounded-full bg-zinc-900 text-white shadow hover:bg-zinc-800 transition-all cursor-pointer shrink-0" title="Create New Playlist">
+                        <button id="create-playlist-btn" class="bubbly-hover flex items-center justify-center w-10 h-10 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow hover:bg-zinc-800 dark:hover:bg-white transition-all cursor-pointer shrink-0" title="Create New Playlist">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                         </button>
                     </div>
@@ -2287,17 +2329,19 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" class="text-current transition-colors"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path></svg>
                     </button>
 
-                    <!-- Volume Bar (Small Button until Hovered -> Expands outside container restrictions) -->
-                    <div id="np-volume-container" class="relative hidden sm:flex items-center group/npvol shrink-0">
-                        <button id="np-volume-btn" class="sleek-hover text-black hover:scale-110 active:scale-95 transition-all p-2 cursor-pointer shrink-0" title="Volume">
-                            <svg id="np-volume-icon" xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
-                        </button>
-                        <div class="pointer-events-none group-hover/npvol:pointer-events-auto opacity-0 group-hover/npvol:opacity-100 scale-95 group-hover/npvol:scale-100 transition-all duration-200 ease-out absolute right-0 bottom-full pb-2.5 sm:pb-0 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 sm:left-full sm:right-auto sm:pl-2.5 z-40 flex items-center">
-                            <div class="flex items-center gap-2 bg-white/75 backdrop-blur-2xl px-4 py-2.5 rounded-full shadow-[0_12px_36px_rgba(0,0,0,0.16)] border border-white/70">
-                                <input id="np-volume-slider" type="range" min="0" max="100" value="100" class="yolk-volume-slider w-24 sm:w-28 cursor-pointer">
-                            </div>
+                    <!-- Circular Blue Loop Volume Widget -->
+                    <div id="np-volume-container" class="yolk-circular-volume hidden sm:inline-flex text-black" title="Volume (Drag up/right for up, down/left for down)">
+                        <svg class="vol-loop-svg" viewBox="0 0 32 32">
+                            <circle class="vol-loop-track" cx="16" cy="16" r="12" />
+                            <circle id="np-vol-loop-fill" class="vol-loop-fill" cx="16" cy="16" r="12" />
+                        </svg>
+                        <div class="vol-icon-center">
+                            <svg id="np-volume-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                                <path id="np-vol-wave-1" d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                                <path id="np-vol-wave-2" d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                            </svg>
                         </div>
-                        <button id="np- volume-btn-placeholder" class="hidden"></button>
                     </div>
 
                     <!-- Hidden from Now Playing cluster on desktop (Moved to bottom bar) -->
@@ -2347,13 +2391,6 @@
             <div id="np-lyrics-col" class="np-right-col">
                 <div id="np-lyrics-header-row" class="flex items-center justify-between mb-3 shrink-0 select-none px-2">
                     <span class="text-[11px] uppercase font-black tracking-widest text-black/70">Lyrics</span>
-                    <div class="flex items-center gap-2">
-                        <button id="np-share-lyrics-btn" type="button" class="bubbly-hover inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-white/55 backdrop-blur-md text-black border border-white/75 shadow-xs hover:bg-white/80 cursor-pointer transition-all" title="Share Lyrics Card">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
-                            <span>Share Lyrics</span>
-                        </button>
-                        <span id="lyrics-badge" class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-black text-white shadow-xs">Synced</span>
-                    </div>
                 </div>
                 <div id="lyrics-container">
                     <div class="h-full flex flex-col items-center justify-center gap-2 text-black/50 select-none py-16 text-center">
@@ -2483,7 +2520,7 @@
                         <div class="flex items-center gap-2">
                             <span id="artist-albums-count" class="text-[10px] font-semibold text-zinc-400"></span>
                             <button id="artist-albums-redirect-btn" class="hidden items-center gap-1 text-[11px] font-bold text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-colors cursor-pointer py-0.5 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10" title="View all albums">
-                                <span id="artist-albums-redirect-text">See All Albums</span>
+                                <span id="artist-albums-redirect-text">See all</span>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                             </button>
                         </div>
@@ -2500,7 +2537,7 @@
                         <div class="flex items-center gap-2">
                             <span id="artist-tracks-header-count" class="hidden"></span>
                             <button id="artist-tracks-redirect-btn" class="hidden items-center gap-1 text-[11px] font-bold text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-colors cursor-pointer py-0.5 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10" title="View all songs">
-                                <span id="artist-tracks-redirect-text">See All Songs</span>
+                                <span id="artist-tracks-redirect-text">See all</span>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                             </button>
                         </div>
@@ -2600,7 +2637,6 @@
                                 <div>
                                     <div class="flex items-center gap-2">
                                         <h2 class="text-base sm:text-lg font-bold text-zinc-900">Dark Mode</h2>
-                                        <span class="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded-full bg-[#FACC15]/25 text-amber-600 border border-[#FACC15]/60">Beta</span>
                                     </div>
                                     <p class="text-xs sm:text-sm text-zinc-500 mt-0.5">Switch between Yolk!'s classic warm light mode and dark mode</p>
                                 </div>
@@ -2635,7 +2671,6 @@
                                 <div>
                                     <div class="text-sm font-bold text-white flex items-center gap-1.5">
                                         <span>Dark Mode</span>
-                                        <span class="text-[9px] font-extrabold uppercase px-1.5 py-0.2 bg-[#FACC15] text-black rounded-full">Beta</span>
                                     </div>
                                     <div class="text-[11px] font-medium text-zinc-400">Deep obsidian midnight</div>
                                 </div>
@@ -2653,7 +2688,6 @@
                                 <div>
                                     <div class="flex items-center gap-2">
                                         <h2 class="text-base sm:text-lg font-bold text-zinc-900">Crossfade Tracks</h2>
-                                        <span id="crossfade-badge" class="px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-zinc-100 text-zinc-700 border border-zinc-200/80">Off</span>
                                     </div>
                                     <p class="text-xs sm:text-sm text-zinc-500 mt-0.5">Smoothly overlap and blend the end of one song into the start of the next</p>
                                 </div>
@@ -2685,8 +2719,7 @@
                                 </div>
                                 <div class="min-w-0">
                                     <div class="flex items-center gap-2">
-                                        <h2 class="text-base sm:text-lg font-bold text-zinc-900">Audio Spectrum Visualizer</h2>
-                                        <span id="viz-fps-badge" class="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded-full bg-zinc-100 text-zinc-700 border border-zinc-200/80">60 FPS</span>
+                                        <h2 class="text-base sm:text-lg font-bold text-zinc-900">Spectrum Bar</h2>
                                     </div>
                                     <p class="text-xs sm:text-sm text-zinc-500 mt-0.5">Live high-resolution spectrum bars directly beneath cover art in Now Playing</p>
                                 </div>
@@ -2699,7 +2732,8 @@
                     </div>
 
                     <!-- 4. 5-Band Audio Equalizer (EQ) Card -->
-                    <div class="bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-5">
+                    <!-- 4. Equalizer (EQ) Card with Concise Preset List -->
+                    <div class="bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-4">
                         <div class="flex items-center justify-between gap-4 flex-wrap">
                             <div class="flex items-center gap-3.5">
                                 <div class="settings-icon-box w-11 h-11 rounded-2xl bg-zinc-100 border border-zinc-200/80 flex items-center justify-center text-zinc-800 shrink-0">
@@ -2710,7 +2744,7 @@
                                         <h2 class="text-base sm:text-lg font-bold text-zinc-900">Equalizer (EQ)</h2>
                                         <span id="eq-active-preset-badge" class="px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-zinc-100 text-zinc-700 border border-zinc-200/80">Flat</span>
                                     </div>
-                                    <p class="text-xs sm:text-sm text-zinc-500 mt-0.5">Real-time 5-band Web Audio filter with Bass Boost & studio presets</p>
+                                    <p class="text-xs sm:text-sm text-zinc-500 mt-0.5">Acoustic frequency response presets tailored for your listening style</p>
                                 </div>
                             </div>
 
@@ -2724,47 +2758,54 @@
                             </div>
                         </div>
 
-                        <!-- EQ Presets Row -->
-                        <div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar pt-2 border-t border-zinc-100" id="eq-presets-container">
-                            <button type="button" data-eq-preset="flat" class="eq-preset-pill px-3.5 py-1.5 rounded-full text-xs font-bold bg-zinc-900 text-white border border-zinc-900 shrink-0 cursor-pointer transition-all">Flat</button>
-                            <button type="button" data-eq-preset="bass" class="eq-preset-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border border-zinc-200/80 shrink-0 cursor-pointer transition-all">Bass Boost</button>
-                            <button type="button" data-eq-preset="vocal" class="eq-preset-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border border-zinc-200/80 shrink-0 cursor-pointer transition-all">Vocal Booster</button>
-                            <button type="button" data-eq-preset="late-night" class="eq-preset-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border border-zinc-200/80 shrink-0 cursor-pointer transition-all">Late Night</button>
-                            <button type="button" data-eq-preset="electronic" class="eq-preset-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border border-zinc-200/80 shrink-0 cursor-pointer transition-all">Electronic</button>
-                            <button type="button" data-eq-preset="acoustic" class="eq-preset-pill px-3.5 py-1.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border border-zinc-200/80 shrink-0 cursor-pointer transition-all">Acoustic</button>
-                        </div>
-
-                        <!-- 5-Band EQ Sliders -->
-                        <div id="eq-bands-wrapper" class="flex flex-col gap-3 pt-1">
-                            <div class="flex items-center gap-3">
-                                <span class="w-16 text-xs font-bold text-zinc-700 shrink-0">60 Hz <span class="text-[10px] font-medium text-zinc-400 block">Sub-Bass</span></span>
-                                <input type="range" min="-12" max="12" step="0.5" value="0" data-eq-band="0" class="eq-band-slider yolk-volume-slider flex-1 cursor-pointer">
-                                <span id="eq-band-val-0" class="w-12 text-right font-mono text-xs font-bold text-zinc-700 shrink-0">0 dB</span>
+                        <!-- EQ Presets List with Descriptions -->
+                        <div class="flex flex-col gap-2 pt-2 border-t border-zinc-100" id="eq-presets-container">
+                            <div data-eq-preset="flat" class="eq-preset-row flex items-center justify-between p-3 rounded-2xl border border-zinc-200/80 hover:border-zinc-400 bg-white/70 dark:bg-zinc-800/70 transition-all cursor-pointer group is-active">
+                                <div class="flex items-center gap-2.5">
+                                    <span class="eq-dot w-2 h-2 rounded-full bg-blue-500"></span>
+                                    <span class="text-xs font-bold text-zinc-900 dark:text-zinc-100">Flat</span>
+                                </div>
+                                <span class="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium text-right max-w-xs sm:max-w-md truncate">Natural reference curve for acoustic balance</span>
                             </div>
-                            <div class="flex items-center gap-3">
-                                <span class="w-16 text-xs font-bold text-zinc-700 shrink-0">230 Hz <span class="text-[10px] font-medium text-zinc-400 block">Bass</span></span>
-                                <input type="range" min="-12" max="12" step="0.5" value="0" data-eq-band="1" class="eq-band-slider yolk-volume-slider flex-1 cursor-pointer">
-                                <span id="eq-band-val-1" class="w-12 text-right font-mono text-xs font-bold text-zinc-700 shrink-0">0 dB</span>
+                            <div data-eq-preset="bass" class="eq-preset-row flex items-center justify-between p-3 rounded-2xl border border-zinc-200/80 hover:border-zinc-400 bg-white/70 dark:bg-zinc-800/70 transition-all cursor-pointer group">
+                                <div class="flex items-center gap-2.5">
+                                    <span class="eq-dot w-2 h-2 rounded-full bg-transparent group-hover:bg-zinc-300"></span>
+                                    <span class="text-xs font-bold text-zinc-900 dark:text-zinc-100">Bass Boost</span>
+                                </div>
+                                <span class="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium text-right max-w-xs sm:max-w-md truncate">Enhanced low-end sub-bass resonance and punch</span>
                             </div>
-                            <div class="flex items-center gap-3">
-                                <span class="w-16 text-xs font-bold text-zinc-700 shrink-0">910 Hz <span class="text-[10px] font-medium text-zinc-400 block">Midrange</span></span>
-                                <input type="range" min="-12" max="12" step="0.5" value="0" data-eq-band="2" class="eq-band-slider yolk-volume-slider flex-1 cursor-pointer">
-                                <span id="eq-band-val-2" class="w-12 text-right font-mono text-xs font-bold text-zinc-700 shrink-0">0 dB</span>
+                            <div data-eq-preset="vocal" class="eq-preset-row flex items-center justify-between p-3 rounded-2xl border border-zinc-200/80 hover:border-zinc-400 bg-white/70 dark:bg-zinc-800/70 transition-all cursor-pointer group">
+                                <div class="flex items-center gap-2.5">
+                                    <span class="eq-dot w-2 h-2 rounded-full bg-transparent group-hover:bg-zinc-300"></span>
+                                    <span class="text-xs font-bold text-zinc-900 dark:text-zinc-100">Vocal Booster</span>
+                                </div>
+                                <span class="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium text-right max-w-xs sm:max-w-md truncate">Amplified mid-range for prominent vocal clarity</span>
                             </div>
-                            <div class="flex items-center gap-3">
-                                <span class="w-16 text-xs font-bold text-zinc-700 shrink-0">3.6 kHz <span class="text-[10px] font-medium text-zinc-400 block">Presence</span></span>
-                                <input type="range" min="-12" max="12" step="0.5" value="0" data-eq-band="3" class="eq-band-slider yolk-volume-slider flex-1 cursor-pointer">
-                                <span id="eq-band-val-3" class="w-12 text-right font-mono text-xs font-bold text-zinc-700 shrink-0">0 dB</span>
+                            <div data-eq-preset="late-night" class="eq-preset-row flex items-center justify-between p-3 rounded-2xl border border-zinc-200/80 hover:border-zinc-400 bg-white/70 dark:bg-zinc-800/70 transition-all cursor-pointer group">
+                                <div class="flex items-center gap-2.5">
+                                    <span class="eq-dot w-2 h-2 rounded-full bg-transparent group-hover:bg-zinc-300"></span>
+                                    <span class="text-xs font-bold text-zinc-900 dark:text-zinc-100">Late Night</span>
+                                </div>
+                                <span class="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium text-right max-w-xs sm:max-w-md truncate">Gentle warmth with softened peaks for quiet listening</span>
                             </div>
-                            <div class="flex items-center gap-3">
-                                <span class="w-16 text-xs font-bold text-zinc-700 shrink-0">14 kHz <span class="text-[10px] font-medium text-zinc-400 block">Treble / Air</span></span>
-                                <input type="range" min="-12" max="12" step="0.5" value="0" data-eq-band="4" class="eq-band-slider yolk-volume-slider flex-1 cursor-pointer">
-                                <span id="eq-band-val-4" class="w-12 text-right font-mono text-xs font-bold text-zinc-700 shrink-0">0 dB</span>
+                            <div data-eq-preset="electronic" class="eq-preset-row flex items-center justify-between p-3 rounded-2xl border border-zinc-200/80 hover:border-zinc-400 bg-white/70 dark:bg-zinc-800/70 transition-all cursor-pointer group">
+                                <div class="flex items-center gap-2.5">
+                                    <span class="eq-dot w-2 h-2 rounded-full bg-transparent group-hover:bg-zinc-300"></span>
+                                    <span class="text-xs font-bold text-zinc-900 dark:text-zinc-100">Electronic</span>
+                                </div>
+                                <span class="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium text-right max-w-xs sm:max-w-md truncate">Elevated sub-bass and sparkling highs for EDM</span>
+                            </div>
+                            <div data-eq-preset="acoustic" class="eq-preset-row flex items-center justify-between p-3 rounded-2xl border border-zinc-200/80 hover:border-zinc-400 bg-white/70 dark:bg-zinc-800/70 transition-all cursor-pointer group">
+                                <div class="flex items-center gap-2.5">
+                                    <span class="eq-dot w-2 h-2 rounded-full bg-transparent group-hover:bg-zinc-300"></span>
+                                    <span class="text-xs font-bold text-zinc-900 dark:text-zinc-100">Acoustic</span>
+                                </div>
+                                <span class="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium text-right max-w-xs sm:max-w-md truncate">Crisp organic acoustic tones for live & unplugged music</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- 4. Offline Storage & Cache Manager Card -->
+                    <!-- 5. Storage Card -->
                     <div class="bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-5">
                         <div class="flex items-center justify-between gap-4 flex-wrap">
                             <div class="flex items-center gap-3.5">
@@ -2773,7 +2814,7 @@
                                 </div>
                                 <div>
                                     <div class="flex items-center gap-2">
-                                        <h2 class="text-base sm:text-lg font-bold text-zinc-900">Offline Storage Manager</h2>
+                                        <h2 class="text-base sm:text-lg font-bold text-zinc-900">Storage</h2>
                                         <span id="storage-count-badge" class="px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/70">0 Songs</span>
                                     </div>
                                     <p class="text-xs sm:text-sm text-zinc-500 mt-0.5">Manage downloaded audio streams, artwork, and synced lyrics cached on this device</p>
@@ -2801,17 +2842,21 @@
                             </div>
                         </div>
 
-                        <!-- Storage Actions -->
-                        <div class="flex items-center gap-2.5 flex-wrap pt-1">
-                            <button id="storage-sync-library-btn" type="button" class="bubbly-hover px-4 py-2 rounded-2xl text-xs font-bold bg-zinc-900 text-white hover:bg-zinc-800 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs">
+                        <!-- Storage Actions (Mobile-Optimized Compact Layout) -->
+                        <div class="flex items-center gap-2 sm:gap-2.5 flex-wrap pt-1">
+                            <button id="storage-sync-library-btn" type="button" class="bubbly-hover px-3.5 sm:px-4 py-2 rounded-2xl text-xs font-bold bg-zinc-900 text-white hover:bg-zinc-800 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs" title="Sync Missing Library Songs">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                                <span>Sync Missing Library Songs</span>
+                                <span class="hidden sm:inline">Sync Missing Library Songs</span>
+                                <span class="sm:hidden font-bold">Sync</span>
                             </button>
-                            <button id="storage-clean-orphans-btn" type="button" class="bubbly-hover px-4 py-2 rounded-2xl text-xs font-bold bg-zinc-100 hover:bg-zinc-200 text-zinc-800 border border-zinc-200/80 transition-all cursor-pointer">
-                                Clear Orphaned Cache
+                            <button id="storage-clean-orphans-btn" type="button" class="bubbly-hover px-3.5 sm:px-4 py-2 rounded-2xl text-xs font-bold bg-zinc-100 hover:bg-zinc-200 text-zinc-800 border border-zinc-200/80 transition-all cursor-pointer flex items-center gap-1.5" title="Clear Orphaned Cache">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"></path><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"></path></svg>
+                                <span class="hidden sm:inline">Clear Orphaned Cache</span>
+                                <span class="sm:hidden font-bold">Clear Cache</span>
                             </button>
-                            <button id="storage-clear-all-btn" type="button" class="bubbly-hover px-4 py-2 rounded-2xl text-xs font-bold bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/60 transition-all cursor-pointer ml-auto">
-                                Delete All Downloads
+                            <button id="storage-clear-all-btn" type="button" class="bubbly-hover p-2 sm:px-4 sm:py-2 rounded-2xl text-xs font-bold bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/60 transition-all cursor-pointer ml-auto flex items-center gap-1.5" title="Delete All Downloads">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                <span class="hidden sm:inline">Delete All Downloads</span>
                             </button>
                         </div>
                     </div>
@@ -2823,7 +2868,7 @@
     <!-- Bottom Player Bar (On Desktop: Wide Navbar + Music Player; On Mobile: Floating Player) -->
     <div id="bottom-player" class="fixed bottom-6 left-1/2 w-[calc(100%-1.5rem)] sm:w-[calc(100%-3rem)] max-w-4xl sm:max-w-[1440px] h-[60px] sm:h-[68px] bg-white/85 backdrop-blur-lg border border-zinc-200/90 shadow-[0_8px_30px_rgb(0,0,0,0.06)] rounded-full px-3.5 sm:px-5 box-border flex justify-between items-center z-20 group hidden-force">
         <div id="bottom-player-content" class="w-full h-full flex justify-between items-center">
-            <!-- Desktop Left Side: Navigation Buttons with Text Labels (Search, Library, Settings, Now Playing) -->
+            <!-- Desktop Left Side: Navigation Buttons with Text Labels (Search, Library, Settings) -->
             <nav id="bp-desktop-nav" class="hidden sm:flex items-center gap-1.5 pr-4 mr-3 border-r border-zinc-200/90 dark:border-white/10 shrink-0 h-11">
                 <a href="#search" id="bp-nav-search" title="Search" aria-label="Search" class="yolk-active px-3 h-9 shrink-0 flex items-center justify-center gap-1.5 rounded-full sleek-transition">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -2836,10 +2881,6 @@
                 <a href="#settings" id="bp-nav-settings" title="Settings" aria-label="Settings" class="sleek-hover px-3 h-9 shrink-0 flex items-center justify-center gap-1.5 rounded-full text-zinc-600 sleek-transition">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                     <span class="text-xs font-bold hidden md:inline">Settings</span>
-                </a>
-                <a href="#now-playing" id="bp-nav-now-playing" title="Now Playing" aria-label="Now Playing" class="sleek-hover px-3.5 h-9 shrink-0 flex items-center justify-center gap-1.5 rounded-full text-zinc-600 sleek-transition whitespace-nowrap min-w-[124px]">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10v3"></path><path d="M6 6v11"></path><path d="M10 3v18"></path><path d="M14 8v7"></path><path d="M18 5v13"></path><path d="M22 10v3"></path></svg>
-                    <span class="text-xs font-bold whitespace-nowrap">Now Playing</span>
                 </a>
             </nav>
 
@@ -2938,13 +2979,18 @@
                     </div>
                     <span id="bottom-player-duration" class="text-[10px] font-semibold select-none min-w-[32px] text-left">-0:00</span>
 
-                    <!-- Volume Bar (Small Button until Hovered -> Expands to the right) -->
-                    <div id="bp-volume-container" class="relative flex items-center group/bpvol pl-0.5 shrink-0">
-                        <button id="bp-volume-btn" class="sleek-hover transition-colors p-1 rounded-full hover:bg-black/5 flex items-center justify-center cursor-pointer shrink-0" title="Volume">
-                            <svg id="bp-volume-icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
-                        </button>
-                        <div class="w-0 opacity-0 group-hover/bpvol:w-16 sm:group-hover/bpvol:w-20 group-hover/bpvol:opacity-100 group-hover/bpvol:ml-1.5 transition-all duration-300 ease-out flex items-center overflow-hidden">
-                            <input id="bp-volume-slider" type="range" min="0" max="100" value="100" class="yolk-volume-slider w-16 sm:w-20 cursor-pointer">
+                    <!-- Circular Blue Loop Volume Widget -->
+                    <div id="bp-volume-container" class="yolk-circular-volume text-zinc-700 dark:text-zinc-200" title="Volume (Drag up/right for up, down/left for down)">
+                        <svg class="vol-loop-svg" viewBox="0 0 32 32">
+                            <circle class="vol-loop-track" cx="16" cy="16" r="12" />
+                            <circle id="bp-vol-loop-fill" class="vol-loop-fill" cx="16" cy="16" r="12" />
+                        </svg>
+                        <div class="vol-icon-center">
+                            <svg id="bp-volume-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                                <path id="bp-vol-wave-1" d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                                <path id="bp-vol-wave-2" d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                            </svg>
                         </div>
                     </div>
                 </div>
@@ -2957,165 +3003,254 @@
         </div>
     </div>
 
-    <!-- Modal: Create / Edit Playlist (Apple Music-style Customization & Information tabs) -->
-    <div id="playlist-modal" class="modal-overlay fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="modal-card bg-white rounded-3xl p-5 sm:p-6 w-full max-w-lg shadow-2xl border border-zinc-100 max-h-[92vh] flex flex-col">
-            <div class="flex items-center justify-between shrink-0 mb-2">
-                <h3 id="playlist-modal-title" class="text-xl font-bold text-zinc-900">New Playlist</h3>
-                <button type="button" id="playlist-modal-x" class="p-1.5 rounded-full text-zinc-400 hover:text-zinc-800 hover:bg-zinc-100 transition-colors cursor-pointer">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    <!-- Modal: Fullscreen Create / Edit Playlist (Questionnaire Customization & Pixel-Perfect Information Tab) -->
+    <div id="playlist-modal" class="modal-overlay fixed inset-0 w-screen h-screen z-50 bg-[#FCFBF8] dark:bg-[#0c0c0e] flex flex-col hidden overflow-hidden">
+        <!-- Fullscreen Top Header Bar -->
+        <header class="w-full border-b border-zinc-200/80 dark:border-white/10 px-4 sm:px-8 py-3.5 flex items-center justify-between shrink-0 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-10">
+            <div class="flex items-center gap-3">
+                <button type="button" id="playlist-modal-cancel" class="px-4 py-1.5 rounded-full text-zinc-600 dark:text-zinc-300 text-xs sm:text-sm font-bold hover:bg-zinc-100 dark:hover:bg-white/10 transition-all cursor-pointer">
+                    Cancel
                 </button>
+                <h3 id="playlist-modal-title" class="text-base sm:text-lg font-extrabold text-zinc-900 dark:text-white hidden md:block">Edit Playlist</h3>
             </div>
 
             <!-- Tab Switcher: Customization vs Information -->
-            <div class="flex items-center p-1 bg-zinc-100 rounded-2xl mb-3 shrink-0">
-                <button type="button" id="pl-tab-customize" class="flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all bg-white text-zinc-900 shadow-xs cursor-pointer">
+            <div class="flex items-center p-1 bg-zinc-100 dark:bg-zinc-800/80 rounded-2xl shrink-0">
+                <button type="button" id="pl-tab-customize" class="py-1.5 px-4 rounded-xl text-xs font-bold transition-all bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-xs cursor-pointer">
                     Customization
                 </button>
-                <button type="button" id="pl-tab-info" class="flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all text-zinc-500 hover:text-zinc-800 cursor-pointer">
+                <button type="button" id="pl-tab-info" class="py-1.5 px-4 rounded-xl text-xs font-bold transition-all text-zinc-500 hover:text-zinc-800 dark:hover:text-white cursor-pointer">
                     Information
                 </button>
             </div>
 
-            <!-- Tab 1: Customization Content -->
-            <div id="pl-tab-customize-content" class="flex-1 overflow-y-auto pr-1 flex flex-col gap-4">
-                <!-- Preset Default Artwork Options (Apple Music Style) -->
-                <div>
-                    <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block mb-2">Default Cover Style</label>
-                    <div id="pl-preset-covers-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                        <!-- Stripes preset -->
-                        <div data-preset="stripes" class="pl-preset-option group cursor-pointer border-2 border-zinc-200 rounded-2xl p-1.5 transition-all hover:border-black flex flex-col items-center gap-1.5 bg-zinc-50 is-selected">
+            <div class="flex items-center gap-2">
+                <button id="playlist-modal-save" type="button" class="px-5 py-2 rounded-full bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 text-white text-xs sm:text-sm font-bold shadow-md transition-all cursor-pointer">
+                    Save
+                </button>
+            </div>
+        </header>
+
+        <!-- Tab 1: Customization Content (Questionnaire First -> Corresponding Options) -->
+        <div id="pl-tab-customize-content" class="flex-1 overflow-y-auto px-4 py-8 max-w-3xl mx-auto w-full flex flex-col gap-6">
+            <!-- 1. Questionnaire View (Shown initially or when switching choice) -->
+            <div id="pl-customize-questionnaire" class="flex flex-col items-center justify-center gap-6 py-8 text-center">
+                <div class="flex flex-col gap-1.5">
+                    <span class="text-xs font-bold uppercase tracking-widest text-zinc-400">Step 1</span>
+                    <h4 class="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white">Choose your playlist cover style</h4>
+                    <p class="text-xs sm:text-sm text-zinc-500 max-w-md">Pick from Apple Music preset graphic patterns tinted with your color, or upload your own photo.</p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-xl mt-2">
+                    <!-- Choice 1: Presets -->
+                    <button type="button" id="pl-choice-presets-btn" class="bubbly-hover p-6 rounded-3xl border-2 border-zinc-200/90 dark:border-white/10 hover:border-black dark:hover:border-white bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl flex flex-col items-center text-center gap-3.5 shadow-sm hover:shadow-md transition-all cursor-pointer group">
+                        <div class="w-16 h-16 rounded-2xl bg-amber-500/10 dark:bg-amber-400/20 text-amber-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                        </div>
+                        <div>
+                            <div class="text-base font-extrabold text-zinc-900 dark:text-white">Preset Artwork</div>
+                            <div class="text-xs text-zinc-500 mt-1">Apple Music patterns with custom vibrant tints</div>
+                        </div>
+                        <span class="px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[11px] font-bold text-zinc-700 dark:text-zinc-300">Choose Presets</span>
+                    </button>
+
+                    <!-- Choice 2: Custom Photo Upload -->
+                    <button type="button" id="pl-choice-upload-btn" class="bubbly-hover p-6 rounded-3xl border-2 border-zinc-200/90 dark:border-white/10 hover:border-black dark:hover:border-white bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl flex flex-col items-center text-center gap-3.5 shadow-sm hover:shadow-md transition-all cursor-pointer group">
+                        <div class="w-16 h-16 rounded-2xl bg-blue-500/10 dark:bg-blue-400/20 text-blue-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                        </div>
+                        <div>
+                            <div class="text-base font-extrabold text-zinc-900 dark:text-white">Upload Photo</div>
+                            <div class="text-xs text-zinc-500 mt-1">Upload and crop your own personal photo</div>
+                        </div>
+                        <span class="px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[11px] font-bold text-zinc-700 dark:text-zinc-300">Upload Photo</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2. Corresponding Options View (Revealed after questionnaire choice) -->
+            <div id="pl-customize-options-view" class="flex flex-col gap-6 hidden">
+                <div class="flex items-center justify-between pb-2 border-b border-zinc-200/70 dark:border-white/10">
+                    <span id="pl-current-mode-label" class="text-xs font-bold uppercase tracking-widest text-zinc-400">Preset Artwork</span>
+                    <button type="button" id="pl-change-choice-btn" class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
+                        Change Choice
+                    </button>
+                </div>
+
+                <!-- Section A: 8 Apple Music Presets Grid -->
+                <div id="pl-presets-section" class="flex flex-col gap-3">
+                    <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Default Cover Style</label>
+                    <div id="pl-preset-covers-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <!-- 1. Stripes -->
+                        <div data-preset="stripes" class="pl-preset-option group cursor-pointer border-2 border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-2 transition-all hover:border-black dark:hover:border-white flex flex-col items-center gap-2 bg-white/70 dark:bg-zinc-900/70 is-selected">
                             <div class="w-full aspect-square rounded-xl overflow-hidden shadow-xs relative bg-zinc-900">
                                 <canvas class="pl-preset-canvas w-full h-full block" width="240" height="240" data-preset="stripes"></canvas>
                             </div>
-                            <span class="text-[11px] font-bold text-zinc-700">Stripes</span>
+                            <span class="text-xs font-bold text-zinc-800 dark:text-zinc-200">Stripes</span>
                         </div>
-                        <!-- Vinyl preset -->
-                        <div data-preset="vinyl" class="pl-preset-option group cursor-pointer border-2 border-zinc-200 rounded-2xl p-1.5 transition-all hover:border-black flex flex-col items-center gap-1.5 bg-zinc-50">
+                        <!-- 2. Vinyl -->
+                        <div data-preset="vinyl" class="pl-preset-option group cursor-pointer border-2 border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-2 transition-all hover:border-black dark:hover:border-white flex flex-col items-center gap-2 bg-white/70 dark:bg-zinc-900/70">
                             <div class="w-full aspect-square rounded-xl overflow-hidden shadow-xs relative bg-zinc-900">
                                 <canvas class="pl-preset-canvas w-full h-full block" width="240" height="240" data-preset="vinyl"></canvas>
                             </div>
-                            <span class="text-[11px] font-bold text-zinc-700">Vinyl</span>
+                            <span class="text-xs font-bold text-zinc-800 dark:text-zinc-200">Vinyl</span>
                         </div>
-                        <!-- Waves preset -->
-                        <div data-preset="waves" class="pl-preset-option group cursor-pointer border-2 border-zinc-200 rounded-2xl p-1.5 transition-all hover:border-black flex flex-col items-center gap-1.5 bg-zinc-50">
+                        <!-- 3. Waves -->
+                        <div data-preset="waves" class="pl-preset-option group cursor-pointer border-2 border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-2 transition-all hover:border-black dark:hover:border-white flex flex-col items-center gap-2 bg-white/70 dark:bg-zinc-900/70">
                             <div class="w-full aspect-square rounded-xl overflow-hidden shadow-xs relative bg-zinc-900">
                                 <canvas class="pl-preset-canvas w-full h-full block" width="240" height="240" data-preset="waves"></canvas>
                             </div>
-                            <span class="text-[11px] font-bold text-zinc-700">Waves</span>
+                            <span class="text-xs font-bold text-zinc-800 dark:text-zinc-200">Waves</span>
                         </div>
-                        <!-- Aura preset -->
-                        <div data-preset="aura" class="pl-preset-option group cursor-pointer border-2 border-zinc-200 rounded-2xl p-1.5 transition-all hover:border-black flex flex-col items-center gap-1.5 bg-zinc-50">
+                        <!-- 4. Aura -->
+                        <div data-preset="aura" class="pl-preset-option group cursor-pointer border-2 border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-2 transition-all hover:border-black dark:hover:border-white flex flex-col items-center gap-2 bg-white/70 dark:bg-zinc-900/70">
                             <div class="w-full aspect-square rounded-xl overflow-hidden shadow-xs relative bg-zinc-900">
                                 <canvas class="pl-preset-canvas w-full h-full block" width="240" height="240" data-preset="aura"></canvas>
                             </div>
-                            <span class="text-[11px] font-bold text-zinc-700">Aura</span>
+                            <span class="text-xs font-bold text-zinc-800 dark:text-zinc-200">Aura</span>
+                        </div>
+                        <!-- 5. Grid -->
+                        <div data-preset="grid" class="pl-preset-option group cursor-pointer border-2 border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-2 transition-all hover:border-black dark:hover:border-white flex flex-col items-center gap-2 bg-white/70 dark:bg-zinc-900/70">
+                            <div class="w-full aspect-square rounded-xl overflow-hidden shadow-xs relative bg-zinc-900">
+                                <canvas class="pl-preset-canvas w-full h-full block" width="240" height="240" data-preset="grid"></canvas>
+                            </div>
+                            <span class="text-xs font-bold text-zinc-800 dark:text-zinc-200">Grid</span>
+                        </div>
+                        <!-- 6. Tape -->
+                        <div data-preset="tape" class="pl-preset-option group cursor-pointer border-2 border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-2 transition-all hover:border-black dark:hover:border-white flex flex-col items-center gap-2 bg-white/70 dark:bg-zinc-900/70">
+                            <div class="w-full aspect-square rounded-xl overflow-hidden shadow-xs relative bg-zinc-900">
+                                <canvas class="pl-preset-canvas w-full h-full block" width="240" height="240" data-preset="tape"></canvas>
+                            </div>
+                            <span class="text-xs font-bold text-zinc-800 dark:text-zinc-200">Tape</span>
+                        </div>
+                        <!-- 7. Minimal -->
+                        <div data-preset="minimal" class="pl-preset-option group cursor-pointer border-2 border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-2 transition-all hover:border-black dark:hover:border-white flex flex-col items-center gap-2 bg-white/70 dark:bg-zinc-900/70">
+                            <div class="w-full aspect-square rounded-xl overflow-hidden shadow-xs relative bg-zinc-900">
+                                <canvas class="pl-preset-canvas w-full h-full block" width="240" height="240" data-preset="minimal"></canvas>
+                            </div>
+                            <span class="text-xs font-bold text-zinc-800 dark:text-zinc-200">Minimal</span>
+                        </div>
+                        <!-- 8. Neon -->
+                        <div data-preset="neon" class="pl-preset-option group cursor-pointer border-2 border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-2 transition-all hover:border-black dark:hover:border-white flex flex-col items-center gap-2 bg-white/70 dark:bg-zinc-900/70">
+                            <div class="w-full aspect-square rounded-xl overflow-hidden shadow-xs relative bg-zinc-900">
+                                <canvas class="pl-preset-canvas w-full h-full block" width="240" height="240" data-preset="neon"></canvas>
+                            </div>
+                            <span class="text-xs font-bold text-zinc-800 dark:text-zinc-200">Neon</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Custom Photo Upload option -->
-                <div class="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex items-center justify-between gap-3">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <div id="modal-cover-preview" class="w-13 h-13 rounded-xl bg-white border border-zinc-200 overflow-hidden shrink-0 flex items-center justify-center relative cursor-pointer hover:border-black transition-colors" title="Upload custom photo">
+                <!-- Section B: Custom Photo Upload Area -->
+                <div id="pl-upload-section" class="p-6 rounded-3xl bg-white/80 dark:bg-zinc-900/80 border border-zinc-200/80 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-5 hidden">
+                    <div class="flex items-center gap-4 min-w-0">
+                        <div id="modal-cover-preview" class="w-20 h-20 rounded-2xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 overflow-hidden shrink-0 flex items-center justify-center relative cursor-pointer hover:border-black dark:hover:border-white transition-colors" title="Upload custom photo">
                             <img id="modal-cover-img" src="" class="w-full h-full object-cover hidden">
                             <div id="modal-cover-placeholder" class="text-zinc-400 flex flex-col items-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
                             </div>
                         </div>
                         <div class="flex flex-col min-w-0">
-                            <span class="text-xs font-bold text-zinc-900">Custom Photo</span>
-                            <span class="text-[11px] text-zinc-500">Upload your own cover art</span>
+                            <span class="text-sm font-extrabold text-zinc-900 dark:text-white">Custom Cover Image</span>
+                            <span class="text-xs text-zinc-500 mt-0.5">Upload a photo from your computer or camera</span>
                         </div>
                     </div>
-                    <div class="flex items-center gap-1.5 shrink-0">
-                        <button type="button" id="modal-cover-upload-btn" class="px-3 py-1.5 text-xs font-bold bg-white text-zinc-800 border border-zinc-200 hover:bg-zinc-100 rounded-xl transition-all cursor-pointer">
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button type="button" id="modal-cover-upload-btn" class="px-4 py-2 text-xs font-bold bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 rounded-xl transition-all cursor-pointer">
                             Upload
                         </button>
-                        <button type="button" id="modal-cover-recrop-btn" class="px-2.5 py-1.5 text-xs font-bold bg-white text-zinc-800 border border-zinc-200 hover:bg-zinc-100 rounded-xl transition-all hidden cursor-pointer">
+                        <button type="button" id="modal-cover-recrop-btn" class="px-3.5 py-2 text-xs font-bold bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 rounded-xl transition-all hidden cursor-pointer">
                             Crop
                         </button>
-                        <button type="button" id="modal-cover-remove-btn" class="px-2.5 py-1.5 text-xs font-semibold text-red-500 hover:text-red-700 hidden cursor-pointer">
+                        <button type="button" id="modal-cover-remove-btn" class="px-3 py-2 text-xs font-semibold text-red-500 hover:text-red-700 hidden cursor-pointer">
                             Reset
                         </button>
                     </div>
                     <input type="file" id="playlist-modal-cover-input" accept="image/*" style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;">
                 </div>
 
-                <!-- Playlist Tint (renamed from playlist background tint) -->
-                <div class="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex flex-col gap-3">
+                <!-- Section C: Playlist Tint (Vibrant saturated colors) -->
+                <div class="p-5 rounded-3xl bg-white/80 dark:bg-zinc-900/80 border border-zinc-200/80 dark:border-white/10 flex flex-col gap-3.5">
                     <div class="flex items-center justify-between">
                         <div>
-                            <span class="text-xs font-bold text-zinc-900 block">Playlist Tint</span>
+                            <span class="text-xs font-bold text-zinc-900 dark:text-white block">Playlist Tint</span>
                             <span id="modal-tint-status" class="text-[11px] text-zinc-500 font-medium">Automatic (from artwork)</span>
                         </div>
-                        <button type="button" id="modal-open-tint-wheel-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-zinc-200 text-xs font-bold text-zinc-800 hover:bg-zinc-100 shadow-xs transition-all cursor-pointer">
-                            <span id="modal-tint-dot" class="w-3.5 h-3.5 rounded-full border border-black/20 inline-block" style="background-color: #FDE047;"></span>
+                        <button type="button" id="modal-open-tint-wheel-btn" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs font-bold text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 shadow-xs transition-all cursor-pointer">
+                            <span id="modal-tint-dot" class="w-3.5 h-3.5 rounded-full border border-black/20 inline-block" style="background-color: #FFE600;"></span>
                             <span>Choose Tint</span>
                         </button>
                     </div>
-                    <!-- Quick Tint Preset Swatches -->
-                    <div id="pl-quick-tints" class="flex items-center gap-2 flex-wrap pt-1 border-t border-zinc-200/60">
-                        <button type="button" class="pl-quick-tint-btn w-6 h-6 rounded-full border border-black/15 hover:scale-110 transition-transform cursor-pointer" style="background-color: #F59E0B;" data-hex="#F59E0B" title="Amber"></button>
-                        <button type="button" class="pl-quick-tint-btn w-6 h-6 rounded-full border border-black/15 hover:scale-110 transition-transform cursor-pointer" style="background-color: #EF4444;" data-hex="#EF4444" title="Red"></button>
-                        <button type="button" class="pl-quick-tint-btn w-6 h-6 rounded-full border border-black/15 hover:scale-110 transition-transform cursor-pointer" style="background-color: #EC4899;" data-hex="#EC4899" title="Pink"></button>
-                        <button type="button" class="pl-quick-tint-btn w-6 h-6 rounded-full border border-black/15 hover:scale-110 transition-transform cursor-pointer" style="background-color: #8B5CF6;" data-hex="#8B5CF6" title="Purple"></button>
-                        <button type="button" class="pl-quick-tint-btn w-6 h-6 rounded-full border border-black/15 hover:scale-110 transition-transform cursor-pointer" style="background-color: #3B82F6;" data-hex="#3B82F6" title="Blue"></button>
-                        <button type="button" class="pl-quick-tint-btn w-6 h-6 rounded-full border border-black/15 hover:scale-110 transition-transform cursor-pointer" style="background-color: #10B981;" data-hex="#10B981" title="Emerald"></button>
-                        <button type="button" class="pl-quick-tint-btn w-6 h-6 rounded-full border border-black/15 hover:scale-110 transition-transform cursor-pointer" style="background-color: #FDE047;" data-hex="#FDE047" title="Yellow"></button>
-                        <button type="button" class="pl-quick-tint-btn w-6 h-6 rounded-full border border-black/15 hover:scale-110 transition-transform cursor-pointer" style="background-color: #FFFFFF;" data-hex="#FFFFFF" title="White"></button>
+                    <!-- Quick Vibrant Tint Preset Swatches -->
+                    <div id="pl-quick-tints" class="flex items-center gap-2.5 flex-wrap pt-1 border-t border-zinc-200/60 dark:border-zinc-800">
+                        <button type="button" class="pl-quick-tint-btn w-7 h-7 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #FFE600;" data-hex="#FFE600" title="Electric Yellow"></button>
+                        <button type="button" class="pl-quick-tint-btn w-7 h-7 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #FF9500;" data-hex="#FF9500" title="Vibrant Orange"></button>
+                        <button type="button" class="pl-quick-tint-btn w-7 h-7 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #FF3B30;" data-hex="#FF3B30" title="Hot Crimson"></button>
+                        <button type="button" class="pl-quick-tint-btn w-7 h-7 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #FF2D55;" data-hex="#FF2D55" title="Vivid Pink"></button>
+                        <button type="button" class="pl-quick-tint-btn w-7 h-7 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #AF52DE;" data-hex="#AF52DE" title="Radiant Purple"></button>
+                        <button type="button" class="pl-quick-tint-btn w-7 h-7 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #007AFF;" data-hex="#007AFF" title="Ocean Blue"></button>
+                        <button type="button" class="pl-quick-tint-btn w-7 h-7 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #34C759;" data-hex="#34C759" title="Bright Emerald"></button>
+                        <button type="button" class="pl-quick-tint-btn w-7 h-7 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #FFFFFF;" data-hex="#FFFFFF" title="Pure White"></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Information Content (Pixel-Perfect Match with Real Playlist Detail View) -->
+        <div id="pl-tab-info-content" class="flex-1 overflow-y-auto px-2 sm:px-6 py-6 max-w-[1240px] mx-auto w-full flex flex-col gap-4 sm:gap-6 hidden">
+            <!-- Top Hero Card (Identical layout and typography to #playlist-detail-view) -->
+            <div class="playlist-hero-card w-full bg-white/85 dark:bg-zinc-900/85 backdrop-blur-xl rounded-3xl border border-white/80 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-4 sm:p-7 flex flex-col gap-4 sm:gap-5">
+                <div class="flex flex-row items-center gap-4 sm:gap-7 w-full">
+                    <!-- Left: Cover Art (Matching exact 176px - 192px responsive sizing) -->
+                    <div id="pl-info-preview-art" class="w-28 h-28 sm:w-44 sm:h-44 md:w-48 md:h-48 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center overflow-hidden shrink-0 shadow-[0_12px_28px_rgba(0,0,0,0.1)] border border-white/60 dark:border-white/10 relative">
+                        <canvas id="pl-info-preview-canvas" width="240" height="240" class="w-full h-full object-cover block"></canvas>
+                        <img id="pl-info-preview-img" src="" class="w-full h-full object-cover hidden">
+                    </div>
+
+                    <!-- Right of Cover: Collection Badge, Editable Name, Meta, and Editable Description -->
+                    <div class="flex-1 flex flex-col items-start justify-center min-w-0 text-left">
+                        <div class="playlist-collection-badge inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-[9px] sm:text-[10px] uppercase tracking-widest font-bold text-zinc-600 dark:text-zinc-300 mb-1.5">
+                            <span>Playlist Collection</span>
+                        </div>
+                        <!-- Inline Editable Title matching real playlist title typography -->
+                        <input id="playlist-name-input" type="text" placeholder="Playlist Name" class="w-full font-extrabold text-xl sm:text-3xl text-zinc-900 dark:text-white tracking-tight leading-tight bg-transparent border border-transparent hover:border-zinc-300 dark:hover:border-zinc-700 focus:border-zinc-400 focus:bg-white/70 dark:focus:bg-zinc-800 rounded-xl px-2 py-0.5 focus:outline-none transition-all truncate" title="Click to edit playlist title">
+                        
+                        <p id="pl-info-track-meta" class="text-xs sm:text-sm font-bold text-zinc-500 mt-1 px-2">0 songs • 0 min</p>
+
+                        <!-- Inline Editable Description matching real playlist description typography -->
+                        <div id="pl-info-desc-wrapper" class="relative group/desc cursor-pointer w-full max-w-xl mt-1.5" title="Click to edit full description">
+                            <input id="playlist-desc-input" type="text" placeholder="Add an optional description..." class="w-full text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 font-medium bg-transparent border border-transparent hover:border-zinc-300 dark:hover:border-zinc-700 focus:border-zinc-400 focus:bg-white/70 dark:focus:bg-zinc-800 rounded-xl px-2 py-0.5 focus:outline-none transition-all truncate">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Row: Centered Action Buttons (Play All, Download, Edit, Delete preview) -->
+                <div class="flex items-center justify-center gap-3 w-full pt-3 sm:pt-4 border-t border-zinc-200/60 dark:border-white/10 flex-wrap pointer-events-none opacity-85">
+                    <div class="flex items-center justify-center w-11 h-11 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    </div>
+                    <div class="flex items-center justify-center w-11 h-11 rounded-full bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200/80 dark:border-white/10 shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    </div>
+                    <div class="flex items-center justify-center w-11 h-11 rounded-full bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200/80 dark:border-white/10 shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    </div>
+                    <div class="flex items-center justify-center w-11 h-11 rounded-full bg-red-50 dark:bg-red-950/40 text-red-600 border border-red-200/50 dark:border-red-800/40 shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                     </div>
                 </div>
             </div>
 
-            <!-- Tab 2: Information Content (Live Preview & Inline Click-to-Edit) -->
-            <div id="pl-tab-info-content" class="flex-1 overflow-y-auto pr-1 flex flex-col gap-4 hidden">
-                <div class="p-4 rounded-3xl border border-zinc-200/80 bg-zinc-50/70 flex flex-col gap-3 shadow-xs">
-                    <div class="flex items-center gap-3.5">
-                        <!-- Live Art Preview -->
-                        <div id="pl-info-preview-art" class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden shadow-md shrink-0 border border-black/10 bg-zinc-900 relative">
-                            <canvas id="pl-info-preview-canvas" width="240" height="240" class="w-full h-full object-cover block"></canvas>
-                            <img id="pl-info-preview-img" src="" class="w-full h-full object-cover hidden">
-                        </div>
-
-                        <!-- Right Metadata: Click to Edit Name & Description -->
-                        <div class="flex-1 min-w-0 flex flex-col gap-1 text-left">
-                            <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/5 text-[9px] font-bold text-zinc-600 uppercase tracking-widest w-fit">
-                                <span>PLAYLIST</span>
-                            </div>
-                            <!-- Inline Editable Title -->
-                            <input id="playlist-name-input" type="text" placeholder="Playlist Name" class="w-full font-extrabold text-base sm:text-lg text-zinc-900 bg-transparent border border-transparent hover:border-zinc-300 focus:border-zinc-400 focus:bg-white rounded-lg px-1.5 py-0.5 focus:outline-none transition-all truncate" title="Click to edit name">
-                            
-                            <!-- Inline Editable / Expandable Description -->
-                            <div id="pl-info-desc-wrapper" class="relative group/desc cursor-pointer" title="Click to edit full description">
-                                <input id="playlist-desc-input" type="text" placeholder="Add an optional description..." class="w-full text-xs text-zinc-500 bg-transparent border border-transparent hover:border-zinc-300 focus:border-zinc-400 focus:bg-white rounded-lg px-1.5 py-0.5 focus:outline-none transition-all truncate">
-                            </div>
-
-                            <p id="pl-info-track-meta" class="text-[11px] font-bold text-zinc-400 px-1.5">0 songs • Yolk Playlist</p>
-                        </div>
-                    </div>
+            <!-- Bottom Tracks Card (Loaded with actual songs in identical song-row layout, non-clickable) -->
+            <div id="playlist-tracks-card" class="w-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl rounded-3xl border border-zinc-200/80 dark:border-white/10 p-5 sm:p-6 shadow-sm flex flex-col transition-all">
+                <div class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-3 px-2 flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-2.5 shrink-0">
+                    <span>Tracks</span>
+                    <span id="pl-info-songs-count" class="text-[10px] font-semibold text-zinc-500">0 songs</span>
                 </div>
-
-                <!-- Live Non-clickable Songs Example Preview -->
-                <div class="flex flex-col gap-2">
-                    <div class="flex items-center justify-between px-1">
-                        <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-500">Songs Preview (Non-clickable)</span>
-                        <span id="pl-info-songs-count" class="text-[11px] text-zinc-400 font-semibold">0 tracks</span>
-                    </div>
-                    <div id="pl-info-sample-tracks" class="flex flex-col gap-1 max-h-48 overflow-y-auto pr-1 pointer-events-none select-none opacity-90 rounded-2xl p-2 bg-zinc-50 border border-zinc-200/60">
-                        <!-- Populated dynamically with actual playlist tracks or placeholder -->
-                    </div>
+                <div id="pl-info-sample-tracks" class="flex-1 flex flex-col gap-1.5 px-1 py-1 pointer-events-none select-none">
+                    <!-- Populated dynamically with actual playlist tracks -->
                 </div>
-            </div>
-
-            <!-- Footer Action Buttons -->
-            <div class="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-zinc-100 shrink-0">
-                <div class="flex items-center gap-1.5 text-[11px] text-zinc-400">
-                    <span id="pl-modal-hint">Customization & Live Preview</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button id="playlist-modal-cancel" type="button" class="px-5 py-2 rounded-full text-zinc-600 text-sm font-semibold hover:bg-zinc-100 transition-all cursor-pointer">Cancel</button>
-                    <button id="playlist-modal-save" type="button" class="px-6 py-2 rounded-full bg-zinc-900 text-white text-sm font-semibold shadow hover:bg-zinc-800 transition-all cursor-pointer">Save</button>
+                <div id="pl-info-tracks-footer" class="mt-4 pt-3.5 border-t border-zinc-200/70 dark:border-zinc-800 px-2 flex items-center justify-between text-xs font-semibold text-zinc-500">
+                    <span id="pl-info-footer-summary">0 songs • 0 min</span>
                 </div>
             </div>
         </div>

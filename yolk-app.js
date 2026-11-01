@@ -1296,12 +1296,21 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
     }
+    const morePopoversBackdrop = document.getElementById('more-popovers-backdrop');
+
     function openMorePopover(el) {
         if (!el) return;
         el.classList.remove('hidden');
         requestAnimationFrame(() => {
             el.classList.add('popover-open');
         });
+        if (morePopoversBackdrop) {
+            morePopoversBackdrop.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                morePopoversBackdrop.classList.remove('opacity-0');
+                morePopoversBackdrop.classList.add('opacity-100');
+            });
+        }
     }
 
     function closeMorePopover(el) {
@@ -1312,6 +1321,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 el.classList.add('hidden');
             }
         }, 220);
+        setTimeout(() => {
+            const anyOpen = document.querySelectorAll('.more-glass-popover.popover-open').length > 0;
+            if (!anyOpen && morePopoversBackdrop) {
+                morePopoversBackdrop.classList.remove('opacity-100');
+                morePopoversBackdrop.classList.add('opacity-0');
+                setTimeout(() => {
+                    if (!document.querySelectorAll('.more-glass-popover.popover-open').length) {
+                        morePopoversBackdrop.classList.add('hidden');
+                    }
+                }, 200);
+            }
+        }, 20);
     }
 
     function toggleMorePopover(el) {
@@ -1321,6 +1342,14 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             openMorePopover(el);
         }
+    }
+
+    if (morePopoversBackdrop) {
+        morePopoversBackdrop.addEventListener('click', () => {
+            closeMorePopover(lyricsBarMorePopover);
+            closeMorePopover(npMobileMorePopover);
+            closeMorePopover(bpMobileMorePopover);
+        });
     }
 
     if (lyricsBarMoreBtn) {
@@ -1651,6 +1680,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const npVolumeSlider = document.getElementById('np-volume-slider');
     const npVolumeIcon = document.getElementById('np-volume-icon');
 
+    const bpVolumeContainer = document.getElementById('bp-volume-container');
+    const npVolumeContainer = document.getElementById('np-volume-container');
+    const bpVolLoopFill = document.getElementById('bp-vol-loop-fill');
+    const npVolLoopFill = document.getElementById('np-vol-loop-fill');
+
     function getVolumeIconSvg(vol, stroke = 'currentColor', strokeWidth = '2') {
         if (vol <= 0) {
             return `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line>`;
@@ -1687,6 +1721,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (npMobileMoreVolumeSlider) npMobileMoreVolumeSlider.value = percentVal;
         if (bpMoreVolumeSlider) bpMoreVolumeSlider.value = percentVal;
 
+        // Update circular blue loops (circumference 75.398 = 2 * PI * 12)
+        const loopOffset = (1 - currentVolume) * 75.398;
+        if (bpVolLoopFill) bpVolLoopFill.style.strokeDashoffset = String(loopOffset);
+        if (npVolLoopFill) npVolLoopFill.style.strokeDashoffset = String(loopOffset);
+
         if (bpVolumeIcon) {
             bpVolumeIcon.innerHTML = getVolumeIconSvg(currentVolume, 'currentColor', '2');
         }
@@ -1703,6 +1742,65 @@ document.addEventListener('DOMContentLoaded', () => {
             setMasterVolume(savedMuteVolume > 0 ? savedMuteVolume : 1.0);
         }
     }
+
+    // Attach Universal Circular Blue Loop Drag Gesture
+    function attachCircularVolumeControl(containerEl) {
+        if (!containerEl) return;
+        let startX = 0;
+        let startY = 0;
+        let startVol = 1.0;
+        let isDragging = false;
+        let hasMoved = false;
+
+        containerEl.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            startX = e.clientX;
+            startY = e.clientY;
+            startVol = currentVolume;
+            isDragging = true;
+            hasMoved = false;
+            containerEl.classList.add('is-dragging');
+            try {
+                containerEl.setPointerCapture(e.pointerId);
+            } catch (_) {}
+        });
+
+        containerEl.addEventListener('pointermove', (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+                hasMoved = true;
+            }
+            // Drag right (dx > 0) or up (dy < 0) turns volume up (closes blue loop clockwise)
+            // Drag left (dx < 0) or down (dy > 0) turns volume down (opens blue loop counter-clockwise)
+            const delta = (dx - dy) / 135;
+            const targetVol = Math.max(0, Math.min(1, startVol + delta));
+            setMasterVolume(targetVol);
+        });
+
+        const finishDrag = (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            containerEl.classList.remove('is-dragging');
+            try {
+                containerEl.releasePointerCapture(e.pointerId);
+            } catch (_) {}
+            // Tap/click without drag toggles mute/unmute
+            if (!hasMoved) {
+                toggleMute();
+            }
+        };
+
+        containerEl.addEventListener('pointerup', finishDrag);
+        containerEl.addEventListener('pointercancel', finishDrag);
+    }
+
+    attachCircularVolumeControl(bpVolumeContainer);
+    attachCircularVolumeControl(npVolumeContainer);
 
     if (bpVolumeSlider) {
         bpVolumeSlider.addEventListener('input', (e) => {
@@ -1794,17 +1892,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Bottom Player Routing & Touch Swipe Gestures:
-    // - Swipe Up anywhere on the bottom bar opens Now Playing
-    // - Swipe Left/Right anywhere on the bottom bar skips/previous with animated cover, title & artist shift clamped inside container
+    // - Mobile: Clicking anywhere on the bottom bar (except buttons/volume) opens Now Playing if a song is playing
+    // - Desktop: Clicking strictly on the cover art opens Now Playing
     let _bpSuppressClick = false;
-    if (bottomPlayerInfo) {
-        bottomPlayerInfo.addEventListener('click', (e) => {
+    if (bottomPlayer) {
+        bottomPlayer.addEventListener('click', (e) => {
             if (_bpSuppressClick) {
-                e.preventDefault();
-                e.stopPropagation();
+                _bpSuppressClick = false;
                 return;
             }
-            window.location.hash = '#now-playing';
+            if (e.target.closest('button, input, a, .yolk-circular-volume, .more-glass-popover')) {
+                return;
+            }
+            const isMobile = window.innerWidth < 768;
+            if (isMobile) {
+                if (currentTrack || isPlaying) {
+                    window.location.hash = '#now-playing';
+                }
+            } else {
+                if (e.target.closest('.bottom-thumb, #bottom-player-img, #bottom-player-placeholder')) {
+                    window.location.hash = '#now-playing';
+                }
+            }
         });
     }
 
@@ -2810,15 +2919,51 @@ document.addEventListener('DOMContentLoaded', () => {
         return card;
     }
 
-    // Pointer/Touch Reordering Helper for Playlists & Up Next Queue
+    // Pointer/Touch Reordering Helper for Playlists & Up Next Queue (with edge auto-scroll)
     function enableListReordering(containerEl, onReorder) {
         if (!containerEl || typeof onReorder !== 'function') return;
         let dragRow = null;
         let startIdx = -1;
         let currentIdx = -1;
         let activePointerId = null;
+        let autoScrollRaf = null;
+        let autoScrollSpeed = 0;
+        let lastClientY = 0;
+
+        const getScrollParent = (node) => {
+            let p = node?.parentElement;
+            while (p && p !== document.body && p !== document.documentElement) {
+                const ov = window.getComputedStyle(p).overflowY;
+                if (ov === 'auto' || ov === 'scroll') return p;
+                p = p.parentElement;
+            }
+            return window;
+        };
 
         const getRows = () => Array.from(containerEl.querySelectorAll(':scope > [data-reorder-item="true"]'));
+
+        const reorderStep = (y) => {
+            if (!dragRow) return;
+            const allRows = getRows();
+            for (let i = 0; i < allRows.length; i++) {
+                const sibling = allRows[i];
+                if (sibling === dragRow) continue;
+                const rect = sibling.getBoundingClientRect();
+                const midY = rect.top + rect.height / 2;
+                if (y >= rect.top && y <= rect.bottom) {
+                    if (i < currentIdx && y < midY) {
+                        containerEl.insertBefore(dragRow, sibling);
+                        currentIdx = getRows().indexOf(dragRow);
+                        triggerHaptic('selection');
+                    } else if (i > currentIdx && y > midY) {
+                        containerEl.insertBefore(dragRow, sibling.nextSibling);
+                        currentIdx = getRows().indexOf(dragRow);
+                        triggerHaptic('selection');
+                    }
+                    break;
+                }
+            }
+        };
 
         containerEl.addEventListener('pointerdown', (e) => {
             const handle = e.target.closest('.reorder-grip-handle');
@@ -2839,6 +2984,52 @@ document.addEventListener('DOMContentLoaded', () => {
             dragRow.classList.add('dragging-reorder-row');
             triggerHaptic('medium');
 
+            const scrollTarget = getScrollParent(containerEl);
+
+            const stopAutoScroll = () => {
+                autoScrollSpeed = 0;
+                if (autoScrollRaf) {
+                    cancelAnimationFrame(autoScrollRaf);
+                    autoScrollRaf = null;
+                }
+            };
+
+            const startAutoScroll = (speed) => {
+                autoScrollSpeed = speed;
+                if (autoScrollRaf) return;
+                const step = () => {
+                    if (!dragRow || autoScrollSpeed === 0) {
+                        autoScrollRaf = null;
+                        return;
+                    }
+                    if (scrollTarget === window) {
+                        window.scrollBy(0, autoScrollSpeed);
+                    } else {
+                        scrollTarget.scrollTop += autoScrollSpeed;
+                    }
+                    reorderStep(lastClientY);
+                    autoScrollRaf = requestAnimationFrame(step);
+                };
+                autoScrollRaf = requestAnimationFrame(step);
+            };
+
+            const checkAutoScroll = (y) => {
+                const targetRect = (scrollTarget === window)
+                    ? { top: 0, bottom: window.innerHeight }
+                    : scrollTarget.getBoundingClientRect();
+
+                const edgeThreshold = 85;
+                if (y < targetRect.top + edgeThreshold) {
+                    const factor = Math.max(0.15, (targetRect.top + edgeThreshold - y) / edgeThreshold);
+                    startAutoScroll(-Math.round(factor * 18));
+                } else if (y > targetRect.bottom - edgeThreshold) {
+                    const factor = Math.max(0.15, (y - (targetRect.bottom - edgeThreshold)) / edgeThreshold);
+                    startAutoScroll(Math.round(factor * 18));
+                } else {
+                    stopAutoScroll();
+                }
+            };
+
             try {
                 handle.setPointerCapture(e.pointerId);
             } catch (_) {}
@@ -2846,31 +3037,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const onPointerMove = (moveEv) => {
                 if (!dragRow || moveEv.pointerId !== activePointerId) return;
                 moveEv.preventDefault();
-                const allRows = getRows();
-                const y = moveEv.clientY;
-
-                for (let i = 0; i < allRows.length; i++) {
-                    const sibling = allRows[i];
-                    if (sibling === dragRow) continue;
-                    const rect = sibling.getBoundingClientRect();
-                    const midY = rect.top + rect.height / 2;
-                    if (y >= rect.top && y <= rect.bottom) {
-                        if (i < currentIdx && y < midY) {
-                            containerEl.insertBefore(dragRow, sibling);
-                            currentIdx = getRows().indexOf(dragRow);
-                            triggerHaptic('selection');
-                        } else if (i > currentIdx && y > midY) {
-                            containerEl.insertBefore(dragRow, sibling.nextSibling);
-                            currentIdx = getRows().indexOf(dragRow);
-                            triggerHaptic('selection');
-                        }
-                        break;
-                    }
-                }
+                lastClientY = moveEv.clientY;
+                checkAutoScroll(moveEv.clientY);
+                reorderStep(moveEv.clientY);
             };
 
             const finishDrag = (endEv) => {
                 if (!dragRow || (endEv && endEv.pointerId !== undefined && endEv.pointerId !== activePointerId)) return;
+                stopAutoScroll();
                 window.removeEventListener('pointermove', onPointerMove);
                 window.removeEventListener('pointerup', finishDrag);
                 window.removeEventListener('pointercancel', finishDrag);
@@ -4334,17 +4508,35 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentPlaylistTintRgb = null;
 
     function updateSafariThemeTint(r, g, b, alpha = 0.38) {
-        const metaTheme = document.getElementById('meta-theme-color') || document.querySelector('meta[name="theme-color"]');
         const shimEl = document.getElementById('safari-top-color-shim');
         const topFadeBar = document.getElementById('top-white-fade-bar');
         const nowPlayingTopFade = document.getElementById('now-playing-top-safari-fade');
         const page = document.body.getAttribute('data-page');
         const isDark = document.body.classList.contains('dark-mode');
         const defaultBg = isDark ? '#0c0c0e' : '#FCFBF8';
+
+        function setMetaThemeContent(hexColor) {
+            let meta = document.getElementById('meta-theme-color');
+            if (!meta) {
+                meta = document.createElement('meta');
+                meta.id = 'meta-theme-color';
+                meta.name = 'theme-color';
+                document.head.appendChild(meta);
+            }
+            meta.setAttribute('content', hexColor);
+            const clone = meta.cloneNode(true);
+            clone.setAttribute('content', hexColor);
+            if (meta.parentNode) {
+                meta.parentNode.replaceChild(clone, meta);
+            }
+            document.querySelectorAll('meta[name="theme-color"]').forEach(m => {
+                if (m !== clone) m.setAttribute('content', hexColor);
+            });
+        }
+
         if (r === null || r === undefined || page !== 'now-playing') {
             if (r === null || r === undefined) currentActivePageTint = null;
-            if (metaTheme) metaTheme.setAttribute('content', defaultBg);
-            document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', defaultBg));
+            setMetaThemeContent(defaultBg);
             if (shimEl) shimEl.style.backgroundColor = defaultBg;
             if (topFadeBar) {
                 topFadeBar.style.background = '';
@@ -4375,8 +4567,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const hex = `#${clR.toString(16).padStart(2, '0')}${clG.toString(16).padStart(2, '0')}${clB.toString(16).padStart(2, '0')}`;
 
-        if (metaTheme) metaTheme.setAttribute('content', hex);
-        document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', hex));
+        setMetaThemeContent(hex);
         if (shimEl) shimEl.style.backgroundColor = hex;
         const isDesktop = window.innerWidth >= 640;
         if (topFadeBar) {
@@ -6346,7 +6537,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
     }
 
-    // Apple Music Preset Cover Canvas Renderer
+    // Apple Music Preset Cover Canvas Renderer (8 Vibrant Styles)
     function drawAppleMusicPreset(canvas, preset, title, tintHex) {
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
@@ -6354,10 +6545,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const h = canvas.height;
         ctx.clearRect(0, 0, w, h);
 
-        const rgb = hexToRgbObj(tintHex || '#F59E0B') || { r: 245, g: 158, b: 11 };
+        const rgb = hexToRgbObj(tintHex || '#FFE600') || { r: 255, g: 230, b: 0 };
 
         if (preset === 'stripes') {
-            // Diagonal Striped Graphics (Apple Music inspired)
+            // 1. Diagonal Striped Graphics (Apple Music inspired)
             const bgGrad = ctx.createLinearGradient(0, 0, w, h);
             bgGrad.addColorStop(0, `rgb(${Math.round(rgb.r * 0.18 + 12 * 0.82)}, ${Math.round(rgb.g * 0.18 + 12 * 0.82)}, ${Math.round(rgb.b * 0.18 + 14 * 0.82)})`);
             bgGrad.addColorStop(1, '#09090b');
@@ -6379,7 +6570,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             ctx.restore();
         } else if (preset === 'vinyl') {
-            // Circular Vinyl Graphic with center spindle and grooved rings
+            // 2. Circular Vinyl Graphic with center spindle and grooved rings
             const bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.55, 10, w * 0.5, h * 0.55, w * 0.75);
             bgGrad.addColorStop(0, `rgb(${Math.round(rgb.r * 0.25 + 24 * 0.75)}, ${Math.round(rgb.g * 0.25 + 24 * 0.75)}, ${Math.round(rgb.b * 0.25 + 28 * 0.75)})`);
             bgGrad.addColorStop(1, '#09090b');
@@ -6437,7 +6628,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.strokeStyle = '#d4d4d8';
             ctx.stroke();
         } else if (preset === 'waves') {
-            // Soundwave Geometric Ribbons
+            // 3. Soundwave Geometric Ribbons
             const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
             bgGrad.addColorStop(0, '#0c0c0e');
             bgGrad.addColorStop(1, `rgb(${Math.round(rgb.r * 0.35 + 12 * 0.65)}, ${Math.round(rgb.g * 0.35 + 12 * 0.65)}, ${Math.round(rgb.b * 0.35 + 14 * 0.65)})`);
@@ -6459,8 +6650,135 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${waveAlpha})`;
                 ctx.fill();
             }
+        } else if (preset === 'grid') {
+            // 5. Synthwave Cyber Grid Floor
+            ctx.fillStyle = '#0a0a0f';
+            ctx.fillRect(0, 0, w, h);
+
+            const horizY = h * 0.42;
+            const horizGrad = ctx.createRadialGradient(w * 0.5, horizY, 2, w * 0.5, horizY, w * 0.65);
+            horizGrad.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.75)`);
+            horizGrad.addColorStop(1, 'transparent');
+            ctx.fillStyle = horizGrad;
+            ctx.fillRect(0, 0, w, h);
+
+            // Perspective Grid Lines
+            ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.55)`;
+            ctx.lineWidth = 1.4;
+            // Vertical perspective rays
+            for (let x = -w * 0.5; x <= w * 1.5; x += 22) {
+                ctx.beginPath();
+                ctx.moveTo(w * 0.5, horizY);
+                ctx.lineTo(x, h);
+                ctx.stroke();
+            }
+            // Horizontal lines with exponential perspective compression
+            for (let i = 1; i <= 9; i++) {
+                const curY = horizY + Math.pow(i / 9, 1.8) * (h - horizY);
+                ctx.beginPath();
+                ctx.moveTo(0, curY);
+                ctx.lineTo(w, curY);
+                ctx.stroke();
+            }
+        } else if (preset === 'tape') {
+            // 6. Retro Cassette Tape Graphic
+            ctx.fillStyle = '#121216';
+            ctx.fillRect(0, 0, w, h);
+
+            // Tape Body Outer Shell
+            const padX = 24;
+            const padY = 56;
+            const shellW = w - padX * 2;
+            const shellH = h - padY * 2;
+            ctx.fillStyle = `rgba(${Math.round(rgb.r * 0.2 + 20)}, ${Math.round(rgb.g * 0.2 + 20)}, ${Math.round(rgb.b * 0.2 + 25)}, 0.95)`;
+            drawRoundedRectPath(ctx, padX, padY, shellW, shellH, 16);
+            ctx.fill();
+            ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.6)`;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Center Label Area
+            const lblPad = 12;
+            const lblW = shellW - lblPad * 2;
+            const lblH = shellH * 0.55;
+            const lblY = padY + shellH * 0.22;
+            ctx.fillStyle = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+            drawRoundedRectPath(ctx, padX + lblPad, lblY, lblW, lblH, 8);
+            ctx.fill();
+
+            // Tape Spool Windows
+            const winW = lblW * 0.65;
+            const winH = lblH * 0.45;
+            const winX = padX + lblPad + (lblW - winW) / 2;
+            const winY = lblY + (lblH - winH) / 2;
+            ctx.fillStyle = '#0a0a0d';
+            drawRoundedRectPath(ctx, winX, winY, winW, winH, 6);
+            ctx.fill();
+
+            // Two circular reels
+            const r1X = winX + winW * 0.25;
+            const r2X = winX + winW * 0.75;
+            const reelY = winY + winH / 2;
+            [r1X, r2X].forEach(rx => {
+                ctx.beginPath();
+                ctx.arc(rx, reelY, 11, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(rx, reelY, 5, 0, Math.PI * 2);
+                ctx.fillStyle = '#0a0a0d';
+                ctx.fill();
+            });
+        } else if (preset === 'minimal') {
+            // 7. Ultra-Clean Editorial Minimal Monogram / Geometric Frame
+            ctx.fillStyle = '#09090b';
+            ctx.fillRect(0, 0, w, h);
+
+            // Centered subtle glowing orb
+            const orbRad = ctx.createRadialGradient(w * 0.5, h * 0.5, 10, w * 0.5, h * 0.5, w * 0.42);
+            orbRad.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.75)`);
+            orbRad.addColorStop(0.55, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.25)`);
+            orbRad.addColorStop(1, 'transparent');
+            ctx.fillStyle = orbRad;
+            ctx.beginPath();
+            ctx.arc(w * 0.5, h * 0.5, w * 0.42, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Delicate inner geometric frame
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(20, 20, w - 40, h - 40);
+
+            // Center concentric thin ring
+            ctx.beginPath();
+            ctx.arc(w * 0.5, h * 0.5, w * 0.25, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.85)`;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        } else if (preset === 'neon') {
+            // 8. Glowing Neon Cyber Rods
+            ctx.fillStyle = '#050508';
+            ctx.fillRect(0, 0, w, h);
+
+            ctx.save();
+            ctx.shadowColor = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+            ctx.shadowBlur = 18;
+
+            ctx.strokeStyle = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+            ctx.lineWidth = 3.5;
+            ctx.beginPath();
+            ctx.arc(w * 0.5, h * 0.52, w * 0.32, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.shadowBlur = 28;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(w * 0.5, h * 0.52, w * 0.32, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
         } else {
-            // Aura / Gradient Mesh (Apple Music fluid glow)
+            // 4. Aura / Fluid Gradient Mesh (Apple Music fluid glow)
             ctx.fillStyle = '#0f0f13';
             ctx.fillRect(0, 0, w, h);
 
@@ -6558,11 +6876,51 @@ document.addEventListener('DOMContentLoaded', () => {
     const plInfoTrackMeta = document.getElementById('pl-info-track-meta');
     const plInfoSongsCount = document.getElementById('pl-info-songs-count');
     const plInfoSampleTracks = document.getElementById('pl-info-sample-tracks');
+    const plInfoFooterSummary = document.getElementById('pl-info-footer-summary');
     const plInfoDescWrapper = document.getElementById('pl-info-desc-wrapper');
+
+    const plCustomizeQuestionnaire = document.getElementById('pl-customize-questionnaire');
+    const plCustomizeOptionsView = document.getElementById('pl-customize-options-view');
+    const plChoicePresetsBtn = document.getElementById('pl-choice-presets-btn');
+    const plChoiceUploadBtn = document.getElementById('pl-choice-upload-btn');
+    const plChangeChoiceBtn = document.getElementById('pl-change-choice-btn');
+    const plPresetsSection = document.getElementById('pl-presets-section');
+    const plUploadSection = document.getElementById('pl-upload-section');
+    const plCurrentModeLabel = document.getElementById('pl-current-mode-label');
+
+    function setPlaylistCoverChoice(mode) {
+        if (!plCustomizeQuestionnaire || !plCustomizeOptionsView) return;
+        if (mode === 'presets') {
+            plCustomizeQuestionnaire.classList.add('hidden');
+            plCustomizeOptionsView.classList.remove('hidden');
+            if (plPresetsSection) plPresetsSection.classList.remove('hidden');
+            if (plUploadSection) plUploadSection.classList.add('hidden');
+            if (plCurrentModeLabel) plCurrentModeLabel.textContent = 'Preset Artwork';
+            if (pendingModalCover && !pendingModalCover.startsWith('data:image/svg+xml')) {
+                pendingModalCover = null;
+            }
+            updateModalCoverUI();
+        } else if (mode === 'upload') {
+            plCustomizeQuestionnaire.classList.add('hidden');
+            plCustomizeOptionsView.classList.remove('hidden');
+            if (plPresetsSection) plPresetsSection.classList.add('hidden');
+            if (plUploadSection) plUploadSection.classList.remove('hidden');
+            if (plCurrentModeLabel) plCurrentModeLabel.textContent = 'Custom Photo Upload';
+            updateModalCoverUI();
+        } else {
+            // Step 1: Questionnaire mode
+            plCustomizeQuestionnaire.classList.remove('hidden');
+            plCustomizeOptionsView.classList.add('hidden');
+        }
+    }
+
+    if (plChoicePresetsBtn) plChoicePresetsBtn.onclick = () => setPlaylistCoverChoice('presets');
+    if (plChoiceUploadBtn) plChoiceUploadBtn.onclick = () => setPlaylistCoverChoice('upload');
+    if (plChangeChoiceBtn) plChangeChoiceBtn.onclick = () => setPlaylistCoverChoice('questionnaire');
 
     function renderAllPresetCanvases(title, tintHex) {
         const name = (title !== undefined) ? title : (playlistNameInput?.value || '');
-        const hex = tintHex || pendingModalTint?.hex || '#F59E0B';
+        const hex = tintHex || pendingModalTint?.hex || '#FFE600';
         document.querySelectorAll('.pl-preset-canvas').forEach(canvas => {
             const preset = canvas.getAttribute('data-preset') || 'stripes';
             drawAppleMusicPreset(canvas, preset, name, hex);
@@ -6589,7 +6947,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateInfoTabLivePreview() {
         const name = playlistNameInput?.value.trim() || 'Playlist';
-        const hex = pendingModalTint?.hex || '#F59E0B';
+        const hex = pendingModalTint?.hex || '#FFE600';
 
         if (pendingModalCover) {
             if (plInfoPreviewImg) {
@@ -6607,25 +6965,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const sampleTracks = (playlistToEditPending?.tracks) || (currentPlaylistContextId && currentPlaylistContextId !== 'favorites' ? playlists.find(p => p.id === currentPlaylistContextId)?.tracks : null) || [];
         const trackCount = sampleTracks.length;
-        if (plInfoTrackMeta) plInfoTrackMeta.textContent = `${trackCount} ${trackCount === 1 ? 'song' : 'songs'} • Yolk Playlist`;
-        if (plInfoSongsCount) plInfoSongsCount.textContent = `${trackCount} ${trackCount === 1 ? 'track' : 'tracks'}`;
+        let totalSec = 0;
+        sampleTracks.forEach(t => {
+            const d = t.duration ? (t.duration > 1000 ? t.duration / 1000 : t.duration) : 0;
+            totalSec += d;
+        });
+        const totalMin = Math.round(totalSec / 60);
+        const summaryText = `${trackCount} ${trackCount === 1 ? 'song' : 'songs'} • ${totalMin} min`;
+        if (plInfoTrackMeta) plInfoTrackMeta.textContent = summaryText;
+        if (plInfoSongsCount) plInfoSongsCount.textContent = `${trackCount} ${trackCount === 1 ? 'song' : 'songs'}`;
+        if (plInfoFooterSummary) plInfoFooterSummary.textContent = summaryText;
 
         if (plInfoSampleTracks) {
             plInfoSampleTracks.innerHTML = '';
             if (sampleTracks.length === 0) {
                 plInfoSampleTracks.innerHTML = `<div class="py-6 text-center text-xs text-zinc-400">Songs added to this playlist will appear here.</div>`;
             } else {
-                sampleTracks.slice(0, 10).forEach(t => {
+                sampleTracks.forEach((t, idx) => {
                     const row = document.createElement('div');
-                    row.className = 'flex items-center justify-between p-2 rounded-xl bg-white/70 border border-zinc-100 text-left';
+                    row.className = 'flex items-center justify-between p-2 rounded-xl bg-white/70 dark:bg-zinc-800/70 border border-zinc-100 dark:border-zinc-800 text-left';
                     const cover = t.artwork_url || t.image ? getProxyUrl(t.artwork_url || t.image, '64x64') : '';
                     row.innerHTML = `
                         <div class="flex items-center gap-2.5 min-w-0">
-                            <div class="w-7 h-7 rounded-lg bg-zinc-200 overflow-hidden shrink-0 flex items-center justify-center">
+                            <span class="text-[11px] font-bold text-zinc-400 w-4 text-center shrink-0">${idx + 1}</span>
+                            <div class="w-8 h-8 rounded-lg bg-zinc-200 dark:bg-zinc-700 overflow-hidden shrink-0 flex items-center justify-center">
                                 ${cover ? `<img src="${cover}" class="w-full h-full object-cover">` : `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>`}
                             </div>
                             <div class="min-w-0">
-                                <div class="text-xs font-bold text-zinc-800 truncate">${escapeHtml(t.title || t.name || 'Song')}</div>
+                                <div class="text-xs font-bold text-zinc-800 dark:text-zinc-100 truncate">${escapeHtml(t.title || t.name || 'Song')}</div>
                                 <div class="text-[10px] text-zinc-400 truncate">${escapeHtml(t.artist_name || t.artist || 'Artist')}</div>
                             </div>
                         </div>
@@ -6727,7 +7094,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Quick Tint Buttons
     document.querySelectorAll('.pl-quick-tint-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            const hex = btn.getAttribute('data-hex') || '#F59E0B';
+            const hex = btn.getAttribute('data-hex') || '#FFE600';
             const rgb = hexToRgbObj(hex);
             pendingModalTint = { hex, r: rgb.r, g: rgb.g, b: rgb.b };
             if (modalTintDot) modalTintDot.style.backgroundColor = hex;
@@ -6788,13 +7155,15 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedPresetCover = 'stripes';
         pendingModalCover = null;
         lastUploadedRawImage = null;
-        if (modalTintDot) modalTintDot.style.backgroundColor = '#FDE047';
+        if (modalTintDot) modalTintDot.style.backgroundColor = '#FFE600';
         if (modalTintStatus) modalTintStatus.textContent = 'Automatic (from artwork)';
         playlistModalTitle.textContent = 'New Playlist';
         playlistNameInput.value = '';
         playlistDescInput.value = '';
+        setPlaylistCoverChoice('questionnaire');
         switchPlaylistModalTab('customize');
         updateModalCoverUI();
+        playlistModal.classList.remove('hidden');
         playlistModal.classList.add('active');
         setTimeout(() => playlistNameInput.focus(), 50);
     }
@@ -6805,19 +7174,26 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedPresetCover = pl.preset_style || 'stripes';
         pendingModalCover = pl.cover || null;
         lastUploadedRawImage = (pendingModalCover && !pendingModalCover.startsWith('data:image/svg+xml')) ? pendingModalCover : null;
-        if (modalTintDot) modalTintDot.style.backgroundColor = pendingModalTint ? pendingModalTint.hex : '#FDE047';
+        if (modalTintDot) modalTintDot.style.backgroundColor = pendingModalTint ? pendingModalTint.hex : '#FFE600';
         if (modalTintStatus) modalTintStatus.textContent = pendingModalTint ? `Custom (${pendingModalTint.hex})` : 'Automatic (from artwork)';
         playlistModalTitle.textContent = 'Edit Playlist';
         playlistNameInput.value = pl.name || '';
         playlistDescInput.value = (pl.description && pl.description !== '[object Object]' && pl.description !== 'undefined') ? pl.description : '';
+        if (pendingModalCover && !pendingModalCover.startsWith('data:image/svg+xml')) {
+            setPlaylistCoverChoice('upload');
+        } else {
+            setPlaylistCoverChoice('presets');
+        }
         switchPlaylistModalTab('customize');
         updateModalCoverUI();
+        playlistModal.classList.remove('hidden');
         playlistModal.classList.add('active');
         setTimeout(() => playlistNameInput.focus(), 50);
     }
 
     function closePlaylistModal() {
         playlistModal.classList.remove('active');
+        playlistModal.classList.add('hidden');
         playlistToEditPending = null;
         pendingModalCover = null;
         lastUploadedRawImage = null;
@@ -7195,7 +7571,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     albumsRedirectBtn.classList.remove('hidden');
                     albumsRedirectBtn.classList.add('inline-flex');
                     if (albumsRedirectText) {
-                        albumsRedirectText.textContent = showingAllAlbums ? 'Show Top 4' : 'See All Albums';
+                        albumsRedirectText.textContent = showingAllAlbums ? 'Show Top 4' : 'See all';
                     }
                 } else if (albumsRedirectBtn) {
                     albumsRedirectBtn.classList.add('hidden');
@@ -7255,7 +7631,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     tracksRedirectBtn.classList.remove('hidden');
                     tracksRedirectBtn.classList.add('inline-flex');
                     if (tracksRedirectText) {
-                        tracksRedirectText.textContent = showingAllTracks ? 'Show Top 10' : 'See All Songs';
+                        tracksRedirectText.textContent = showingAllTracks ? 'Show Top 10' : 'See all';
                     }
                 } else if (tracksRedirectBtn) {
                     tracksRedirectBtn.classList.add('hidden');
@@ -8003,7 +8379,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (notify) {
-            showToast(isDark ? 'Dark Mode (Beta) enabled' : 'Light Mode enabled');
+            showToast(isDark ? 'Dark Mode enabled' : 'Light Mode enabled');
         }
     }
     window.applyThemeMode = applyThemeMode;
@@ -8067,10 +8443,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let visualizerStyle = 'bars';
 
     function ensureWebAudioEqualizer(forceInit = false) {
-        const isMobile = window.innerWidth < 640 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
+        const isMobile = window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
+        if (isMobile) {
+            // Keep native HTMLAudioElement direct pipeline untouched on mobile to guarantee uninterrupted background & lock-screen audio playback outside the app
+            return;
+        }
         const hasNonZero = eqEnabled && eqBands.some(g => Math.abs(g) > 0.05);
-        if (!yolkAudioCtx && !hasNonZero && !forceInit && (!visualizerEnabled || isMobile)) {
-            // Keep native HTMLAudioElement direct pipeline untouched when EQ is off on mobile to guarantee uninterrupted background audio playback outside the app
+        if (!yolkAudioCtx && !hasNonZero && !forceInit) {
             return;
         }
         try {
@@ -8123,15 +8502,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     currentAudio.addEventListener('play', () => {
-        if (yolkAudioCtx && yolkAudioCtx.state === 'suspended') {
+        const isMobile = window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
+        if (!isMobile && yolkAudioCtx && yolkAudioCtx.state === 'suspended') {
             yolkAudioCtx.resume().catch(() => {});
-        } else if ((eqEnabled && eqBands.some(g => Math.abs(g) > 0.05)) || visualizerEnabled) {
+        } else if (!isMobile && eqEnabled && eqBands.some(g => Math.abs(g) > 0.05)) {
             ensureWebAudioEqualizer();
         }
     });
 
     document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible' && yolkAudioCtx && yolkAudioCtx.state === 'suspended' && isPlaying) {
+        const isMobile = window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
+        if (!isMobile && document.visibilityState === 'visible' && yolkAudioCtx && yolkAudioCtx.state === 'suspended' && isPlaying) {
             yolkAudioCtx.resume().catch(() => {});
         }
         if (isPlaying && 'mediaSession' in navigator) {
@@ -8144,6 +8525,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const eqResetBtn = document.getElementById('eq-reset-btn');
     const eqPresetBadge = document.getElementById('eq-active-preset-badge');
     const eqPresetPills = document.querySelectorAll('.eq-preset-pill');
+    const eqPresetRows = document.querySelectorAll('.eq-preset-row');
     const eqBandSliders = document.querySelectorAll('.eq-band-slider');
 
     function updateEqUI() {
@@ -8165,6 +8547,20 @@ document.addEventListener('DOMContentLoaded', () => {
             bandsWrapper.style.opacity = eqEnabled ? '1' : '0.45';
             bandsWrapper.style.pointerEvents = eqEnabled ? 'auto' : 'none';
         }
+
+        // Update list of EQ preset rows with concise descriptions
+        eqPresetRows.forEach(row => {
+            const key = row.getAttribute('data-eq-preset');
+            const isActive = eqEnabled && key === eqCurrentPreset;
+            row.classList.toggle('is-active', isActive);
+            row.classList.toggle('border-blue-500', isActive);
+            row.classList.toggle('bg-blue-50/60', isActive);
+            row.classList.toggle('dark:bg-blue-950/30', isActive);
+            const dot = row.querySelector('.eq-dot');
+            if (dot) {
+                dot.className = `eq-dot w-2 h-2 rounded-full transition-colors ${isActive ? 'bg-blue-500' : 'bg-transparent group-hover:bg-zinc-300 dark:group-hover:bg-zinc-600'}`;
+            }
+        });
 
         eqPresetPills.forEach(pill => {
             const key = pill.getAttribute('data-eq-preset');
@@ -8211,6 +8607,19 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('Equalizer reset to Flat');
         });
     }
+
+    eqPresetRows.forEach(row => {
+        row.addEventListener('click', () => {
+            const presetKey = row.getAttribute('data-eq-preset');
+            if (!EQ_PRESETS[presetKey]) return;
+            triggerHaptic('selection');
+            eqEnabled = true;
+            eqCurrentPreset = presetKey;
+            eqBands = [...EQ_PRESETS[presetKey].gains];
+            updateEqUI();
+            showToast(`EQ: ${EQ_PRESETS[presetKey].name}`);
+        });
+    });
 
     eqPresetPills.forEach(pill => {
         pill.addEventListener('click', () => {
@@ -9059,10 +9468,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (visualizerEnabled && isPlaying) {
-            ensureWebAudioEqualizer(true);
+            const isMobile = window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
+            if (!isMobile && eqEnabled) {
+                ensureWebAudioEqualizer(true);
+            }
         }
         if (notify) {
-            showToast(visualizerEnabled ? 'Spectrum Visualizer enabled' : 'Audio Visualizer disabled');
+            showToast(visualizerEnabled ? 'Spectrum Bar enabled' : 'Spectrum Bar disabled');
         }
     }
 
@@ -9073,6 +9485,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     updateVisualizerSettingsUI(false);
+
+    let _runningSongEnergy = 0.28;
 
     function computeLiveVisualizerBins(nowSec) {
         let hasRealSignal = false;
@@ -9089,7 +9503,14 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (_) {}
         }
 
+        // Determine baseline song profile (calmer tracks vs energetic beats)
+        const trackTitle = ((currentTrack?.title || '') + ' ' + (currentTrack?.artist || '')).toLowerCase();
+        const isAcousticCalm = /acoustic|calm|quiet|slow|ambient|sleep|piano|soft|lo-fi|lofi|chill|ballad|zen/i.test(trackTitle);
+        const songSeedMultiplier = isAcousticCalm ? 0.65 : 1.0;
+
+        let frameEnergySum = 0;
         let bassEnergy = 0;
+
         for (let i = 0; i < numBars; i++) {
             let target = 0.06;
             if (isPlaying) {
@@ -9099,19 +9520,56 @@ document.addEventListener('DOMContentLoaded', () => {
                     const binIdx = Math.min(_vizFreqBins.length - 1, Math.floor(Math.pow(normIdx, 1.55) * 64) + 1);
                     const trebleBoost = 1.0 + (normIdx * 0.70);
                     const rawNorm = (_vizFreqBins[binIdx] / 240) * trebleBoost;
-                    target = Math.max(0.06, Math.min(1.0, rawNorm));
+                    target = Math.max(0.04, Math.min(1.0, rawNorm));
                 } else {
-                    // Smooth rhythmic simulation when audio buffer is loading
+                    // Smooth rhythmic simulation when audio buffer is direct/loading
                     const centerDist = Math.abs(i - (numBars - 1) / 2) / (numBars / 2);
                     const env = Math.max(0.18, 1 - centerDist * 0.72);
                     const wave1 = Math.sin(nowSec * 7.8 + i * 0.52) * 0.5 + 0.5;
                     const wave2 = Math.cos(nowSec * 12.4 - i * 0.82) * 0.5 + 0.5;
                     const kick = Math.pow(Math.sin(nowSec * 4.2) * 0.5 + 0.5, 3);
-                    target = Math.max(0.08, Math.min(0.92, (wave1 * 0.45 + wave2 * 0.35 + kick * 0.35) * env));
+                    target = Math.max(0.06, Math.min(0.92, (wave1 * 0.45 + wave2 * 0.35 + kick * 0.35) * env * songSeedMultiplier));
                 }
             }
-            // Fast attack, smooth decay
-            const smoothFactor = target > _vizSmoothBins[i] ? 0.45 : 0.22;
+            frameEnergySum += target;
+        }
+
+        // Smooth running song energy tracker
+        const instantEnergy = frameEnergySum / numBars;
+        _runningSongEnergy = _runningSongEnergy * 0.96 + instantEnergy * 0.04;
+
+        // Dynamic Sensitivity:
+        // - Calmer songs (lower _runningSongEnergy) are very sensitive to subtle changes (multiplier up to 2.8x)
+        // - Louder songs compress peaks logarithmically without pegging the top ceiling
+        const dynamicSensitivity = Math.min(2.8, Math.max(0.68, 0.36 / Math.max(0.12, _runningSongEnergy)));
+
+        for (let i = 0; i < numBars; i++) {
+            let target = 0.06;
+            if (isPlaying) {
+                if (hasRealSignal) {
+                    const normIdx = i / (numBars - 1);
+                    const binIdx = Math.min(_vizFreqBins.length - 1, Math.floor(Math.pow(normIdx, 1.55) * 64) + 1);
+                    const trebleBoost = 1.0 + (normIdx * 0.70);
+                    const rawNorm = (_vizFreqBins[binIdx] / 240) * trebleBoost;
+                    // Apply dynamic sensitivity curve
+                    target = Math.pow(rawNorm, 1.1) * dynamicSensitivity;
+                } else {
+                    const centerDist = Math.abs(i - (numBars - 1) / 2) / (numBars / 2);
+                    const env = Math.max(0.18, 1 - centerDist * 0.72);
+                    const wave1 = Math.sin(nowSec * 7.8 + i * 0.52) * 0.5 + 0.5;
+                    const wave2 = Math.cos(nowSec * 12.4 - i * 0.82) * 0.5 + 0.5;
+                    const kick = Math.pow(Math.sin(nowSec * 4.2) * 0.5 + 0.5, 3);
+                    const raw = (wave1 * 0.45 + wave2 * 0.35 + kick * 0.35) * env;
+                    target = Math.pow(raw, 1.1) * dynamicSensitivity;
+                }
+                target = Math.max(0.06, Math.min(0.95, target));
+            }
+
+            // Severe fast attack for calmer music reactivity, smooth decay
+            const isCalmMusic = _runningSongEnergy < 0.28;
+            const attackSpeed = isCalmMusic ? 0.55 : 0.42;
+            const decaySpeed = isCalmMusic ? 0.28 : 0.20;
+            const smoothFactor = target > _vizSmoothBins[i] ? attackSpeed : decaySpeed;
             _vizSmoothBins[i] = _vizSmoothBins[i] * (1 - smoothFactor) + target * smoothFactor;
             if (i < 6) bassEnergy += _vizSmoothBins[i];
         }
