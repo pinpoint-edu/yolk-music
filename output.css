@@ -528,9 +528,6 @@
   .ml-2 {
     margin-left: calc(var(--spacing) * 2);
   }
-  .ml-auto {
-    margin-left: auto;
-  }
   .box-border {
     box-sizing: border-box;
   }
@@ -1188,6 +1185,12 @@
       border-color: color-mix(in oklab, var(--color-white) 25%, transparent);
     }
   }
+  .border-white\/30 {
+    border-color: color-mix(in srgb, #fff 30%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      border-color: color-mix(in oklab, var(--color-white) 30%, transparent);
+    }
+  }
   .border-white\/60 {
     border-color: color-mix(in srgb, #fff 60%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
@@ -1305,6 +1308,12 @@
       background-color: color-mix(in oklab, var(--color-black) 5%, transparent);
     }
   }
+  .bg-black\/10 {
+    background-color: color-mix(in srgb, #000 10%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-black) 10%, transparent);
+    }
+  }
   .bg-black\/15 {
     background-color: color-mix(in srgb, #000 15%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
@@ -1327,6 +1336,12 @@
     background-color: color-mix(in srgb, #000 40%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
       background-color: color-mix(in oklab, var(--color-black) 40%, transparent);
+    }
+  }
+  .bg-black\/45 {
+    background-color: color-mix(in srgb, #000 45%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-black) 45%, transparent);
     }
   }
   .bg-black\/50 {
@@ -1426,12 +1441,6 @@
     background-color: color-mix(in srgb, #fff 40%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
       background-color: color-mix(in oklab, var(--color-white) 40%, transparent);
-    }
-  }
-  .bg-white\/45 {
-    background-color: color-mix(in srgb, #fff 45%, transparent);
-    @supports (color: color-mix(in lab, red, red)) {
-      background-color: color-mix(in oklab, var(--color-white) 45%, transparent);
     }
   }
   .bg-white\/50 {
@@ -2361,6 +2370,22 @@
         background-color: color-mix(in oklab, var(--color-black) 10%, transparent);
       }
     }
+    .hover\:bg-black\/20:hover {
+      background-color: color-mix(in srgb, #000 20%, transparent);
+    }
+    @supports (color: color-mix(in lab, red, red)) {
+      .hover\:bg-black\/20:hover {
+        background-color: color-mix(in oklab, var(--color-black) 20%, transparent);
+      }
+    }
+    .hover\:bg-black\/60:hover {
+      background-color: color-mix(in srgb, #000 60%, transparent);
+    }
+    @supports (color: color-mix(in lab, red, red)) {
+      .hover\:bg-black\/60:hover {
+        background-color: color-mix(in oklab, var(--color-black) 60%, transparent);
+      }
+    }
     .hover\:bg-red-50:hover {
       background-color: var(--color-red-50);
     }
@@ -2382,14 +2407,6 @@
     @supports (color: color-mix(in lab, red, red)) {
       .hover\:bg-white\/15:hover {
         background-color: color-mix(in oklab, var(--color-white) 15%, transparent);
-      }
-    }
-    .hover\:bg-white\/75:hover {
-      background-color: color-mix(in srgb, #fff 75%, transparent);
-    }
-    @supports (color: color-mix(in lab, red, red)) {
-      .hover\:bg-white\/75:hover {
-        background-color: color-mix(in oklab, var(--color-white) 75%, transparent);
       }
     }
     .hover\:bg-white\/80:hover {
@@ -2673,9 +2690,6 @@
     .sm\:px-3 {
       padding-inline: calc(var(--spacing) * 3);
     }
-    .sm\:px-4 {
-      padding-inline: calc(var(--spacing) * 4);
-    }
     .sm\:px-5 {
       padding-inline: calc(var(--spacing) * 5);
     }
@@ -2684,9 +2698,6 @@
     }
     .sm\:px-8 {
       padding-inline: calc(var(--spacing) * 8);
-    }
-    .sm\:py-2 {
-      padding-block: calc(var(--spacing) * 2);
     }
     .sm\:pt-4 {
       padding-top: calc(var(--spacing) * 4);
@@ -2840,6 +2851,18 @@
       border-color: color-mix(in oklab, var(--color-white) 10%, transparent);
     }
   }
+  .dark\:border-white\/15:where(.dark-mode, .dark-mode *) {
+    border-color: color-mix(in srgb, #fff 15%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      border-color: color-mix(in oklab, var(--color-white) 15%, transparent);
+    }
+  }
+  .dark\:border-white\/40:where(.dark-mode, .dark-mode *) {
+    border-color: color-mix(in srgb, #fff 40%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      border-color: color-mix(in oklab, var(--color-white) 40%, transparent);
+    }
+  }
   .dark\:border-zinc-700:where(.dark-mode, .dark-mode *) {
     border-color: var(--color-zinc-700);
   }
@@ -2886,6 +2909,12 @@
     background-color: color-mix(in srgb, #fff 10%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
       background-color: color-mix(in oklab, var(--color-white) 10%, transparent);
+    }
+  }
+  .dark\:bg-white\/25:where(.dark-mode, .dark-mode *) {
+    background-color: color-mix(in srgb, #fff 25%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-white) 25%, transparent);
     }
   }
   .dark\:bg-zinc-100:where(.dark-mode, .dark-mode *) {
@@ -2993,6 +3022,22 @@
     @supports (color: color-mix(in lab, red, red)) {
       .dark\:hover\:bg-white\/10:where(.dark-mode, .dark-mode *):hover {
         background-color: color-mix(in oklab, var(--color-white) 10%, transparent);
+      }
+    }
+    .dark\:hover\:bg-white\/20:where(.dark-mode, .dark-mode *):hover {
+      background-color: color-mix(in srgb, #fff 20%, transparent);
+    }
+    @supports (color: color-mix(in lab, red, red)) {
+      .dark\:hover\:bg-white\/20:where(.dark-mode, .dark-mode *):hover {
+        background-color: color-mix(in oklab, var(--color-white) 20%, transparent);
+      }
+    }
+    .dark\:hover\:bg-white\/35:where(.dark-mode, .dark-mode *):hover {
+      background-color: color-mix(in srgb, #fff 35%, transparent);
+    }
+    @supports (color: color-mix(in lab, red, red)) {
+      .dark\:hover\:bg-white\/35:where(.dark-mode, .dark-mode *):hover {
+        background-color: color-mix(in oklab, var(--color-white) 35%, transparent);
       }
     }
     .dark\:hover\:bg-zinc-100:where(.dark-mode, .dark-mode *):hover {

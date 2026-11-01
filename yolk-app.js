@@ -405,7 +405,28 @@ function updateLyricsSync(currentTime, force = false) {
         }
     }
 
-    // Fast-path: If active index hasn't changed, skip DOM work
+    const activeItem = (activeIndex >= 0) ? parsedLyrics[activeIndex] : null;
+
+    // Active interlude 3-dots progression (1/3rd = dot 1, 2/3rds = dot 2, ~end = dot 3)
+    if (activeItem && activeItem.type === 'dots' && activeItem.time !== null && activeItem.endTime > activeItem.time) {
+        const dotsElapsed = currentTime - activeItem.time;
+        const dotsDuration = activeItem.endTime - activeItem.time;
+        const progress = Math.max(0, Math.min(1, dotsElapsed / dotsDuration));
+        const dot1 = progress >= 0.33;
+        const dot2 = progress >= 0.66;
+        const dot3 = progress >= 0.90;
+        const activeDotsLine = container.querySelector(`.dots-line[data-index="${activeIndex}"]`);
+        if (activeDotsLine) {
+            const dots = activeDotsLine.querySelectorAll('.lyric-dot');
+            if (dots.length === 3) {
+                dots[0].classList.toggle('is-lit', dot1);
+                dots[1].classList.toggle('is-lit', dot2);
+                dots[2].classList.toggle('is-lit', dot3);
+            }
+        }
+    }
+
+    // Fast-path: If active index hasn't changed, skip DOM line re-evaluation
     if (!force && container._lastActiveIndex === activeIndex) {
         return;
     }
@@ -1217,6 +1238,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (isLyricsUserEnabled) {
+            document.body.classList.add('np-lyrics-open');
             nowPlayingContainer.classList.add('lyrics-active');
             nowPlayingContainer.classList.remove('lyrics-hidden');
             if (!isLyricsAvailable) {
@@ -1263,6 +1285,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         } else {
+            document.body.classList.remove('np-lyrics-open');
             nowPlayingContainer.classList.remove('lyrics-active');
             nowPlayingContainer.classList.add('lyrics-hidden');
             if (npLyricsFloatingBar) npLyricsFloatingBar.classList.add('hidden');
@@ -3240,9 +3263,6 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="flex items-center gap-1 sm:gap-1.5 shrink-0">
                 ${durStr ? `<span class="text-[11px] text-zinc-400 font-semibold mr-1 hidden sm:inline">${durStr}</span>` : ''}
-                <button class="download-track-btn text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors p-2 sm:p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer" title="Download offline">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                </button>
                 <button class="add-to-queue-btn text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors p-2 sm:p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer" title="Add to Queue">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
                 </button>
@@ -3288,11 +3308,6 @@ document.addEventListener('DOMContentLoaded', () => {
             openAddToPlaylistModal(track);
         });
 
-        const dlBtn = div.querySelector('.download-track-btn');
-        if (dlBtn) {
-            wireTrackDownloadBtn(dlBtn, track);
-        }
-
         const addQueueBtn = div.querySelector('.add-to-queue-btn');
         if (addQueueBtn) {
             addQueueBtn.addEventListener('click', (e) => {
@@ -3325,6 +3340,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const remainingText = formatRemainingTime(cur, dur);
         if (npDuration) npDuration.textContent = remainingText;
         if (bpDuration) bpDuration.textContent = remainingText;
+
+        // Preload next track in queue 1 song ahead (at 75% or 30s remaining)
+        if (dur > 0 && (dur - cur <= 30 || cur / dur >= 0.75)) {
+            preloadNextQueueTrack();
+        }
     }
 
     // YouTube Player Engine (Fallback from pinpoint-edu)
@@ -3735,6 +3755,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 preloadedNextAudio.removeAttribute('src');
                 preloadedNextAudio.src = streamUrl;
                 preloadedNextAudio.load();
+                fetch(streamUrl, { headers: { 'Range': 'bytes=0-32768' } }).catch(() => {});
                 preloadedNextTrackUid = uid;
             }
         } catch (_) {}
@@ -3860,8 +3881,7 @@ document.addEventListener('DOMContentLoaded', () => {
     currentAudio.addEventListener('canplay', () => {
         showSpinner(false);
         updateMediaSessionPosition();
-        const isMobile = window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
-        if (!isMobile && visualizerEnabled) {
+        if (visualizerEnabled || eqEnabled) {
             ensureWebAudioEqualizer(true);
             if (yolkAudioCtx && yolkAudioCtx.state === 'suspended') {
                 yolkAudioCtx.resume().catch(() => {});
@@ -3886,12 +3906,9 @@ document.addEventListener('DOMContentLoaded', () => {
         isPlaying = true;
         updatePlayPauseButtons();
         updateMediaSessionPosition();
-        const isMobile = window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
-        if (!isMobile) {
-            if (visualizerEnabled) ensureWebAudioEqualizer(true);
-            if (yolkAudioCtx && yolkAudioCtx.state === 'suspended') {
-                yolkAudioCtx.resume().catch(() => {});
-            }
+        if (visualizerEnabled) ensureWebAudioEqualizer(true);
+        if (yolkAudioCtx && yolkAudioCtx.state === 'suspended') {
+            yolkAudioCtx.resume().catch(() => {});
         }
         if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
         if (document.body.getAttribute('data-page') !== 'now-playing') {
@@ -4532,98 +4549,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentActivePageTint = null;
     let currentPlaylistTintRgb = null;
 
-    function updateSafariThemeTint(r, g, b, alpha = 0.38) {
-        const shimEl = document.getElementById('safari-top-color-shim');
-        const topFadeBar = document.getElementById('top-white-fade-bar');
-        const nowPlayingTopFade = document.getElementById('now-playing-top-safari-fade');
-        const page = document.body.getAttribute('data-page');
-        const isDark = document.body.classList.contains('dark-mode');
-        const defaultBg = isDark ? '#0c0c0e' : '#FCFBF8';
-
-        function setMetaThemeContent(hexColor) {
-            let meta = document.getElementById('meta-theme-color');
-            if (!meta) {
-                meta = document.createElement('meta');
-                meta.id = 'meta-theme-color';
-                meta.name = 'theme-color';
-                document.head.appendChild(meta);
-            }
-            meta.setAttribute('content', hexColor);
-            const clone = meta.cloneNode(true);
-            clone.setAttribute('content', hexColor);
-            if (meta.parentNode) {
-                meta.parentNode.replaceChild(clone, meta);
-            }
-            document.querySelectorAll('meta[name="theme-color"]').forEach(m => {
-                if (m !== clone) m.setAttribute('content', hexColor);
-            });
-        }
-
-        if (r === null || r === undefined) {
-            if (page === 'library' && currentPlaylistTintRgb) {
-                r = currentPlaylistTintRgb.r;
-                g = currentPlaylistTintRgb.g;
-                b = currentPlaylistTintRgb.b;
-                alpha = 0.95;
-            } else {
-                currentActivePageTint = null;
-                setMetaThemeContent(defaultBg);
-                if (shimEl) shimEl.style.backgroundColor = defaultBg;
-                if (topFadeBar) {
-                    topFadeBar.style.background = '';
-                    topFadeBar.style.opacity = '';
-                }
-                if (nowPlayingTopFade) {
-                    nowPlayingTopFade.style.opacity = '0';
-                }
-                document.documentElement.style.setProperty('background-color', defaultBg, 'important');
-                document.body.style.setProperty('background-color', defaultBg, 'important');
-                return;
-            }
-        }
-
-        currentActivePageTint = { r, g, b, alpha };
-        let clR, clG, clB;
-        if (alpha >= 0.95) {
-            // Match true color directly for Safari top row status bar blend
-            clR = Math.max(0, Math.min(255, Math.round(r)));
-            clG = Math.max(0, Math.min(255, Math.round(g)));
-            clB = Math.max(0, Math.min(255, Math.round(b)));
-        } else {
-            const baseR = isDark ? 12 : 252;
-            const baseG = isDark ? 12 : 251;
-            const baseB = isDark ? 14 : 248;
-            clR = Math.max(0, Math.min(255, Math.round(r * alpha + baseR * (1 - alpha))));
-            clG = Math.max(0, Math.min(255, Math.round(g * alpha + baseG * (1 - alpha))));
-            clB = Math.max(0, Math.min(255, Math.round(b * alpha + baseB * (1 - alpha))));
-        }
-        const hex = `#${clR.toString(16).padStart(2, '0')}${clG.toString(16).padStart(2, '0')}${clB.toString(16).padStart(2, '0')}`;
-
-        setMetaThemeContent(hex);
-        if (shimEl) shimEl.style.backgroundColor = hex;
-        const isDesktop = window.innerWidth >= 640;
-        if (topFadeBar) {
-            if (isDesktop) {
-                topFadeBar.style.opacity = '0';
-                topFadeBar.style.display = 'none';
-            } else {
-                topFadeBar.style.display = 'block';
-                topFadeBar.style.opacity = '1';
-                topFadeBar.style.background = `linear-gradient(180deg, ${hex} 0%, ${hex} 48%, rgba(${clR}, ${clG}, ${clB}, 0.72) 76%, rgba(${clR}, ${clG}, ${clB}, 0) 100%)`;
-            }
-        }
-        if (nowPlayingTopFade) {
-            if (isDesktop) {
-                nowPlayingTopFade.style.opacity = '0';
-                nowPlayingTopFade.style.display = 'none';
-            } else {
-                nowPlayingTopFade.style.display = 'block';
-                nowPlayingTopFade.style.background = `linear-gradient(180deg, ${hex} 0%, rgba(${clR}, ${clG}, ${clB}, 0.82) 55%, transparent 100%)`;
-                nowPlayingTopFade.style.opacity = '1';
-            }
-        }
-        document.documentElement.style.setProperty('background-color', hex, 'important');
-        document.body.style.setProperty('background-color', hex, 'important');
+    function updateSafariThemeTint() {
+        // Dynamic Safari top color code removed per user request
     }
     window.updateSafariThemeTint = updateSafariThemeTint;
 
@@ -5061,6 +4988,14 @@ document.addEventListener('DOMContentLoaded', () => {
             tintEl.style.opacity = '0';
             tintEl.style.background = '';
         }
+        const topFadeBar = document.getElementById('top-white-fade-bar');
+        if (topFadeBar) {
+            topFadeBar.style.background = '';
+            topFadeBar.style.display = '';
+            topFadeBar.style.opacity = '';
+        }
+        document.documentElement.style.backgroundColor = '';
+        document.body.style.backgroundColor = '';
         const detailView = document.getElementById('playlist-detail-view');
         if (detailView) {
             detailView.classList.remove('has-playlist-tint');
@@ -5072,6 +5007,7 @@ document.addEventListener('DOMContentLoaded', () => {
             detailView.style.removeProperty('--pl-badge-bg');
         }
     }
+    window.clearPlaylistTint = clearPlaylistTint;
 
     function applyPlaylistThemeUI(r, g, b) {
         const detailView = document.getElementById('playlist-detail-view');
@@ -5862,29 +5798,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         libraryGrid.appendChild(favCard);
 
-        // 2. (Library Songs) Card - Shows every individual song downloaded offline
-        const libSongsCard = document.createElement('div');
-        libSongsCard.className = 'group cursor-pointer bubbly-hover text-left';
-        libSongsCard.innerHTML = `
-            <div class="w-full aspect-square bg-[#F4F4F5] rounded-2xl border border-zinc-200/80 mb-2 relative overflow-hidden flex items-center justify-center shadow-sm group-hover:shadow-md transition-all text-zinc-900">
-                <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-zinc-900"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-            </div>
-            <h3 class="font-semibold text-xs sm:text-sm text-zinc-900 truncate">(Library Songs)</h3>
-            <p id="lib-songs-card-count" class="text-[11px] text-zinc-500 mt-0.5">Downloaded songs</p>
-        `;
-        libSongsCard.addEventListener('click', () => {
-            openPlaylistDetail('library-songs');
-        });
-        libraryGrid.appendChild(libSongsCard);
-
-        YolkOfflineDB.getAllTracks().then(allOffline => {
-            const countEl = document.getElementById('lib-songs-card-count');
-            if (countEl) {
-                const count = (allOffline || []).length;
-                countEl.textContent = `${count} ${count === 1 ? 'song' : 'songs'}`;
-            }
-        }).catch(() => {});
-
         // 2. Custom Playlists Cards (All library tracks automatically download offline)
         playlists.forEach((pl) => {
             const plCard = document.createElement('div');
@@ -6128,54 +6041,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast('Playlist is empty. Add some tracks first!');
             }
         };
-
-        const downloadAllBtn = document.getElementById('playlist-download-all-btn');
-        if (downloadAllBtn) {
-            if (trackList.length === 0 || playlistId === 'library-songs') {
-                downloadAllBtn.classList.add('hidden');
-                window._updatePlaylistDownloadAllBtn = null;
-            } else {
-                downloadAllBtn.classList.remove('hidden');
-                const updateDownloadAllStatus = async () => {
-                    const checks = await Promise.all(trackList.map(t => YolkOfflineDB.isDownloaded(getTrackUid(t))));
-                    const allDownloaded = checks.length > 0 && checks.every(Boolean);
-                    if (allDownloaded) {
-                        downloadAllBtn.title = 'Undownload All Playlist Songs';
-                        downloadAllBtn.innerHTML = getDownloadedBadgeSvg(18);
-                    } else {
-                        downloadAllBtn.title = 'Download Entire Playlist';
-                        downloadAllBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
-                    }
-                    return allDownloaded;
-                };
-                window._updatePlaylistDownloadAllBtn = updateDownloadAllStatus;
-                updateDownloadAllStatus();
-
-                downloadAllBtn.onclick = async () => {
-                    const isAll = await updateDownloadAllStatus();
-                    if (isAll) {
-                        const ok = await showCustomConfirm({
-                            title: 'Remove Offline Songs',
-                            message: `Remove all downloaded songs in "${playlistName}" from offline storage?`,
-                            confirmText: 'Remove Downloads',
-                            cancelText: 'Keep Offline',
-                            isDestructive: true
-                        });
-                        if (ok) {
-                            for (const t of trackList) {
-                                await YolkOfflineDB.deleteTrack(getTrackUid(t));
-                            }
-                            if (typeof window.refreshAllDownloadButtonsUI === 'function') {
-                                window.refreshAllDownloadButtonsUI();
-                            }
-                            showToast('Removed playlist songs from downloads');
-                        }
-                    } else {
-                        enqueueLibraryDownload(trackList);
-                    }
-                };
-            }
-        }
 
         trackListContainer.innerHTML = '';
         if (trackList.length === 0) {
@@ -7822,11 +7687,6 @@ document.addEventListener('DOMContentLoaded', () => {
             openAddToPlaylistModal(track);
         });
 
-        const dlBtn = div.querySelector('.download-track-btn');
-        if (dlBtn) {
-            wireTrackDownloadBtn(dlBtn, track);
-        }
-
         const addQueueBtn = div.querySelector('.add-to-queue-btn');
         if (addQueueBtn) {
             addQueueBtn.addEventListener('click', (e) => {
@@ -8499,11 +8359,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==== SETTINGS PAGE: REAL-TIME 5-BAND WEB AUDIO EQUALIZER (EQ) ====
     const EQ_PRESETS = {
         flat: { name: 'Flat', gains: [0, 0, 0, 0, 0] },
-        bass: { name: 'Bass Boost', gains: [7.5, 5.5, 0, 1, 2] },
-        vocal: { name: 'Vocal Booster', gains: [-2, -1, 4.5, 5, 2] },
-        'late-night': { name: 'Late Night', gains: [5, 3, -1.5, 2.5, 4] },
-        electronic: { name: 'Electronic', gains: [6.5, 4, -2, 3, 6] },
-        acoustic: { name: 'Acoustic', gains: [3.5, 2, 1, 3, 4] }
+        bass: { name: 'Bass Boost', gains: [12, 9, 0, 1.5, 2.5] },
+        vocal: { name: 'Vocal Booster', gains: [-4, -3, 8.5, 9, 3] },
+        'late-night': { name: 'Late Night', gains: [8, 5, -3, -4, -6] },
+        electronic: { name: 'Electronic', gains: [11, 7, -3, 6, 10] },
+        acoustic: { name: 'Acoustic', gains: [-3, 2, 6, 8, 9] }
     };
     const EQ_FREQS = [
         { freq: 60, type: 'lowshelf', q: 0.7 },
@@ -8534,11 +8394,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let visualizerStyle = 'bars';
 
     function ensureWebAudioEqualizer(forceInit = false) {
-        const isMobile = window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
-        if (isMobile) {
-            // Keep native HTMLAudioElement direct pipeline untouched on mobile to guarantee uninterrupted background & lock-screen audio playback outside the app
-            return;
-        }
         const hasNonZero = eqEnabled && eqBands.some(g => Math.abs(g) > 0.05);
         if (!yolkAudioCtx && !hasNonZero && !forceInit && !visualizerEnabled) {
             return;
@@ -8593,20 +8448,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     currentAudio.addEventListener('play', () => {
-        const isMobile = window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
-        if (!isMobile) {
-            if (yolkAudioCtx && yolkAudioCtx.state === 'suspended') {
-                yolkAudioCtx.resume().catch(() => {});
-            }
-            if ((visualizerEnabled || (eqEnabled && eqBands.some(g => Math.abs(g) > 0.05))) && !yolkAudioCtx) {
-                ensureWebAudioEqualizer(true);
-            }
+        if (yolkAudioCtx && yolkAudioCtx.state === 'suspended') {
+            yolkAudioCtx.resume().catch(() => {});
+        }
+        if ((visualizerEnabled || (eqEnabled && eqBands.some(g => Math.abs(g) > 0.05))) && !yolkAudioCtx) {
+            ensureWebAudioEqualizer(true);
         }
     });
 
     document.addEventListener('visibilitychange', () => {
-        const isMobile = window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
-        if (!isMobile && document.visibilityState === 'visible' && yolkAudioCtx && yolkAudioCtx.state === 'suspended' && isPlaying) {
+        if (document.visibilityState === 'visible' && yolkAudioCtx && yolkAudioCtx.state === 'suspended' && isPlaying) {
             yolkAudioCtx.resume().catch(() => {});
         }
         if (isPlaying && 'mediaSession' in navigator) {
@@ -9373,9 +9224,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (visualizerEnabled && isPlaying) {
-            const isMobile = window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
-            if (!isMobile) {
-                ensureWebAudioEqualizer(true);
+            ensureWebAudioEqualizer(true);
+            if (yolkAudioCtx && yolkAudioCtx.state === 'suspended') {
+                yolkAudioCtx.resume().catch(() => {});
             }
         }
         if (notify) {
@@ -9397,7 +9248,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let hasRealSignal = false;
         const numBars = 32;
 
-        const isAudioProducingSound = isPlaying && !currentAudio.paused && currentAudio.readyState >= 2;
+        const isAudioProducingSound = isPlaying && !currentAudio.paused && !currentAudio.ended;
 
         if (yolkAnalyserNode && isAudioProducingSound) {
             try {
