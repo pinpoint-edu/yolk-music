@@ -473,13 +473,13 @@ function sortTracksByQuality(trackList) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+    'Range, Content-Range, Content-Type, Accept-Ranges, X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Date, X-Api-Version'
   );
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges, X-Track-Duration');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -1859,6 +1859,10 @@ async function openUpstreamAudioStream(streamInfo, upstreamHeaders) {
                 try { ac.abort(); } catch (_) {}
             }
         });
+
+        if (winning.res && winning.res.url) {
+            streamInfo.directUrl = winning.res.url;
+        }
 
         return winning.res;
     } catch (_) {

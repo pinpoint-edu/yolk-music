@@ -856,17 +856,17 @@
             }
             body[data-page="now-playing"].np-lyrics-open #bottom-player,
             body[data-page="now-playing"]:has(#now-playing-container.lyrics-active) #bottom-player {
-                display: flex !important;
-                transform: translate(-50%, 0) !important;
-                opacity: 1 !important;
-                pointer-events: auto !important;
-                z-index: 45 !important;
+                display: none !important;
             }
             #bottom-player.hidden-force {
                 display: none !important;
             }
             #np-lyrics-floating-bar {
                 display: none !important;
+            }
+            body[data-page="now-playing"].np-lyrics-open #np-lyrics-floating-bar,
+            body[data-page="now-playing"]:has(#now-playing-container.lyrics-active) #np-lyrics-floating-bar {
+                display: flex !important;
             }
         }
 
@@ -900,12 +900,8 @@
                 border: 1px solid rgba(255, 255, 255, 0.12) !important;
                 box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
             }
-            #bottom-player:not(.is-loading):hover {
-                height: 70px !important;
-                padding-left: 16px !important;
-                padding-right: 22px !important;
-                transform: translate(-50%, -3px) !important;
-                box-shadow: 0 20px 48px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.65) !important;
+            #bottom-player:not(.is-loading) {
+                height: 68px !important;
             }
         }
 
@@ -1042,36 +1038,8 @@
             transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1) !important;
         }
 
-        body[data-page="now-playing"].np-user-idle #bottom-player {
-            opacity: 0 !important;
-            pointer-events: none !important;
-            transform: translate(-50%, 16px) !important;
-        }
-
-        body[data-page="now-playing"].np-user-idle #top-nav-bar {
-            opacity: 0 !important;
-            pointer-events: none !important;
-            transform: translateY(-16px) !important;
-        }
-
-        body[data-page="now-playing"].np-user-idle #np-lyrics-floating-bar {
-            opacity: 0 !important;
-            pointer-events: none !important;
-            transform: translateX(-50%) translateY(20px) !important;
-        }
-
-        body[data-page="now-playing"].np-user-idle #np-lyrics-header-row,
-        body[data-page="now-playing"].np-user-idle #np-share-lyrics-btn,
-        body[data-page="now-playing"].np-user-idle #lyrics-badge {
-            opacity: 0 !important;
-            pointer-events: none !important;
-        }
-
-        body[data-page="now-playing"].np-user-idle #page-now-playing {
-            cursor: none !important;
-        }
-        body[data-page="now-playing"].np-user-idle #page-now-playing * {
-            cursor: none !important;
+        body[data-page="now-playing"] #top-nav-bar {
+            pointer-events: auto !important;
         }
 
         /* Now Playing Icon Buttons: Frosted, slightly lighter translucent backgrounds with blur matching the bottom bar */
@@ -1554,7 +1522,7 @@
             font-size: clamp(1.65rem, 2.8vw, 2.45rem) !important;
             line-height: 1.32 !important;
             font-weight: 800 !important;
-            transform: scale(1.02) translateX(4px) !important;
+            transform: scale(1.02) !important;
             text-shadow: 0 4px 24px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(255, 255, 255, 0.4);
         }
         .lyric-line.next-up {
@@ -2064,34 +2032,39 @@
             border-color: rgba(239, 68, 68, 0.35) !important;
         }
         /* Translucent More (•••) Popovers with Opening/Closing Animation & Background Blur */
-        .more-glass-popover {
+        .more-glass-popover,
+        .more-vertical-bar {
             background-color: rgba(255, 255, 255, 0.76) !important;
             backdrop-filter: blur(32px) saturate(190%) !important;
             -webkit-backdrop-filter: blur(32px) saturate(190%) !important;
             border: 1px solid rgba(255, 255, 255, 0.82) !important;
             box-shadow: 0 20px 48px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
-            transform-origin: bottom right;
+            transform-origin: bottom center;
             transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
             opacity: 0;
             transform: scale(0.92) translateY(8px);
             pointer-events: none;
         }
-        .more-glass-popover.popover-open {
+        .more-glass-popover.popover-open,
+        .more-vertical-bar.popover-open {
             opacity: 1 !important;
             transform: scale(1) translateY(0) !important;
             pointer-events: auto !important;
         }
-        body.dark-mode .more-glass-popover {
+        body.dark-mode .more-glass-popover,
+        body.dark-mode .more-vertical-bar {
             background-color: rgba(20, 20, 25, 0.82) !important;
             backdrop-filter: blur(32px) saturate(190%) !important;
             -webkit-backdrop-filter: blur(32px) saturate(190%) !important;
             border: 1px solid rgba(255, 255, 255, 0.16) !important;
             box-shadow: 0 20px 52px rgba(0, 0, 0, 0.65) !important;
         }
-        body.dark-mode .more-glass-popover button {
+        body.dark-mode .more-glass-popover button,
+        body.dark-mode .more-vertical-bar button {
             color: #f4f4f5 !important;
         }
-        body.dark-mode .more-glass-popover button:hover {
+        body.dark-mode .more-glass-popover button:hover,
+        body.dark-mode .more-vertical-bar button:hover {
             background-color: rgba(255, 255, 255, 0.1) !important;
         }
         .dragging-reorder-row {
@@ -2420,29 +2393,21 @@
                         <button id="np-mobile-more-btn" class="bubbly-hover flex items-center justify-center w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 backdrop-blur-xl border border-black/10 dark:border-white/15 shadow-xs hover:scale-105 active:scale-95 transition-all text-current cursor-pointer shrink-0" title="More options">
                             <span class="material-symbols-rounded text-[20px]">more_horiz</span>
                         </button>
-                        <div id="np-mobile-more-popover" class="more-glass-popover hidden absolute -right-2 sm:right-0 bottom-full mb-3 w-56 rounded-2xl p-2 flex flex-col gap-1 z-50">
-                            <button id="np-mobile-more-share-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
-                                <span>Share Song / Lyrics</span>
+                        <div id="np-mobile-more-popover" class="more-vertical-bar hidden absolute right-0 bottom-full mb-3 py-2 px-1.5 rounded-full bg-white/85 dark:bg-zinc-900/85 backdrop-blur-xl border border-zinc-200/90 dark:border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.18)] flex flex-col items-center gap-1.5 z-50">
+                            <button id="np-mobile-more-share-btn" type="button" class="w-10 h-10 rounded-full flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer" title="Share" aria-label="Share">
+                                <span class="material-symbols-rounded text-[20px]">share</span>
                             </button>
-                            <button id="np-mobile-more-album-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
-                                <span>Go to Album</span>
+                            <button id="np-mobile-more-album-btn" type="button" class="w-10 h-10 rounded-full flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer" title="Album" aria-label="Album">
+                                <span class="material-symbols-rounded text-[20px]">album</span>
                             </button>
-                            <button id="np-mobile-more-artist-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                                <span>View Artist</span>
+                            <button id="np-mobile-more-artist-btn" type="button" class="w-10 h-10 rounded-full flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer" title="Artist" aria-label="Artist">
+                                <span class="material-symbols-rounded text-[20px]">person</span>
                             </button>
-                            <button id="np-mobile-more-add-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
-                                <span>Add to Playlist</span>
+                            <button id="np-mobile-more-queue-btn" type="button" class="w-10 h-10 rounded-full flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer" title="Queue" aria-label="Queue">
+                                <span class="material-symbols-rounded text-[20px]">queue_music</span>
                             </button>
-                            <button id="np-mobile-more-queue-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
-                                <span>Play Queue</span>
-                            </button>
-                            <button id="np-mobile-more-pip-btn" class="hidden !hidden">
-                                <span>Floating Mini-Player</span>
+                            <button id="np-mobile-more-pip-btn" type="button" class="hidden md:flex w-10 h-10 rounded-full items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer" title="PiP" aria-label="PiP">
+                                <span class="material-symbols-rounded text-[20px]">picture_in_picture_alt</span>
                             </button>
                         </div>
                     </div>
@@ -2465,70 +2430,60 @@
         </div>
 
         <!-- Floating Lyrics Bottom Bar (Active during lyrics mode on phone only) -->
-        <div id="np-lyrics-floating-bar" class="fixed bottom-6 left-1/2 w-[calc(100%-2rem)] max-w-2xl h-[60px] border border-white/70 shadow-[0_16px_40px_rgba(0,0,0,0.12)] rounded-full px-4 box-border flex justify-between items-center z-40 hidden md:!hidden">
-            <!-- Left: Mini Cover + Title + Artist (Clamped strictly inside container during swipe) -->
-            <div class="flex items-center gap-3 min-w-0 flex-1 cursor-pointer overflow-hidden h-full" id="lyrics-bar-info-container">
-                <div class="flex items-center gap-3 w-full h-full" id="lyrics-bar-info">
-                    <img id="lyrics-bar-thumb" src="" alt="Cover" class="w-10 h-10 rounded-xl object-cover border border-black/10 shrink-0">
-                    <div class="min-w-0 flex flex-col justify-center">
-                        <span id="lyrics-bar-title" class="text-xs font-black text-black truncate leading-tight">Title</span>
-                        <span id="lyrics-bar-artist" class="text-[11px] font-semibold text-black/70 truncate">Artist</span>
-                    </div>
-                </div>
-            </div>
+        <div id="np-lyrics-floating-bar" class="fixed bottom-6 left-1/2 -translate-x-1/2 w-fit max-w-[calc(100%-1.5rem)] h-[64px] border border-white/60 dark:border-white/15 shadow-[0_16px_40px_rgba(0,0,0,0.18)] rounded-full px-3.5 box-border flex justify-center items-center gap-2 z-40 hidden md:!hidden">
+            <!-- Hidden info elements to preserve JS bindings -->
+            <div id="lyrics-bar-info-container" class="hidden !hidden"><div id="lyrics-bar-info"><img id="lyrics-bar-thumb" src="" alt="Cover"><span id="lyrics-bar-title"></span><span id="lyrics-bar-artist"></span></div></div>
 
-            <!-- Center: Player controls (Prev, Play/Pause, Next) -->
-            <div class="flex items-center gap-2 shrink-0 mx-2">
-                <button id="lyrics-bar-prev" class="p-1.5 text-black hover:scale-110 active:scale-95 transition-transform cursor-pointer" title="Previous">
-                    <span class="material-symbols-rounded text-[20px]">skip_previous</span>
-                </button>
-                <button id="lyrics-bar-play-pause" class="flex items-center justify-center w-10 h-10 rounded-full bg-black text-white hover:scale-105 active:scale-95 transition-all shadow-md cursor-pointer" title="Play/Pause">
-                    <span id="lyrics-bar-play-icon" class="material-symbols-rounded text-[22px]">play_arrow</span>
-                </button>
-                <button id="lyrics-bar-next" class="p-1.5 text-black hover:scale-110 active:scale-95 transition-transform cursor-pointer" title="Next">
-                    <span class="material-symbols-rounded text-[20px]">skip_next</span>
-                </button>
-            </div>
+            <!-- Lyrics Toggle Button -->
+            <button id="lyrics-bar-lyrics-toggle" class="bubbly-hover flex items-center justify-center w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 backdrop-blur-xl border border-black/10 dark:border-white/15 shadow-xs hover:scale-105 active:scale-95 transition-all text-current cursor-pointer shrink-0" title="Close Lyrics">
+                <span class="material-symbols-rounded text-[20px]">format_quote</span>
+            </button>
 
-            <!-- Right: Heart, Lyrics Toggle, and More (•••) -->
-            <div class="flex items-center gap-1.5 shrink-0 relative">
-                <button id="lyrics-bar-fav-btn" class="p-2 text-black hover:scale-110 active:scale-95 transition-transform cursor-pointer" title="Favorite">
-                    <span class="material-symbols-rounded text-[20px]">favorite</span>
+            <!-- Favorite Button -->
+            <button id="lyrics-bar-fav-btn" class="bubbly-hover flex items-center justify-center w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 backdrop-blur-xl border border-black/10 dark:border-white/15 shadow-xs hover:scale-105 active:scale-95 transition-all text-current cursor-pointer shrink-0" title="Favorite">
+                <span class="material-symbols-rounded text-[20px]">favorite</span>
+            </button>
+
+            <!-- Previous Track -->
+            <button id="lyrics-bar-prev" class="bubbly-hover flex items-center justify-center w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 backdrop-blur-xl border border-black/10 dark:border-white/15 shadow-xs hover:scale-105 active:scale-95 transition-all text-current cursor-pointer shrink-0" title="Previous Track">
+                <span class="material-symbols-rounded text-[22px]">skip_previous</span>
+            </button>
+
+            <!-- Play / Pause Button -->
+            <button id="lyrics-bar-play-pause" class="flex items-center justify-center w-12 h-12 rounded-full bg-black/45 dark:bg-white/25 hover:bg-black/60 dark:hover:bg-white/35 backdrop-blur-2xl text-white dark:text-zinc-900 border border-white/30 dark:border-white/40 shadow-xl hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0" title="Play / Pause">
+                <span id="lyrics-bar-play-icon" class="material-symbols-rounded text-[26px]">play_arrow</span>
+            </button>
+
+            <!-- Next Track -->
+            <button id="lyrics-bar-next" class="bubbly-hover flex items-center justify-center w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 backdrop-blur-xl border border-black/10 dark:border-white/15 shadow-xs hover:scale-105 active:scale-95 transition-all text-current cursor-pointer shrink-0" title="Next Track">
+                <span class="material-symbols-rounded text-[22px]">skip_next</span>
+            </button>
+
+            <!-- Save to Playlist Button -->
+            <button id="lyrics-bar-add-btn" class="bubbly-hover flex items-center justify-center w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 backdrop-blur-xl border border-black/10 dark:border-white/15 shadow-xs hover:scale-105 active:scale-95 transition-all text-current cursor-pointer shrink-0" title="Add to Playlist">
+                <span class="material-symbols-rounded text-[20px]">playlist_add</span>
+            </button>
+
+            <!-- More Button & Vertical Popover -->
+            <div class="relative flex items-center shrink-0">
+                <button id="lyrics-bar-more-btn" class="bubbly-hover flex items-center justify-center w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 backdrop-blur-xl border border-black/10 dark:border-white/15 shadow-xs hover:scale-105 active:scale-95 transition-all text-current cursor-pointer shrink-0" title="More options">
+                    <span class="material-symbols-rounded text-[20px]">more_horiz</span>
                 </button>
 
-                <button id="lyrics-bar-lyrics-toggle" class="flex items-center justify-center w-8 h-8 rounded-full hover:scale-105 active:scale-95 transition-all shadow-sm cursor-pointer" title="Close Lyrics">
-                    <span class="material-symbols-rounded text-[18px]">format_quote</span>
-                </button>
-
-                <!-- More Button -->
-                <div class="relative">
-                    <button id="lyrics-bar-more-btn" class="p-2 text-black hover:scale-110 active:scale-95 transition-transform cursor-pointer" title="More options">
-                        <span class="material-symbols-rounded text-[20px]">more_horiz</span>
+                <!-- Vertical More Bar -->
+                <div id="lyrics-bar-more-popover" class="more-vertical-bar hidden absolute right-0 bottom-full mb-3 py-2 px-1.5 rounded-full bg-white/85 dark:bg-zinc-900/85 backdrop-blur-xl border border-zinc-200/90 dark:border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.18)] flex flex-col items-center gap-1.5 z-50">
+                    <button id="lyrics-more-share-lyrics-btn" type="button" class="w-10 h-10 rounded-full flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer" title="Share" aria-label="Share">
+                        <span class="material-symbols-rounded text-[20px]">share</span>
                     </button>
-
-                    <!-- More Popover Container -->
-                    <div id="lyrics-bar-more-popover" class="more-glass-popover hidden absolute -right-2 sm:right-0 bottom-full mb-3 w-56 rounded-2xl p-2 flex flex-col gap-1 z-50">
-                        <button id="lyrics-more-share-lyrics-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
-                            <span>Share Lyrics Card</span>
-                        </button>
-                        <button id="lyrics-more-album-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
-                            <span>Go to Album</span>
-                        </button>
-                        <button id="lyrics-more-artist-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                            <span>View Artist</span>
-                        </button>
-                        <button id="lyrics-more-add-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
-                            <span>Add to Playlist</span>
-                        </button>
-                        <button id="lyrics-more-queue-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
-                            <span>Play Queue</span>
-                        </button>
-                    </div>
+                    <button id="lyrics-more-album-btn" type="button" class="w-10 h-10 rounded-full flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer" title="Album" aria-label="Album">
+                        <span class="material-symbols-rounded text-[20px]">album</span>
+                    </button>
+                    <button id="lyrics-more-artist-btn" type="button" class="w-10 h-10 rounded-full flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer" title="Artist" aria-label="Artist">
+                        <span class="material-symbols-rounded text-[20px]">person</span>
+                    </button>
+                    <button id="lyrics-more-queue-btn" type="button" class="w-10 h-10 rounded-full flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer" title="Queue" aria-label="Queue">
+                        <span class="material-symbols-rounded text-[20px]">queue_music</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -2677,58 +2632,34 @@
         <main id="page-settings-scroll" class="relative z-10 w-full h-full overflow-y-auto">
             <div class="library-shell max-w-3xl mx-auto pb-20">
                 <div class="mb-6">
-                    <h1 class="text-3xl font-bold tracking-tight text-zinc-900">Settings</h1>
-                    <p class="text-sm text-zinc-500 mt-1">Customize appearance, audio EQ, crossfade, and offline storage</p>
+                    <h1 class="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Settings</h1>
                 </div>
 
                 <div class="flex flex-col gap-5">
-                    <!-- 1. Theme Mode Setting Card -->
-                    <div class="bg-white/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 p-5 sm:p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-5">
-                        <div class="flex items-center justify-between gap-4 flex-wrap">
-                            <div class="flex items-center gap-3.5">
-                                <div class="settings-icon-box w-11 h-11 rounded-2xl bg-zinc-100 border border-zinc-200/80 flex items-center justify-center text-zinc-800 shrink-0">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>
-                                </div>
-                                <div>
-                                    <div class="flex items-center gap-2">
-                                        <h2 class="text-base sm:text-lg font-bold text-zinc-900">Dark Mode</h2>
-                                    </div>
-                                    <p class="text-xs sm:text-sm text-zinc-500 mt-0.5">Switch between Yolk!'s classic warm light mode and dark mode</p>
-                                </div>
+                    <!-- 1. Theme Setting Card -->
+                    <div class="bg-white/85 dark:bg-zinc-900/85 backdrop-blur-xl rounded-3xl border border-zinc-200/80 dark:border-white/10 p-5 sm:p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col gap-4">
+                        <div class="flex items-center gap-3.5">
+                            <div class="settings-icon-box w-11 h-11 rounded-2xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200/80 dark:border-white/10 flex items-center justify-center text-zinc-800 dark:text-zinc-200 shrink-0">
+                                <span class="material-symbols-rounded text-[22px]">palette</span>
                             </div>
-
-                            <button id="theme-mode-toggle-btn" type="button" role="switch" aria-checked="false" class="yolk-switch-btn is-off shrink-0">
-                                <span id="theme-mode-toggle-knob" class="yolk-switch-knob"></span>
-                            </button>
+                            <div>
+                                <h2 class="text-base sm:text-lg font-bold text-zinc-900 dark:text-white">Theme</h2>
+                                <p class="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">Select light, dark, or system appearance</p>
+                            </div>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-3 pt-2 border-t border-zinc-100">
-                            <button id="theme-mode-light-btn" type="button" class="bubbly-hover p-4 rounded-2xl border-2 border-zinc-900 bg-[#FCFBF8] text-left flex flex-col gap-2.5 cursor-pointer transition-all">
-                                <div class="flex items-center justify-between">
-                                    <div class="light-card-sun w-8 h-8 rounded-full bg-white border border-zinc-200 flex items-center justify-center text-amber-500 shadow-xs">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>
-                                    </div>
-                                    <span id="theme-light-active-dot" class="w-2.5 h-2.5 rounded-full bg-zinc-900"></span>
-                                </div>
-                                <div>
-                                    <div class="light-card-title text-sm font-bold text-zinc-900">Light Mode</div>
-                                    <div class="light-card-sub text-[11px] font-medium text-zinc-500">Classic warm Yolk! paper</div>
-                                </div>
+                        <div class="flex items-center justify-center gap-4 pt-3 border-t border-zinc-100 dark:border-white/10">
+                            <!-- Light Mode -->
+                            <button id="theme-btn-light" type="button" class="theme-choice-btn w-13 h-13 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all cursor-pointer bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:scale-105 active:scale-95" title="Light" aria-label="Light">
+                                <span class="material-symbols-rounded text-[24px]">light_mode</span>
                             </button>
-
-                            <button id="theme-mode-dark-btn" type="button" class="bubbly-hover p-4 rounded-2xl border-2 border-zinc-200/80 bg-zinc-900 text-left flex flex-col gap-2.5 cursor-pointer transition-all">
-                                <div class="flex items-center justify-between">
-                                    <div class="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-[#FACC15] shadow-xs">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>
-                                    </div>
-                                    <span id="theme-dark-active-dot" class="w-2.5 h-2.5 rounded-full bg-[#FACC15] hidden"></span>
-                                </div>
-                                <div>
-                                    <div class="text-sm font-bold text-white flex items-center gap-1.5">
-                                        <span>Dark Mode</span>
-                                    </div>
-                                    <div class="text-[11px] font-medium text-zinc-400">Deep obsidian midnight</div>
-                                </div>
+                            <!-- Dark Mode -->
+                            <button id="theme-btn-dark" type="button" class="theme-choice-btn w-13 h-13 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all cursor-pointer bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:scale-105 active:scale-95" title="Dark" aria-label="Dark">
+                                <span class="material-symbols-rounded text-[24px]">dark_mode</span>
+                            </button>
+                            <!-- System Mode -->
+                            <button id="theme-btn-system" type="button" class="theme-choice-btn w-13 h-13 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all cursor-pointer bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:scale-105 active:scale-95" title="System" aria-label="System">
+                                <span class="material-symbols-rounded text-[24px]">desktop_windows</span>
                             </button>
                         </div>
                     </div>
@@ -2977,34 +2908,27 @@
                     <button id="bp-mobile-more-btn" class="sleek-hover text-zinc-600 hover:text-zinc-950 p-2 rounded-full hover:bg-black/5 cursor-pointer shrink-0" title="More options">
                         <span class="material-symbols-rounded text-[20px]">more_horiz</span>
                     </button>
-                    <div id="bp-mobile-more-popover" class="more-glass-popover hidden absolute -right-2 sm:right-0 bottom-full mb-3 w-56 rounded-2xl p-2 flex flex-col gap-1 z-50">
-                        <button id="bp-more-share-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
-                            <span>Share Song / Lyrics</span>
+                    <div id="bp-mobile-more-popover" class="more-vertical-bar hidden absolute right-0 bottom-full mb-3 py-2 px-1.5 rounded-full bg-white/85 dark:bg-zinc-900/85 backdrop-blur-xl border border-zinc-200/90 dark:border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.18)] flex flex-col items-center gap-1.5 z-50">
+                        <button id="bp-more-share-btn" type="button" class="w-10 h-10 rounded-full flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer" title="Share" aria-label="Share">
+                            <span class="material-symbols-rounded text-[20px]">share</span>
                         </button>
-                        <button id="bp-more-album-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
-                            <span>Go to Album</span>
+                        <button id="bp-more-album-btn" type="button" class="w-10 h-10 rounded-full flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer" title="Album" aria-label="Album">
+                            <span class="material-symbols-rounded text-[20px]">album</span>
                         </button>
-                        <button id="bp-more-artist-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                            <span>View Artist</span>
+                        <button id="bp-more-artist-btn" type="button" class="w-10 h-10 rounded-full flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer" title="Artist" aria-label="Artist">
+                            <span class="material-symbols-rounded text-[20px]">person</span>
                         </button>
-                        <button id="bp-more-fav-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                            <span>Favorite</span>
+                        <button id="bp-more-fav-btn" type="button" class="w-10 h-10 rounded-full flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer" title="Favorite" aria-label="Favorite">
+                            <span class="material-symbols-rounded text-[20px]">favorite</span>
                         </button>
-                        <button id="bp-more-add-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
-                            <span>Add to Playlist</span>
+                        <button id="bp-more-add-btn" type="button" class="w-10 h-10 rounded-full flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer" title="Add to Playlist" aria-label="Add to Playlist">
+                            <span class="material-symbols-rounded text-[20px]">playlist_add</span>
                         </button>
-                        <button id="bp-more-queue-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
-                            <span>Play Queue</span>
+                        <button id="bp-more-queue-btn" type="button" class="w-10 h-10 rounded-full flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer" title="Queue" aria-label="Queue">
+                            <span class="material-symbols-rounded text-[20px]">queue_music</span>
                         </button>
-                        <button id="bp-more-pip-btn" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-zinc-800 hover:bg-black/5 transition-colors cursor-pointer w-full text-left">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 9V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h4"></path><rect width="10" height="7" x="12" y="13" rx="2"></rect></svg>
-                            <span>Floating Mini-Player</span>
+                        <button id="bp-more-pip-btn" type="button" class="hidden md:flex w-10 h-10 rounded-full items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer" title="PiP" aria-label="PiP">
+                            <span class="material-symbols-rounded text-[20px]">picture_in_picture_alt</span>
                         </button>
                     </div>
                 </div>
