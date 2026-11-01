@@ -1208,6 +1208,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const bp = document.getElementById('bottom-player');
             if (bp && page === 'now-playing') bp.classList.remove('!hidden');
         }
+
+        if (page !== 'now-playing') {
+            const bp = document.getElementById('bottom-player');
+            if (bp) bp.classList.remove('!hidden');
+        }
     }
     window.updateLyricsVisibilityUI = updateLyricsVisibilityUI;
     window.addEventListener('resize', () => {
@@ -4131,12 +4136,6 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => { window._yolkFilePickerOpen = false; }, 1200);
             return;
         }
-        const isMobileDevice = window.innerWidth < 640 || /iPhone|iPod|Android/i.test(navigator.userAgent || '');
-        if (isMobileDevice && currentTrack) {
-            if (window.location.hash !== '#now-playing') {
-                window.location.hash = '#now-playing';
-            }
-        }
     }
 
     document.addEventListener('visibilitychange', () => {
@@ -4540,8 +4539,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateNowPlayingFavButton() {
-        if (!npFavBtn || !currentTrack) return;
-        const fav = isFavorite(currentTrack.id);
+        if (!npFavBtn) return;
+        const fav = currentTrack ? isFavorite(currentTrack.id) : false;
+        npFavBtn.classList.toggle('is-favorite', fav);
         const icon = npFavBtn.querySelector('.material-symbols-rounded');
         if (icon) {
             icon.classList.toggle('is-filled', fav);
@@ -4553,6 +4553,7 @@ document.addEventListener('DOMContentLoaded', () => {
             svg.setAttribute('stroke', strokeCol);
         }
         if (lyricsBarFavBtn) {
+            lyricsBarFavBtn.classList.toggle('is-favorite', fav);
             const lIcon = lyricsBarFavBtn.querySelector('.material-symbols-rounded');
             if (lIcon) lIcon.classList.toggle('is-filled', fav);
         }
@@ -5717,7 +5718,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (fadeEl) {
-            fadeEl.style.background = `linear-gradient(180deg, rgb(${blendR}, ${blendG}, ${blendB}) 0%, rgba(${blendR}, ${blendG}, ${blendB}, 0.78) 42%, transparent 100%)`;
+            fadeEl.style.background = isDark
+                ? `linear-gradient(180deg, #000000 0%, rgba(${blendR}, ${blendG}, ${blendB}, 0.78) 42%, transparent 100%)`
+                : `linear-gradient(180deg, #ffffff 0%, rgba(${blendR}, ${blendG}, ${blendB}, 0.78) 42%, transparent 100%)`;
             fadeEl.style.opacity = '1';
         }
         const topWhiteBlackFade = document.getElementById('now-playing-top-fade');
@@ -5738,15 +5741,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateNowPlayingIconContrast(r, g, b) {
         const npContainer = document.getElementById('now-playing-container');
         if (!npContainer) return;
-        const isDark = document.body.classList.contains('dark-mode');
-        let lum;
+        let lum = 0.2;
         if (r !== undefined && g !== undefined && b !== undefined) {
             lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-        } else {
-            lum = isDark ? 0.08 : 0.95;
         }
 
-        if (lum >= 0.52) {
+        // Lyrics are white most of the time; only black if the background colors chosen are too bright (high luminance)
+        if (lum >= 0.78) {
             npContainer.classList.add('np-bg-light');
             npContainer.classList.remove('np-bg-dark');
         } else {
@@ -8479,6 +8480,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let visualizerStyle = 'bars';
 
     function ensureWebAudioEqualizer(forceInit = false) {
+        // Prevent Web Audio interception on mobile devices (iOS / Android):
+        // In Safari iOS and Android browsers, connecting an HTMLAudioElement to an AudioContext
+        // via createMediaElementSource forces audio processing onto the Web Audio render graph,
+        // which the operating system freezes/suspends when the screen turns off or the app is backgrounded.
+        // Keeping mobile audio on native <audio> preserves background playback outside of the app.
+        const isMobile = window.innerWidth < 768 || /iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent || '');
+        if (isMobile) {
+            return;
+        }
+
         const hasNonZero = eqEnabled && eqBands.some(g => Math.abs(g) > 0.05);
         if (!yolkAudioCtx && !hasNonZero && !forceInit && !visualizerEnabled) {
             return;

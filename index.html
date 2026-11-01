@@ -552,19 +552,13 @@
         /* Active / Solid State: switches from outline to solid (FILL: 1) */
         .material-symbols-rounded.is-filled,
         .material-symbols-rounded.filled,
-        .material-symbols-rounded.active,
-        .yolk-active .material-symbols-rounded,
-        .yolk-active > .material-symbols-rounded,
-        a.yolk-active .material-symbols-rounded,
-        .active .material-symbols-rounded,
-        .active > .material-symbols-rounded,
-        .is-active .material-symbols-rounded,
-        .is-active > .material-symbols-rounded,
         button.is-active .material-symbols-rounded,
         button.is-favorite .material-symbols-rounded,
         button.is-saved .material-symbols-rounded,
-        .is-favorite .material-symbols-rounded,
-        .is-saved .material-symbols-rounded {
+        .is-favorite > .material-symbols-rounded,
+        .is-saved > .material-symbols-rounded,
+        .yolk-active > .material-symbols-rounded,
+        a.yolk-active > .material-symbols-rounded {
             font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
         }
 
@@ -917,7 +911,6 @@
 
         /* Ensure bottom player is NEVER visible when in lyrics mode or when floating lyrics bar is active */
         body[data-page="now-playing"].np-lyrics-open #bottom-player,
-        body.np-lyrics-open #bottom-player,
         body[data-page="now-playing"]:has(#np-lyrics-floating-bar:not(.hidden)) #bottom-player {
             display: none !important;
         }
@@ -932,46 +925,10 @@
             height: 96px;
             pointer-events: none;
             z-index: 25;
-            background: linear-gradient(180deg, rgba(252, 251, 248, 0.95) 0%, rgba(252, 251, 248, 0.6) 45%, rgba(252, 251, 248, 0) 100%) !important;
+            background: linear-gradient(180deg, #ffffff 0%, rgba(255, 255, 255, 0.95) 25%, rgba(255, 255, 255, 0.5) 60%, rgba(255, 255, 255, 0) 100%) !important;
         }
         body.dark-mode #now-playing-top-fade {
-            background: linear-gradient(180deg, rgba(12, 12, 14, 0.95) 0%, rgba(12, 12, 14, 0.6) 45%, rgba(12, 12, 14, 0) 100%) !important;
-        }
-
-        /* In light mode: Quote Lyrics Button backdrop is frosted light glass with solid black icon */
-        body:not(.dark-mode) #lyrics-bar-lyrics-toggle,
-        body:not(.dark-mode) #np-lyrics-btn.is-active,
-        body:not(.dark-mode) .now-playing-container.lyrics-active #np-lyrics-btn {
-            background: rgba(255, 255, 255, 0.88) !important;
-            backdrop-filter: blur(20px) saturate(180%) !important;
-            -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-            border: 1px solid rgba(0, 0, 0, 0.12) !important;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
-        }
-        body:not(.dark-mode) #np-lyrics-btn.is-active svg,
-        body:not(.dark-mode) .now-playing-container.lyrics-active #np-lyrics-btn svg,
-        body:not(.dark-mode) #lyrics-bar-lyrics-toggle svg {
-            color: #000000 !important;
-            stroke: #000000 !important;
-            fill: #000000 !important;
-        }
-
-        /* In dark mode: Quote Lyrics Button backdrop is translucent dark glass with solid white icon */
-        body.dark-mode #lyrics-bar-lyrics-toggle,
-        body.dark-mode #np-lyrics-btn.is-active,
-        body.dark-mode .now-playing-container.lyrics-active #np-lyrics-btn {
-            background: rgba(39, 39, 42, 0.82) !important;
-            backdrop-filter: blur(20px) saturate(180%) !important;
-            -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-            border: 1px solid rgba(255, 255, 255, 0.16) !important;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
-        }
-        body.dark-mode #np-lyrics-btn.is-active svg,
-        body.dark-mode .now-playing-container.lyrics-active #np-lyrics-btn svg,
-        body.dark-mode #lyrics-bar-lyrics-toggle svg {
-            color: #ffffff !important;
-            stroke: #ffffff !important;
-            fill: #ffffff !important;
+            background: linear-gradient(180deg, #000000 0%, rgba(0, 0, 0, 0.95) 25%, rgba(0, 0, 0, 0.5) 60%, rgba(0, 0, 0, 0) 100%) !important;
         }
 
         /* Downloaded Offline Badge: Solid Black in Light Mode, Dark Emerald Green in Dark Mode */
@@ -1076,7 +1033,7 @@
         }
 
         /* Now Playing Icon Buttons: Frosted, slightly lighter translucent backgrounds with blur matching the bottom bar */
-        #now-playing-container .np-left-col button.sleek-hover:not(#now-playing-play-pause):not(.lyrics-glossy-btn) {
+        #now-playing-container .np-left-col button.sleek-hover:not(#now-playing-play-pause) {
             background: rgba(255, 255, 255, 0.65) !important;
             backdrop-filter: blur(16px) saturate(180%) !important;
             -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
@@ -1084,31 +1041,16 @@
             border-radius: 9999px !important;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06) !important;
         }
-        #now-playing-container #np-lyrics-btn {
-            background: rgba(255, 255, 255, 0.72) !important;
-            backdrop-filter: blur(16px) saturate(180%) !important;
-            -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
-            border: 1px solid rgba(255, 255, 255, 0.65) !important;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06) !important;
-        }
         #now-playing-container #now-playing-play-pause {
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22), 0 0 16px 4px rgba(0, 0, 0, 0.08) !important;
         }
 
         /* In Dark Mode: Lighter translucent surface matching dark mode bottom bar */
-        body.dark-mode #now-playing-container .np-left-col button.sleek-hover:not(#now-playing-play-pause):not(.lyrics-glossy-btn) {
+        body.dark-mode #now-playing-container .np-left-col button.sleek-hover:not(#now-playing-play-pause) {
             background: rgba(39, 39, 42, 0.65) !important;
             backdrop-filter: blur(16px) saturate(180%) !important;
             -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
             border: 1px solid rgba(255, 255, 255, 0.12) !important;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
-            color: #f4f4f5 !important;
-        }
-        body.dark-mode #now-playing-container #np-lyrics-btn {
-            background: rgba(39, 39, 42, 0.72) !important;
-            backdrop-filter: blur(16px) saturate(180%) !important;
-            -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
-            border: 1px solid rgba(255, 255, 255, 0.14) !important;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
             color: #f4f4f5 !important;
         }
@@ -1528,7 +1470,7 @@
             font-size: clamp(1.3rem, 2.2vw, 1.85rem);
             line-height: 1.4;
             font-weight: 700;
-            color: rgba(0, 0, 0, 0.38);
+            color: rgba(255, 255, 255, 0.40);
             cursor: pointer;
             transition: color 0.3s ease, opacity 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease;
             transform-origin: left center;
@@ -1542,27 +1484,27 @@
         }
         @media (hover: hover) and (pointer: fine) {
             .lyric-line:hover {
-                color: rgba(0, 0, 0, 0.75);
-                background: rgba(0, 0, 0, 0.05);
+                color: rgba(255, 255, 255, 0.78);
+                background: rgba(255, 255, 255, 0.08);
             }
         }
         .lyric-line:active {
             transform: scale(0.98);
         }
         .lyric-line.active {
-            color: #000000 !important;
+            color: #ffffff !important;
             opacity: 1 !important;
             font-size: clamp(1.65rem, 2.8vw, 2.45rem) !important;
             line-height: 1.32 !important;
             font-weight: 800 !important;
             transform: scale(1.02) !important;
-            text-shadow: 0 4px 24px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(255, 255, 255, 0.4);
+            text-shadow: 0 4px 28px rgba(255, 255, 255, 0.28), 0 2px 10px rgba(0, 0, 0, 0.5);
         }
         .lyric-line.next-up {
-            color: rgba(0, 0, 0, 0.65);
+            color: rgba(255, 255, 255, 0.65);
         }
         .lyric-line.untimed {
-            color: rgba(0, 0, 0, 0.88);
+            color: rgba(255, 255, 255, 0.90);
             font-size: 1.1rem;
             font-weight: 600;
             filter: blur(0px);
@@ -2087,6 +2029,7 @@
         .more-vertical-bar {
             left: 50% !important;
             right: auto !important;
+            translate: -50% 0 !important;
             background-color: #ffffff !important;
             backdrop-filter: none !important;
             -webkit-backdrop-filter: none !important;
@@ -2095,12 +2038,13 @@
             transform-origin: bottom center;
             transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
             opacity: 0;
-            transform: translateX(-50%) scale(0.92) translateY(8px);
+            transform: scale(0.92) translateY(8px) !important;
             pointer-events: none;
         }
         .more-vertical-bar.popover-open {
             opacity: 1 !important;
-            transform: translateX(-50%) scale(1) translateY(0) !important;
+            translate: -50% 0 !important;
+            transform: scale(1) translateY(0) !important;
             pointer-events: auto !important;
         }
 
@@ -2416,7 +2360,7 @@
                         <span class="material-symbols-rounded text-[20px]">favorite</span>
                     </button>
                     <!-- Integrated Lyrics Button (Immediately on left of Prev Track) -->
-                    <button id="np-lyrics-btn" class="lyrics-glossy-btn flex items-center justify-center w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 backdrop-blur-xl border border-black/10 dark:border-white/15 shadow-xs hover:scale-105 active:scale-95 transition-all text-current cursor-pointer shrink-0" title="Lyrics">
+                    <button id="np-lyrics-btn" class="bubbly-hover flex items-center justify-center w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 backdrop-blur-xl border border-black/10 dark:border-white/15 shadow-xs hover:scale-105 active:scale-95 transition-all text-current cursor-pointer shrink-0" title="Lyrics">
                         <span class="material-symbols-rounded text-[20px]">format_quote</span>
                     </button>
                     <button id="now-playing-prev" class="bubbly-hover flex items-center justify-center w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 backdrop-blur-xl border border-black/10 dark:border-white/15 shadow-xs hover:scale-105 active:scale-95 transition-all text-current cursor-pointer shrink-0" title="Previous Track">
@@ -2457,7 +2401,7 @@
                         <button id="np-mobile-more-btn" class="bubbly-hover flex items-center justify-center w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 backdrop-blur-xl border border-black/10 dark:border-white/15 shadow-xs hover:scale-105 active:scale-95 transition-all text-current cursor-pointer shrink-0" title="More options">
                             <span class="material-symbols-rounded text-[20px]">more_horiz</span>
                         </button>
-                        <div id="np-mobile-more-popover" class="more-vertical-bar hidden absolute left-1/2 -translate-x-1/2 bottom-full mb-3 py-2 px-1.5 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-[0_16px_40px_rgba(0,0,0,0.18)] flex flex-col items-center gap-1.5 z-50">
+                        <div id="np-mobile-more-popover" class="more-vertical-bar hidden absolute bottom-full mb-3 py-2 px-1.5 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-[0_16px_40px_rgba(0,0,0,0.18)] flex flex-col items-center gap-1.5 z-50">
                             <button id="np-mobile-more-share-btn" type="button" class="w-10 h-10 rounded-full flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer" title="Share" aria-label="Share">
                                 <span class="material-symbols-rounded text-[20px]">share</span>
                             </button>
@@ -2535,7 +2479,7 @@
                 </button>
 
                 <!-- Vertical More Bar -->
-                <div id="lyrics-bar-more-popover" class="more-vertical-bar hidden absolute left-1/2 -translate-x-1/2 bottom-full mb-3 py-2 px-1.5 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-[0_16px_40px_rgba(0,0,0,0.18)] flex flex-col items-center gap-1.5 z-50">
+                <div id="lyrics-bar-more-popover" class="more-vertical-bar hidden absolute bottom-full mb-3 py-2 px-1.5 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-[0_16px_40px_rgba(0,0,0,0.18)] flex flex-col items-center gap-1.5 z-50">
                     <button id="lyrics-more-share-lyrics-btn" type="button" class="w-10 h-10 rounded-full flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer" title="Share" aria-label="Share">
                         <span class="material-symbols-rounded text-[20px]">share</span>
                     </button>
@@ -2971,7 +2915,7 @@
                     <button id="bp-mobile-more-btn" class="sleek-hover text-zinc-600 hover:text-zinc-950 p-2 rounded-full hover:bg-black/5 cursor-pointer shrink-0" title="More options">
                         <span class="material-symbols-rounded text-[20px]">more_horiz</span>
                     </button>
-                    <div id="bp-mobile-more-popover" class="more-vertical-bar hidden absolute left-1/2 -translate-x-1/2 bottom-full mb-3 py-2 px-1.5 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-[0_16px_40px_rgba(0,0,0,0.18)] flex flex-col items-center gap-1.5 z-50">
+                    <div id="bp-mobile-more-popover" class="more-vertical-bar hidden absolute bottom-full mb-3 py-2 px-1.5 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-[0_16px_40px_rgba(0,0,0,0.18)] flex flex-col items-center gap-1.5 z-50">
                         <button id="bp-more-share-btn" type="button" class="w-10 h-10 rounded-full flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer" title="Share" aria-label="Share">
                             <span class="material-symbols-rounded text-[20px]">share</span>
                         </button>
@@ -3696,6 +3640,10 @@
                     if (npTintEl) npTintEl.style.opacity = '0';
                     const fb = document.getElementById('np-lyrics-floating-bar');
                     if (fb) fb.classList.add('hidden');
+                    const bp = document.getElementById('bottom-player');
+                    if (bp) {
+                        bp.classList.remove('!hidden');
+                    }
                 }
 
                 // Update nav links: map album and artist to library
