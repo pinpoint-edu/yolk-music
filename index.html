@@ -14,7 +14,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Yolk!">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="theme-color" id="meta-theme-color" content="#FCFBF8">
 
     <!-- Service Worker Registration for PWA Offline Playback -->
@@ -86,7 +86,7 @@
             position: relative;
             width: 36px;
             height: 36px;
-            display: inline-flex;
+            display: none;
             align-items: center;
             justify-content: center;
             border-radius: 9999px;
@@ -96,6 +96,16 @@
             -webkit-user-select: none;
             transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
             color: #18181b;
+        }
+        @media (min-width: 768px) {
+            .yolk-circular-volume {
+                display: inline-flex !important;
+            }
+        }
+        @media (max-width: 767px) {
+            .yolk-circular-volume {
+                display: none !important;
+            }
         }
         body.dark-mode .yolk-circular-volume {
             color: #ffffff !important;
@@ -2080,7 +2090,7 @@
             }
         } catch (_) {}
     </script>
-    <div id="safari-top-color-shim" style="position: fixed; top: 0; left: 0; right: 0; height: 4px; z-index: 40; pointer-events: none; background-color: #FCFBF8;"></div>
+    <div id="safari-top-color-shim" style="position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top, 44px); z-index: 40; pointer-events: none; background-color: #FCFBF8;"></div>
     <div id="top-white-fade-bar" aria-hidden="true"></div>
     <div id="yolk-notification-container" aria-live="polite"></div>
 
@@ -2241,18 +2251,18 @@
                     </div>
 
                     <!-- Bottom Row: Action Buttons Underneath Both of Those, Centered -->
-                    <div class="flex items-center justify-center gap-3 w-full pt-3 sm:pt-4 border-t border-zinc-200/60 flex-wrap">
-                        <button id="playlist-play-all-btn" class="bubbly-hover flex items-center justify-center w-11 h-11 rounded-full bg-zinc-900 text-white shadow-md hover:bg-zinc-800 transition-all cursor-pointer shrink-0" title="Play All">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    <div class="flex items-center justify-center gap-3.5 w-full pt-3.5 sm:pt-4 border-t border-zinc-200/60 flex-wrap">
+                        <button id="playlist-play-all-btn" class="bubbly-hover flex items-center justify-center w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-zinc-900 text-white shadow-md hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0" title="Play All">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                         </button>
-                        <button id="playlist-download-all-btn" class="bubbly-hover flex items-center justify-center w-11 h-11 rounded-full bg-white text-zinc-700 hover:bg-zinc-100 transition-all border border-zinc-200/80 shadow-sm cursor-pointer shrink-0" title="Download Entire Playlist">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        <button id="playlist-download-all-btn" class="bubbly-hover flex items-center justify-center w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-white text-zinc-700 hover:bg-zinc-100 hover:scale-105 active:scale-95 transition-all border border-zinc-200/80 shadow-sm cursor-pointer shrink-0" title="Download Entire Playlist">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                         </button>
-                        <button id="playlist-edit-btn" class="bubbly-hover flex items-center justify-center w-11 h-11 rounded-full bg-white text-zinc-700 hover:bg-zinc-100 transition-all border border-zinc-200/80 shadow-sm cursor-pointer shrink-0" title="Edit Playlist">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        <button id="playlist-edit-btn" class="bubbly-hover flex items-center justify-center w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-white text-zinc-700 hover:bg-zinc-100 hover:scale-105 active:scale-95 transition-all border border-zinc-200/80 shadow-sm cursor-pointer shrink-0" title="Edit Playlist">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                         </button>
-                        <button id="playlist-delete-btn" class="bubbly-hover flex items-center justify-center w-11 h-11 rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition-all border border-red-200/50 shadow-sm cursor-pointer shrink-0" title="Delete Playlist">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                        <button id="playlist-delete-btn" class="bubbly-hover flex items-center justify-center w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-red-50 text-red-600 hover:bg-red-100 hover:scale-105 active:scale-95 transition-all border border-red-200/50 shadow-sm cursor-pointer shrink-0" title="Delete Playlist">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                         </button>
                     </div>
                 </div>
@@ -2778,42 +2788,42 @@
                                     <span class="eq-dot w-2 h-2 rounded-full bg-blue-500"></span>
                                     <span class="text-xs font-bold text-zinc-900 dark:text-zinc-100">Flat</span>
                                 </div>
-                                <span class="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium text-right max-w-xs sm:max-w-md truncate">Natural reference curve for acoustic balance</span>
+                                <span class="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium text-right max-w-xs sm:max-w-md truncate">Balanced reference</span>
                             </div>
                             <div data-eq-preset="bass" class="eq-preset-row flex items-center justify-between p-3 rounded-2xl border border-zinc-200/80 hover:border-zinc-400 bg-white/70 dark:bg-zinc-800/70 transition-all cursor-pointer group">
                                 <div class="flex items-center gap-2.5">
                                     <span class="eq-dot w-2 h-2 rounded-full bg-transparent group-hover:bg-zinc-300"></span>
                                     <span class="text-xs font-bold text-zinc-900 dark:text-zinc-100">Bass Boost</span>
                                 </div>
-                                <span class="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium text-right max-w-xs sm:max-w-md truncate">Enhanced low-end sub-bass resonance and punch</span>
+                                <span class="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium text-right max-w-xs sm:max-w-md truncate">Deep low-end punch</span>
                             </div>
                             <div data-eq-preset="vocal" class="eq-preset-row flex items-center justify-between p-3 rounded-2xl border border-zinc-200/80 hover:border-zinc-400 bg-white/70 dark:bg-zinc-800/70 transition-all cursor-pointer group">
                                 <div class="flex items-center gap-2.5">
                                     <span class="eq-dot w-2 h-2 rounded-full bg-transparent group-hover:bg-zinc-300"></span>
                                     <span class="text-xs font-bold text-zinc-900 dark:text-zinc-100">Vocal Booster</span>
                                 </div>
-                                <span class="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium text-right max-w-xs sm:max-w-md truncate">Amplified mid-range for prominent vocal clarity</span>
+                                <span class="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium text-right max-w-xs sm:max-w-md truncate">Clean vocal clarity</span>
                             </div>
                             <div data-eq-preset="late-night" class="eq-preset-row flex items-center justify-between p-3 rounded-2xl border border-zinc-200/80 hover:border-zinc-400 bg-white/70 dark:bg-zinc-800/70 transition-all cursor-pointer group">
                                 <div class="flex items-center gap-2.5">
                                     <span class="eq-dot w-2 h-2 rounded-full bg-transparent group-hover:bg-zinc-300"></span>
                                     <span class="text-xs font-bold text-zinc-900 dark:text-zinc-100">Late Night</span>
                                 </div>
-                                <span class="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium text-right max-w-xs sm:max-w-md truncate">Gentle warmth with softened peaks for quiet listening</span>
+                                <span class="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium text-right max-w-xs sm:max-w-md truncate">Warm & softened peaks</span>
                             </div>
                             <div data-eq-preset="electronic" class="eq-preset-row flex items-center justify-between p-3 rounded-2xl border border-zinc-200/80 hover:border-zinc-400 bg-white/70 dark:bg-zinc-800/70 transition-all cursor-pointer group">
                                 <div class="flex items-center gap-2.5">
                                     <span class="eq-dot w-2 h-2 rounded-full bg-transparent group-hover:bg-zinc-300"></span>
                                     <span class="text-xs font-bold text-zinc-900 dark:text-zinc-100">Electronic</span>
                                 </div>
-                                <span class="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium text-right max-w-xs sm:max-w-md truncate">Elevated sub-bass and sparkling highs for EDM</span>
+                                <span class="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium text-right max-w-xs sm:max-w-md truncate">Punchy lows & bright highs</span>
                             </div>
                             <div data-eq-preset="acoustic" class="eq-preset-row flex items-center justify-between p-3 rounded-2xl border border-zinc-200/80 hover:border-zinc-400 bg-white/70 dark:bg-zinc-800/70 transition-all cursor-pointer group">
                                 <div class="flex items-center gap-2.5">
                                     <span class="eq-dot w-2 h-2 rounded-full bg-transparent group-hover:bg-zinc-300"></span>
                                     <span class="text-xs font-bold text-zinc-900 dark:text-zinc-100">Acoustic</span>
                                 </div>
-                                <span class="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium text-right max-w-xs sm:max-w-md truncate">Crisp organic acoustic tones for live & unplugged music</span>
+                                <span class="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium text-right max-w-xs sm:max-w-md truncate">Crisp acoustic clarity</span>
                             </div>
                         </div>
                     </div>
@@ -3488,54 +3498,66 @@
         </div>
     </div>
 
-    <!-- Modal: Share Song / Lyrics / Album Card Generator -->
+    <!-- Modal: Share Song & Lyrics -->
     <div id="share-card-modal" class="modal-overlay fixed inset-0 bg-black/50 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4">
-        <div class="modal-card bg-white rounded-3xl p-5 sm:p-6 w-full max-w-md shadow-2xl border border-zinc-200/80 max-h-[92vh] flex flex-col">
-            <div class="flex items-center justify-between pb-3 border-b border-zinc-100 shrink-0">
-                <div>
-                    <h3 id="share-modal-title" class="text-lg font-extrabold text-zinc-900">Share</h3>
-                    <p id="share-modal-subtitle" class="text-xs text-zinc-500 font-medium">Share via iOS Share Sheet or save story card</p>
+        <div class="modal-card bg-white dark:bg-zinc-900 rounded-3xl p-5 sm:p-6 w-full max-w-sm sm:max-w-md shadow-2xl border border-zinc-200/80 dark:border-zinc-800 max-h-[90vh] flex flex-col">
+            <!-- Header: Title, Song info, Close X -->
+            <div class="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800 shrink-0">
+                <div class="min-w-0 flex-1 pr-2">
+                    <h3 id="share-modal-title" class="text-base sm:text-lg font-black text-zinc-900 dark:text-white truncate">Share Song</h3>
+                    <p id="share-modal-subtitle" class="text-xs text-zinc-500 dark:text-zinc-400 font-medium truncate mt-0.5">Song title • Artist</p>
                 </div>
-                <button id="share-modal-close-btn" type="button" class="p-1.5 rounded-full text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer" title="Close">
+                <button id="share-modal-close-btn" type="button" class="p-1.5 rounded-full text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0" title="Close">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
             </div>
 
-            <!-- Mode Switcher (Song Card vs Lyrics Card) -->
-            <div id="share-mode-tabs" class="grid grid-cols-2 gap-1.5 p-1 bg-zinc-100 rounded-2xl mt-3 shrink-0">
-                <button type="button" id="share-tab-song" class="py-1.5 px-3 rounded-xl text-xs font-bold bg-zinc-900 text-white shadow-xs transition-all cursor-pointer">Song Card</button>
-                <button type="button" id="share-tab-lyrics" class="py-1.5 px-3 rounded-xl text-xs font-bold text-zinc-600 hover:text-zinc-900 transition-all cursor-pointer">Lyrics Card</button>
-            </div>
-
-            <!-- Scrollable Content: Lyric Line Picker (when in Lyrics mode) + Live Canvas Card Preview -->
-            <div class="flex-1 overflow-y-auto sleek-scrollbar pr-1 mt-3 flex flex-col gap-3">
-                <div id="share-lyrics-picker-section" class="hidden flex-col gap-1.5">
-                    <div class="flex items-center justify-between px-1">
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Tap up to 4 lyric lines to feature</span>
-                        <span id="share-lyrics-selected-count" class="text-[10px] font-bold text-zinc-700">1/4 selected</span>
-                    </div>
-                    <div id="share-lyrics-picker-list" class="max-h-36 overflow-y-auto sleek-scrollbar p-2 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex flex-col gap-1">
-                        <!-- Populated by JS -->
+            <!-- Content Area -->
+            <div class="flex-1 overflow-y-auto sleek-scrollbar mt-3 flex flex-col gap-3">
+                <!-- Song Card Info -->
+                <div class="flex items-center gap-3 p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200/70 dark:border-zinc-700/60">
+                    <img id="share-modal-artwork" src="/yolk-circle.png" alt="" class="w-12 h-12 rounded-xl object-cover shrink-0 shadow-xs border border-zinc-200/60 dark:border-zinc-700">
+                    <div class="min-w-0 flex-1">
+                        <h4 id="share-modal-track-title" class="text-sm font-bold text-zinc-900 dark:text-white truncate">Track Title</h4>
+                        <p id="share-modal-track-artist" class="text-xs text-zinc-500 dark:text-zinc-400 font-medium truncate">Artist Name</p>
                     </div>
                 </div>
 
-                <!-- Live High-Res Share Card Canvas Preview -->
-                <div class="w-full flex items-center justify-center bg-zinc-100/70 rounded-2xl p-3 border border-zinc-200/60">
-                    <canvas id="share-card-canvas" width="1080" height="1350" class="w-full max-w-[240px] aspect-4/5 rounded-2xl shadow-lg border border-black/10"></canvas>
+                <!-- Lyrics Section (Toggleable + Button) -->
+                <div id="share-lyrics-wrapper" class="flex flex-col gap-2">
+                    <div class="flex items-center justify-between">
+                        <button type="button" id="share-add-lyrics-btn" class="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white py-1 px-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all cursor-pointer">
+                            <svg id="share-add-lyrics-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            <span id="share-add-lyrics-text">Add Lyrics</span>
+                        </button>
+                        <span id="share-lyrics-selected-count" class="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 hidden">0/2 selected</span>
+                    </div>
+
+                    <!-- Selected Lyric Quote Box -->
+                    <div id="share-selected-lyrics-box" class="hidden p-3 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/70 dark:border-blue-900/40 relative">
+                        <p id="share-selected-lyrics-text" class="text-xs font-semibold italic text-blue-900 dark:text-blue-200 leading-relaxed pr-6"></p>
+                        <button type="button" id="share-remove-lyrics-btn" class="absolute top-2.5 right-2.5 p-1 rounded-full text-blue-400 hover:text-blue-700 dark:hover:text-blue-200 transition-colors" title="Remove lyrics">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    </div>
+
+                    <!-- Lyric Lines Picker (Up to 2 consecutive lines) -->
+                    <div id="share-lyrics-picker-section" class="hidden flex-col gap-1.5">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Pick up to 2 back-to-back lines:</span>
+                        <div id="share-lyrics-picker-list" class="max-h-44 overflow-y-auto sleek-scrollbar p-2 rounded-2xl bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-200/80 dark:border-zinc-700 flex flex-col gap-1">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Action Buttons -->
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-3 mt-3 border-t border-zinc-100 shrink-0">
-                <button type="button" id="share-native-btn" class="col-span-2 sm:col-span-1 py-2.5 px-4 rounded-xl text-xs font-bold bg-zinc-900 text-white hover:bg-zinc-800 transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm">
+            <!-- Action Buttons: Share & Copy Link Only -->
+            <div class="grid grid-cols-2 gap-2 pt-3 mt-3 border-t border-zinc-100 dark:border-zinc-800 shrink-0">
+                <button type="button" id="share-native-btn" class="py-2.5 px-4 rounded-xl text-xs font-bold bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-100 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
                     <span>Share…</span>
                 </button>
-                <button type="button" id="share-download-img-btn" class="py-2.5 px-3 rounded-xl text-xs font-bold bg-zinc-100 text-zinc-800 hover:bg-zinc-200 border border-zinc-200/80 transition-all cursor-pointer flex items-center justify-center gap-1.5">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                    <span>Save Card</span>
-                </button>
-                <button type="button" id="share-copy-link-btn" class="py-2.5 px-3 rounded-xl text-xs font-bold bg-zinc-100 text-zinc-800 hover:bg-zinc-200 border border-zinc-200/80 transition-all cursor-pointer flex items-center justify-center gap-1.5">
+                <button type="button" id="share-copy-link-btn" class="py-2.5 px-3 rounded-xl text-xs font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 border border-zinc-200/80 dark:border-zinc-700 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-1.5">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
                     <span>Copy Link</span>
                 </button>
@@ -3800,7 +3822,7 @@
         });
     </script>
     <div id="youtubePlayer"></div>
-    <audio id="yolk-audio-player" playsinline webkit-playsinline x-webkit-airplay="allow" preload="auto" class="hidden"></audio>
+    <audio id="yolk-audio-player" playsinline webkit-playsinline x-webkit-airplay="allow" preload="auto" crossorigin="anonymous" class="hidden"></audio>
     <script src="yolk-app.js"></script>
 </body>
 </html>

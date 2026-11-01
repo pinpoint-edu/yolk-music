@@ -588,6 +588,7 @@ function getSupportedAudioFormat() {
 // ==========================================
 let downloadProgressEl = null;
 let downloadProgressDismissTimeout = null;
+let currentDownloadAbortController = null;
 
 function updateDownloadProgressUI({ title, percent, receivedBytes, totalBytes, statusText, isDone, isError, errorMessage }) {
     const container = getNotificationContainer();
@@ -680,7 +681,30 @@ function updateDownloadProgressUI({ title, percent, receivedBytes, totalBytes, s
             <div style="background: linear-gradient(90deg, #0284c7, #38bdf8); height: 100%; border-radius: 9999px; width: ${barWidth}; transition: width 0.15s ease;"></div>
         </div>
         <span style="font-family: monospace; font-size: 11px; font-weight: 700; color: #38bdf8; flex-shrink: 0;">${pctLabel}</span>
+        <button id="cancel-download-toast-btn" type="button" title="Cancel all downloads" style="background: none; border: none; cursor: pointer; padding: 2px 4px; margin-left: 2px; color: ${isDark ? '#a1a1aa' : '#71717a'}; display: flex; align-items: center; justify-content: center; border-radius: 9999px; transition: color 0.15s ease;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='${isDark ? '#a1a1aa' : '#71717a'}'">
+            <svg style="width: 13px; height: 13px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
     `;
+
+    const cancelBtn = downloadProgressEl.querySelector('#cancel-download-toast-btn');
+    if (cancelBtn) {
+        cancelBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (currentDownloadAbortController) {
+                try { currentDownloadAbortController.abort(); } catch (_) {}
+            }
+            _yolkDownloadQueue.length = 0;
+            _isProcessingDownloadQueue = false;
+            dismissDownloadProgressUI();
+            if (typeof window.refreshAllDownloadButtonsUI === 'function') {
+                window.refreshAllDownloadButtonsUI();
+            }
+            showToast('Cancelled downloads');
+        };
+    }
 }
 
 function dismissDownloadProgressUI() {
@@ -920,8 +944,9 @@ const YolkOfflineDB = {
             const prefFormat = getSupportedAudioFormat();
             const downloadUrl = `/api/music-api?endpoint=download&id=${encodeURIComponent(videoId)}&format=${prefFormat}&v=2`;
 
+            currentDownloadAbortController = new AbortController();
             // Fetch binary audio blob directly from server stream proxy
-            const audioRes = await fetch(downloadUrl);
+            const audioRes = await fetch(downloadUrl, { signal: currentDownloadAbortController.signal });
             if (!audioRes.ok) throw new Error(`Audio download failed: HTTP ${audioRes.status}`);
 
             const contentLength = +audioRes.headers.get('content-length') || 0;
@@ -1186,66 +1211,69 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!nowPlayingContainer) return;
         const page = document.body.getAttribute('data-page');
 
-        if (!isLyricsAvailable) {
-            nowPlayingContainer.classList.add('no-lyrics');
-            nowPlayingContainer.classList.remove('lyrics-active', 'lyrics-hidden');
-            if (npLyricsFloatingBar) npLyricsFloatingBar.classList.add('hidden');
-            if (npLyricsBtn) {
-                npLyricsBtn.disabled = true;
-                npLyricsBtn.className = 'flex items-center justify-center w-9 h-9 rounded-full bg-white/20 border border-black/5 opacity-30 cursor-not-allowed pointer-events-none text-zinc-400 shrink-0';
-                npLyricsBtn.title = 'No lyrics available for this song';
-            }
-        } else {
-            nowPlayingContainer.classList.remove('no-lyrics');
-            if (npLyricsBtn) {
-                npLyricsBtn.disabled = false;
-                npLyricsBtn.title = 'Toggle Lyrics';
-            }
+        if (npLyricsBtn) {
+            npLyricsBtn.disabled = false;
+            npLyricsBtn.title = isLyricsAvailable ? 'Toggle Lyrics' : 'Toggle Lyrics View';
+        }
 
-            if (isLyricsUserEnabled) {
-                nowPlayingContainer.classList.add('lyrics-active');
-                nowPlayingContainer.classList.remove('lyrics-hidden');
-                if (page === 'now-playing' && npLyricsFloatingBar) {
-                    if (window.innerWidth < 768) {
-                        npLyricsFloatingBar.classList.remove('hidden');
-                    } else {
-                        npLyricsFloatingBar.classList.add('hidden');
-                    }
-                }
-                if (npLyricsBtn) {
-                    npLyricsBtn.classList.add('is-active');
-                    const isDark = document.body.classList.contains('dark-mode');
-                    if (isDark) {
-                        npLyricsBtn.className = 'lyrics-glossy-btn flex items-center justify-center w-9 h-9 rounded-full bg-zinc-800/80 backdrop-blur-xl border border-white/20 shadow-md hover:scale-105 active:scale-95 transition-all text-white cursor-pointer shrink-0 is-active';
-                    } else {
-                        npLyricsBtn.className = 'lyrics-glossy-btn flex items-center justify-center w-9 h-9 rounded-full bg-white/80 backdrop-blur-xl border border-black/10 shadow-md hover:scale-105 active:scale-95 transition-all text-black cursor-pointer shrink-0 is-active';
-                    }
-                    const npLyricsSvg = npLyricsBtn.querySelector('svg');
-                    if (npLyricsSvg) {
-                        if (isDark) {
-                            npLyricsSvg.style.color = '#ffffff';
-                            npLyricsSvg.style.stroke = '#ffffff';
-                            npLyricsSvg.style.fill = '#ffffff';
-                        } else {
-                            npLyricsSvg.style.color = '#000000';
-                            npLyricsSvg.style.stroke = '#000000';
-                            npLyricsSvg.style.fill = '#000000';
-                        }
-                    }
+        if (isLyricsUserEnabled) {
+            nowPlayingContainer.classList.add('lyrics-active');
+            nowPlayingContainer.classList.remove('lyrics-hidden');
+            if (!isLyricsAvailable) {
+                nowPlayingContainer.classList.add('no-lyrics');
+                const lyricsScrollEl = document.getElementById('now-playing-lyrics');
+                if (lyricsScrollEl && (!lyricsScrollEl.children.length || !parsedLyrics.length)) {
+                    lyricsScrollEl.innerHTML = `
+                        <div class="py-24 text-center text-zinc-400 dark:text-zinc-500 font-medium text-sm flex flex-col items-center justify-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="opacity-50"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path></svg>
+                            <span>No lyrics available for this song</span>
+                        </div>
+                    `;
                 }
             } else {
-                nowPlayingContainer.classList.remove('lyrics-active');
-                nowPlayingContainer.classList.add('lyrics-hidden');
-                if (npLyricsFloatingBar) npLyricsFloatingBar.classList.add('hidden');
-                if (npLyricsBtn) {
-                    npLyricsBtn.classList.remove('is-active');
-                    npLyricsBtn.className = 'lyrics-glossy-btn flex items-center justify-center w-9 h-9 rounded-full bg-white/50 backdrop-blur-md border border-white/80 shadow-xs hover:bg-white/80 hover:scale-105 active:scale-95 transition-all text-black cursor-pointer shrink-0';
-                    const npLyricsSvg = npLyricsBtn.querySelector('svg');
-                    if (npLyricsSvg) {
-                        npLyricsSvg.style.color = '';
-                        npLyricsSvg.style.stroke = '';
-                        npLyricsSvg.style.fill = 'none';
+                nowPlayingContainer.classList.remove('no-lyrics');
+            }
+
+            if (page === 'now-playing' && npLyricsFloatingBar) {
+                if (window.innerWidth < 768) {
+                    npLyricsFloatingBar.classList.remove('hidden');
+                } else {
+                    npLyricsFloatingBar.classList.add('hidden');
+                }
+            }
+            if (npLyricsBtn) {
+                npLyricsBtn.classList.add('is-active');
+                const isDark = document.body.classList.contains('dark-mode');
+                if (isDark) {
+                    npLyricsBtn.className = 'lyrics-glossy-btn flex items-center justify-center w-9 h-9 rounded-full bg-zinc-800/80 backdrop-blur-xl border border-white/20 shadow-md hover:scale-105 active:scale-95 transition-all text-white cursor-pointer shrink-0 is-active';
+                } else {
+                    npLyricsBtn.className = 'lyrics-glossy-btn flex items-center justify-center w-9 h-9 rounded-full bg-white/80 backdrop-blur-xl border border-black/10 shadow-md hover:scale-105 active:scale-95 transition-all text-black cursor-pointer shrink-0 is-active';
+                }
+                const npLyricsSvg = npLyricsBtn.querySelector('svg');
+                if (npLyricsSvg) {
+                    if (isDark) {
+                        npLyricsSvg.style.color = '#ffffff';
+                        npLyricsSvg.style.stroke = '#ffffff';
+                        npLyricsSvg.style.fill = '#ffffff';
+                    } else {
+                        npLyricsSvg.style.color = '#000000';
+                        npLyricsSvg.style.stroke = '#000000';
+                        npLyricsSvg.style.fill = '#000000';
                     }
+                }
+            }
+        } else {
+            nowPlayingContainer.classList.remove('lyrics-active');
+            nowPlayingContainer.classList.add('lyrics-hidden');
+            if (npLyricsFloatingBar) npLyricsFloatingBar.classList.add('hidden');
+            if (npLyricsBtn) {
+                npLyricsBtn.classList.remove('is-active');
+                npLyricsBtn.className = 'lyrics-glossy-btn flex items-center justify-center w-9 h-9 rounded-full bg-white/50 backdrop-blur-md border border-white/80 shadow-xs hover:bg-white/80 hover:scale-105 active:scale-95 transition-all text-black cursor-pointer shrink-0';
+                const npLyricsSvg = npLyricsBtn.querySelector('svg');
+                if (npLyricsSvg) {
+                    npLyricsSvg.style.color = '';
+                    npLyricsSvg.style.stroke = '';
+                    npLyricsSvg.style.fill = 'none';
                 }
             }
         }
@@ -1258,7 +1286,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const toggleLyricsMode = () => {
-        if (!isLyricsAvailable) return;
         isLyricsUserEnabled = !isLyricsUserEnabled;
         updateLyricsVisibilityUI();
         if (isLyricsUserEnabled && typeof window.syncLyricsOnNavigate === 'function') {
@@ -1885,6 +1912,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const isMobile = window.innerWidth < 768;
             if (isMobile) {
+                const currentPage = document.body.getAttribute('data-page');
+                const isClickOnCover = Boolean(e.target.closest('.bottom-thumb, #bottom-player-img, #bottom-player-placeholder'));
+                if (currentPage === 'now-playing' && isClickOnCover) {
+                    toggleLyricsMode();
+                    return;
+                }
                 if (currentTrack || isPlaying) {
                     window.location.hash = '#now-playing';
                 }
@@ -3205,23 +3238,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     `}
                 </div>
             </div>
-            <div class="flex items-center gap-1 shrink-0">
-                ${durStr ? `<span class="text-[11px] text-zinc-400 font-semibold mr-1.5 hidden sm:inline">${durStr}</span>` : ''}
-                <button class="download-track-btn text-zinc-400 hover:text-zinc-900 transition-colors p-1.5 rounded-full hover:bg-zinc-100 cursor-pointer" title="Download offline">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <div class="flex items-center gap-1 sm:gap-1.5 shrink-0">
+                ${durStr ? `<span class="text-[11px] text-zinc-400 font-semibold mr-1 hidden sm:inline">${durStr}</span>` : ''}
+                <button class="download-track-btn text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors p-2 sm:p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer" title="Download offline">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                 </button>
-                <button class="add-to-queue-btn text-zinc-400 hover:text-zinc-900 transition-colors p-1.5 rounded-full hover:bg-zinc-100 cursor-pointer" title="Add to Queue">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                <button class="add-to-queue-btn text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors p-2 sm:p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer" title="Add to Queue">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
                 </button>
-                <button class="add-to-pl-btn text-zinc-400 hover:text-zinc-900 transition-colors p-1.5 rounded-full hover:bg-zinc-100 cursor-pointer" title="Add to Playlist">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+                <button class="add-to-pl-btn text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors p-2 sm:p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer" title="Add to Playlist">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
                 </button>
-                <button class="favorite-btn text-zinc-900 hover:scale-110 transition-transform p-1.5 rounded-full hover:bg-zinc-100 cursor-pointer" title="Favorite">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="${isFavorite(track.id) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                <button class="favorite-btn text-zinc-900 dark:text-zinc-100 hover:scale-110 transition-transform p-2 sm:p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer" title="Favorite">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="${isFavorite(track.id) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                 </button>
                 ${onRemoveClick ? `
-                <button class="remove-btn text-zinc-400 hover:text-red-500 transition-colors p-1.5 rounded-full hover:bg-red-50 cursor-pointer" title="Remove from playlist">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                <button class="remove-btn text-zinc-400 hover:text-red-500 transition-colors p-2 sm:p-2.5 rounded-full hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer" title="Remove from playlist">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                 </button>
                 ` : ''}
             </div>
@@ -4526,20 +4559,27 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        if (r === null || r === undefined || page !== 'now-playing') {
-            if (r === null || r === undefined) currentActivePageTint = null;
-            setMetaThemeContent(defaultBg);
-            if (shimEl) shimEl.style.backgroundColor = defaultBg;
-            if (topFadeBar) {
-                topFadeBar.style.background = '';
-                topFadeBar.style.opacity = '';
+        if (r === null || r === undefined) {
+            if (page === 'library' && currentPlaylistTintRgb) {
+                r = currentPlaylistTintRgb.r;
+                g = currentPlaylistTintRgb.g;
+                b = currentPlaylistTintRgb.b;
+                alpha = 0.95;
+            } else {
+                currentActivePageTint = null;
+                setMetaThemeContent(defaultBg);
+                if (shimEl) shimEl.style.backgroundColor = defaultBg;
+                if (topFadeBar) {
+                    topFadeBar.style.background = '';
+                    topFadeBar.style.opacity = '';
+                }
+                if (nowPlayingTopFade) {
+                    nowPlayingTopFade.style.opacity = '0';
+                }
+                document.documentElement.style.setProperty('background-color', defaultBg, 'important');
+                document.body.style.setProperty('background-color', defaultBg, 'important');
+                return;
             }
-            if (nowPlayingTopFade) {
-                nowPlayingTopFade.style.opacity = '0';
-            }
-            document.documentElement.style.setProperty('background-color', defaultBg, 'important');
-            document.body.style.setProperty('background-color', defaultBg, 'important');
-            return;
         }
 
         currentActivePageTint = { r, g, b, alpha };
@@ -5959,7 +5999,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 if (detailUploadOverlay) detailUploadOverlay.classList.add('hidden');
                 editBtn.classList.add('hidden');
-                deleteBtn.classList.add('hidden');
+                deleteBtn.classList.remove('hidden');
+                deleteBtn.title = 'Remove Album from Library';
+
+                deleteBtn.onclick = async () => {
+                    const ok = await showCustomConfirm({
+                        title: 'Remove Album',
+                        message: `Remove "${pl.name}" and all its tracks from your library and offline downloads?`,
+                        confirmText: 'Remove Album',
+                        cancelText: 'Keep Album',
+                        isDestructive: true
+                    });
+                    if (!ok) return;
+                    for (const t of (pl.tracks || [])) {
+                        await YolkOfflineDB.deleteTrack(getTrackUid(t));
+                    }
+                    playlists = playlists.filter(p => p.id !== pl.id);
+                    savePlaylists();
+                    renderLibrary();
+                    if (typeof window.refreshAllDownloadButtonsUI === 'function') window.refreshAllDownloadButtonsUI();
+                    if (typeof window.refreshStorageManagerUI === 'function') window.refreshStorageManagerUI();
+                    showToast(`Removed "${pl.name}" from library`);
+                    closePlaylistDetail();
+                };
             } else {
                 if (detailArt) {
                     detailArt.className = 'w-28 h-28 sm:w-40 sm:h-40 md:w-44 md:h-44 rounded-2xl bg-zinc-100 flex items-center justify-center overflow-hidden shrink-0 shadow-[0_16px_36px_rgba(0,0,0,0.12)] border border-white/60 relative group/art cursor-pointer';
@@ -6135,13 +6197,35 @@ document.addEventListener('DOMContentLoaded', () => {
                         currentPlayingPlaylistContextId = playlistId;
                         playTrack(track);
                     },
-                    isPlAlbum ? null : () => {
+                    () => {
                         if (isFav) {
                             toggleFavorite(track, null);
-                        } else if (playlistId === 'downloaded') {
+                        } else if (playlistId === 'library-songs' || playlistId === 'downloaded') {
                             YolkOfflineDB.deleteTrack(getTrackUid(track)).then(() => {
-                                showToast('Removed from offline downloads');
-                                openPlaylistDetail('downloaded');
+                                showToast('Removed song from library');
+                                openPlaylistDetail('library-songs');
+                                if (typeof window.refreshAllDownloadButtonsUI === 'function') {
+                                    window.refreshAllDownloadButtonsUI();
+                                }
+                                if (typeof window.refreshStorageManagerUI === 'function') {
+                                    window.refreshStorageManagerUI();
+                                }
+                            });
+                        } else if (isPlAlbum) {
+                            YolkOfflineDB.deleteTrack(getTrackUid(track)).then(() => {
+                                const albPl = playlists.find(p => p.id === playlistId);
+                                if (albPl && Array.isArray(albPl.tracks)) {
+                                    albPl.tracks = albPl.tracks.filter(t => getTrackUid(t) !== getTrackUid(track));
+                                    savePlaylists();
+                                }
+                                showToast('Removed song from album');
+                                openPlaylistDetail(playlistId);
+                                if (typeof window.refreshAllDownloadButtonsUI === 'function') {
+                                    window.refreshAllDownloadButtonsUI();
+                                }
+                                if (typeof window.refreshStorageManagerUI === 'function') {
+                                    window.refreshStorageManagerUI();
+                                }
                             });
                         } else {
                             removeTrackFromPlaylist(playlistId, getTrackUid(track));
@@ -8806,57 +8890,83 @@ document.addEventListener('DOMContentLoaded', () => {
         storageClearAllBtn.addEventListener('click', async () => {
             triggerHaptic('heavy');
             const allRecords = await YolkOfflineDB.getAllTracks();
-            if (allRecords.length === 0) {
-                showToast('No offline downloads to delete');
+            const hasData = allRecords.length > 0 || favorites.length > 0;
+            if (!hasData) {
+                showToast('No downloads or library songs to delete');
                 return;
             }
             const ok = await showCustomConfirm({
-                title: 'Clear All Downloads',
-                message: `Delete all ${allRecords.length} downloaded offline songs from this device? Your playlists and favorites will remain intact.`,
-                confirmText: 'Clear All',
+                title: 'Clear All Downloads & Library',
+                message: `Delete all downloaded songs and clear saved library songs on this device? Your custom playlists will remain intact.`,
+                confirmText: 'Clear Everything',
                 cancelText: 'Cancel',
                 isDestructive: true
             });
             if (!ok) return;
+
+            // Abort active downloads and clear queue immediately so it does not redownload
+            if (currentDownloadAbortController) {
+                try { currentDownloadAbortController.abort(); } catch (_) {}
+            }
             _yolkDownloadQueue.length = 0;
+            _isProcessingDownloadQueue = false;
+            dismissDownloadProgressUI();
+
+            // Delete all offline binary records
             for (const rec of allRecords) {
                 await YolkOfflineDB.deleteTrack(rec.uid);
             }
+
+            // Clear favorites collection
+            favorites = [];
+            saveFavorites();
+
+            // Clear saved albums from Library and remove offline flags from playlists
+            playlists = playlists.filter(p => !p.isAlbum && !(p.id && p.id.startsWith('pl_alb_')));
+            playlists.forEach(pl => {
+                if (Array.isArray(pl.tracks)) {
+                    pl.tracks.forEach(t => { t._offline = false; });
+                }
+            });
+            savePlaylists();
+
             await refreshStorageManagerUI();
+            if (typeof renderLibrary === 'function') renderLibrary();
             if (typeof window.refreshAllDownloadButtonsUI === 'function') window.refreshAllDownloadButtonsUI();
-            showToast('Cleared all offline downloads');
+            showToast('Cleared all offline downloads and library songs');
         });
     }
 
     refreshStorageManagerUI();
 
-    // ==== SHARE SONG, SHARE LYRICS & SHARE ALBUM CARD GENERATOR + NATIVE iOS SHARE SHEET ====
+    // ==== STREAMLINED SHARE SONG & LYRICS MODAL ====
     const shareCardModal = document.getElementById('share-card-modal');
     const shareModalCloseBtn = document.getElementById('share-modal-close-btn');
     const shareModalTitle = document.getElementById('share-modal-title');
     const shareModalSubtitle = document.getElementById('share-modal-subtitle');
-    const shareModeTabs = document.getElementById('share-mode-tabs');
-    const shareTabSong = document.getElementById('share-tab-song');
-    const shareTabLyrics = document.getElementById('share-tab-lyrics');
+    const shareModalArtwork = document.getElementById('share-modal-artwork');
+    const shareModalTrackTitle = document.getElementById('share-modal-track-title');
+    const shareModalTrackArtist = document.getElementById('share-modal-track-artist');
+    const shareAddLyricsBtn = document.getElementById('share-add-lyrics-btn');
+    const shareAddLyricsText = document.getElementById('share-add-lyrics-text');
     const shareLyricsPickerSection = document.getElementById('share-lyrics-picker-section');
     const shareLyricsPickerList = document.getElementById('share-lyrics-picker-list');
     const shareLyricsSelectedCount = document.getElementById('share-lyrics-selected-count');
-    const shareCardCanvas = document.getElementById('share-card-canvas');
+    const shareSelectedLyricsBox = document.getElementById('share-selected-lyrics-box');
+    const shareSelectedLyricsText = document.getElementById('share-selected-lyrics-text');
+    const shareRemoveLyricsBtn = document.getElementById('share-remove-lyrics-btn');
     const shareNativeBtn = document.getElementById('share-native-btn');
-    const shareDownloadImgBtn = document.getElementById('share-download-img-btn');
     const shareCopyLinkBtn = document.getElementById('share-copy-link-btn');
 
     let currentShareState = {
-        mode: 'song', // 'song', 'lyrics', or 'album'
+        mode: 'song',
         title: '',
         artist: '',
-        subtitle: '',
         artworkUrl: '',
         shareUrl: '',
         lyricLines: [],
         selectedLyricIndices: [],
-        palette: null,
-        loadedCoverImg: null
+        hasLyrics: false
     };
 
     const yolkCircleLogoImg = new Image();
@@ -8906,224 +9016,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return origin;
     }
 
-    function drawRoundedRectPath(ctx, x, y, w, h, r) {
-        ctx.beginPath();
-        ctx.moveTo(x + r, y);
-        ctx.lineTo(x + w - r, y);
-        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-        ctx.lineTo(x + w, y + h - r);
-        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-        ctx.lineTo(x + r, y + h);
-        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-        ctx.lineTo(x, y + r);
-        ctx.quadraticCurveTo(x, y, x + r, y);
-        ctx.closePath();
-    }
-
-    function wrapCanvasText(ctx, text, maxWidth, maxLines = 3) {
-        const words = String(text || '').split(/\s+/);
-        const lines = [];
-        let cur = '';
-        for (const w of words) {
-            const test = cur ? `${cur} ${w}` : w;
-            if (ctx.measureText(test).width > maxWidth && cur) {
-                lines.push(cur);
-                cur = w;
-                if (lines.length >= maxLines) break;
-            } else {
-                cur = test;
-            }
-        }
-        if (cur && lines.length < maxLines) {
-            lines.push(cur);
-        }
-        return lines;
-    }
-
-    function renderShareCardCanvas() {
-        if (!shareCardCanvas) return;
-        const ctx = shareCardCanvas.getContext('2d');
-        const W = shareCardCanvas.width; // 1080
-        const H = shareCardCanvas.height; // 1350
-
-        ctx.clearRect(0, 0, W, H);
-
-        const pal = currentShareState.palette;
-        const c1 = pal && pal[0] ? pal[0] : { r: 24, g: 24, b: 29 };
-        const c2 = pal && pal[1] ? pal[1] : { r: 45, g: 45, b: 55 };
-        const c3 = pal && pal[2] ? pal[2] : { r: 18, g: 18, b: 22 };
-
-        // 1. Rich Multi-Stop Mesh Gradient Background
-        const bgGrad = ctx.createLinearGradient(0, 0, W, H);
-        bgGrad.addColorStop(0, `rgb(${Math.round(c1.r * 0.72)}, ${Math.round(c1.g * 0.72)}, ${Math.round(c1.b * 0.72)})`);
-        bgGrad.addColorStop(0.52, `rgb(${Math.round(c2.r * 0.55)}, ${Math.round(c2.g * 0.55)}, ${Math.round(c2.b * 0.55)})`);
-        bgGrad.addColorStop(1, `rgb(${Math.round(c3.r * 0.35)}, ${Math.round(c3.g * 0.35)}, ${Math.round(c3.b * 0.35)})`);
-        ctx.fillStyle = bgGrad;
-        ctx.fillRect(0, 0, W, H);
-
-        // Ambient radial glow
-        const radGrad = ctx.createRadialGradient(W * 0.25, H * 0.2, 40, W * 0.25, H * 0.2, W * 0.85);
-        radGrad.addColorStop(0, `rgba(${c1.r}, ${c1.g}, ${c1.b}, 0.55)`);
-        radGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = radGrad;
-        ctx.fillRect(0, 0, W, H);
-
-        // 2. Frosted Inner Glass Container
-        const cardX = 76, cardY = 76, cardW = W - 152, cardH = H - 152;
-        ctx.save();
-        drawRoundedRectPath(ctx, cardX, cardY, cardW, cardH, 64);
-        ctx.fillStyle = 'rgba(18, 18, 22, 0.44)';
-        ctx.fill();
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
-        ctx.stroke();
-        ctx.restore();
-
-        const img = currentShareState.loadedCoverImg;
-
-        if (currentShareState.mode === 'lyrics') {
-            // LYRICS CARD LAYOUT: Top Header (Cover + Song/Artist) + Bold Featured Lyric Lines
-            const thumbX = cardX + 72, thumbY = cardY + 76, thumbSize = 148;
-            ctx.save();
-            drawRoundedRectPath(ctx, thumbX, thumbY, thumbSize, thumbSize, 32);
-            ctx.clip();
-            if (img && img.complete && img.naturalWidth > 0) {
-                ctx.drawImage(img, thumbX, thumbY, thumbSize, thumbSize);
-            } else {
-                ctx.fillStyle = 'rgba(255,255,255,0.12)';
-                ctx.fillRect(thumbX, thumbY, thumbSize, thumbSize);
-            }
-            ctx.restore();
-
-            // Header Text
-            ctx.fillStyle = '#FFFFFF';
-            ctx.font = '800 42px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
-            const titleLines = wrapCanvasText(ctx, currentShareState.title, cardW - 320, 1);
-            ctx.fillText(titleLines[0] || '', thumbX + thumbSize + 36, thumbY + 68);
-
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.72)';
-            ctx.font = '600 32px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
-            const artistLines = wrapCanvasText(ctx, currentShareState.artist, cardW - 320, 1);
-            ctx.fillText(artistLines[0] || '', thumbX + thumbSize + 36, thumbY + 116);
-
-            // Divider
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
-            ctx.fillRect(cardX + 72, thumbY + thumbSize + 48, cardW - 144, 2);
-
-            // Selected Lyric Lines
-            const selectedTexts = currentShareState.selectedLyricIndices
-                .map(i => currentShareState.lyricLines[i])
-                .filter(Boolean);
-            const linesToRender = selectedTexts.length > 0 ? selectedTexts : ['♪ Instrumental / Enjoy the music'];
-
-            let curY = thumbY + thumbSize + 135;
-            const maxLyricWidth = cardW - 144;
-            const fontSize = linesToRender.length >= 4 ? 50 : (linesToRender.length === 3 ? 56 : 64);
-            const lineHeight = Math.round(fontSize * 1.32);
-
-            ctx.font = `800 ${fontSize}px Inter, -apple-system, BlinkMacSystemFont, sans-serif`;
-            ctx.fillStyle = '#FFFFFF';
-
-            for (const lyricLine of linesToRender) {
-                const wrapped = wrapCanvasText(ctx, lyricLine, maxLyricWidth, 2);
-                for (const wLine of wrapped) {
-                    if (curY < cardY + cardH - 160) {
-                        ctx.fillText(wLine, cardX + 72, curY);
-                        curY += lineHeight;
-                    }
-                }
-                curY += Math.round(fontSize * 0.42);
-            }
-        } else {
-            // SONG OR ALBUM CARD LAYOUT: Large Centered Artwork + Bold Title & Artist + Badge
-            const artSize = 620;
-            const artX = Math.round((W - artSize) / 2);
-            const artY = cardY + 86;
-
-            ctx.save();
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
-            ctx.shadowBlur = 48;
-            ctx.shadowOffsetY = 24;
-            drawRoundedRectPath(ctx, artX, artY, artSize, artSize, 48);
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-            ctx.fill();
-            ctx.restore();
-
-            ctx.save();
-            drawRoundedRectPath(ctx, artX, artY, artSize, artSize, 48);
-            ctx.clip();
-            if (img && img.complete && img.naturalWidth > 0) {
-                ctx.drawImage(img, artX, artY, artSize, artSize);
-            } else {
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
-                ctx.fillRect(artX, artY, artSize, artSize);
-            }
-            ctx.restore();
-
-            // Badge Pill (SONG or ALBUM)
-            const badgeText = currentShareState.mode === 'album'
-                ? (currentShareState.subtitle || 'ALBUM').toUpperCase()
-                : 'NOW PLAYING ON YOLK!';
-            ctx.font = '800 22px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
-            ctx.fillStyle = '#FACC15';
-            ctx.fillText(badgeText, artX, artY + artSize + 72);
-
-            // Title
-            ctx.font = '800 56px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
-            ctx.fillStyle = '#FFFFFF';
-            const wrappedTitle = wrapCanvasText(ctx, currentShareState.title, artSize, 2);
-            let textY = artY + artSize + 140;
-            wrappedTitle.forEach(line => {
-                ctx.fillText(line, artX, textY);
-                textY += 66;
-            });
-
-            // Artist
-            ctx.font = '600 38px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
-            const wrappedArtist = wrapCanvasText(ctx, currentShareState.artist, artSize, 1);
-            ctx.fillText(wrappedArtist[0] || '', artX, textY + 10);
-        }
-
-        // 3. Bottom Yolk! Branding Footer inside Card
-        const footerY = cardY + cardH - 64;
-        ctx.save();
-        if (yolkCircleLogoImg && yolkCircleLogoImg.complete && yolkCircleLogoImg.naturalWidth > 0) {
-            ctx.drawImage(yolkCircleLogoImg, cardX + 72, footerY - 30, 36, 36);
-        } else {
-            ctx.beginPath();
-            ctx.arc(cardX + 90, footerY - 12, 16, 0, Math.PI * 2);
-            ctx.fillStyle = '#FACC15';
-            ctx.fill();
-            ctx.lineWidth = 3.5;
-            ctx.strokeStyle = '#09090b';
-            ctx.stroke();
-        }
-
-        ctx.font = '800 32px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillText('Yolk!', cardX + 120, footerY);
-
-        ctx.font = '600 24px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
-        ctx.textAlign = 'right';
-        ctx.fillText(currentShareState.mode === 'lyrics' ? 'Synced Lyrics' : (currentShareState.mode === 'album' ? 'Full Album' : 'Music'), cardX + cardW - 72, footerY - 2);
-        ctx.restore();
-    }
-
     function populateShareLyricsPicker() {
         if (!shareLyricsPickerList) return;
         shareLyricsPickerList.innerHTML = '';
 
-        const lines = currentShareState.lyricLines;
-        if (!lines || lines.length === 0) {
-            shareLyricsPickerList.innerHTML = `<div class="py-4 text-center text-xs text-zinc-400 font-medium">No lyrics available for this track.</div>`;
-            if (shareLyricsSelectedCount) shareLyricsSelectedCount.textContent = '0/4 selected';
+        const lines = currentShareState.lyricLines || [];
+        if (lines.length === 0) {
+            shareLyricsPickerList.innerHTML = `<div class="py-3 text-center text-xs text-zinc-400 dark:text-zinc-500 font-medium">No lyrics available for this song.</div>`;
             return;
-        }
-
-        if (shareLyricsSelectedCount) {
-            shareLyricsSelectedCount.textContent = `${currentShareState.selectedLyricIndices.length}/4 selected`;
         }
 
         lines.forEach((lineText, idx) => {
@@ -9132,49 +9032,89 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.type = 'button';
             btn.className = `w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-between gap-2 ${
                 isSelected
-                    ? 'bg-[#FDE047] text-zinc-900 border border-[#FACC15] shadow-2xs'
-                    : 'bg-white/80 text-zinc-700 hover:bg-zinc-100 border border-zinc-200/60'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-700 border border-zinc-200/60 dark:border-zinc-700'
             }`;
             btn.innerHTML = `
                 <span class="truncate">${escapeHtml(lineText)}</span>
-                <span class="text-[10px] font-extrabold shrink-0">${isSelected ? '✓' : '+'}</span>
+                <span class="text-[11px] font-extrabold shrink-0">${isSelected ? '✓' : '+'}</span>
             `;
             btn.addEventListener('click', () => {
-                const pos = currentShareState.selectedLyricIndices.indexOf(idx);
-                if (pos > -1) {
-                    currentShareState.selectedLyricIndices.splice(pos, 1);
-                } else {
-                    if (currentShareState.selectedLyricIndices.length >= 4) {
-                        currentShareState.selectedLyricIndices.shift();
-                    }
-                    currentShareState.selectedLyricIndices.push(idx);
-                    currentShareState.selectedLyricIndices.sort((a, b) => a - b);
-                }
-                currentShareState.shareUrl = getShareDeepLinkUrl();
-                populateShareLyricsPicker();
-                renderShareCardCanvas();
+                selectShareLyricLine(idx);
             });
             shareLyricsPickerList.appendChild(btn);
         });
     }
 
-    function setShareModalTab(mode) {
-        currentShareState.mode = mode;
-        currentShareState.shareUrl = getShareDeepLinkUrl();
-        if (shareTabSong && shareTabLyrics) {
-            const isSong = mode === 'song';
-            shareTabSong.className = isSong
-                ? 'py-1.5 px-3 rounded-xl text-xs font-bold bg-zinc-900 text-white shadow-xs transition-all cursor-pointer'
-                : 'py-1.5 px-3 rounded-xl text-xs font-bold text-zinc-600 hover:text-zinc-900 transition-all cursor-pointer';
-            shareTabLyrics.className = !isSong
-                ? 'py-1.5 px-3 rounded-xl text-xs font-bold bg-zinc-900 text-white shadow-xs transition-all cursor-pointer'
-                : 'py-1.5 px-3 rounded-xl text-xs font-bold text-zinc-600 hover:text-zinc-900 transition-all cursor-pointer';
+    function selectShareLyricLine(idx) {
+        const cur = currentShareState.selectedLyricIndices;
+        const exists = cur.indexOf(idx);
+        if (exists > -1) {
+            cur.splice(exists, 1);
+        } else {
+            if (cur.length === 0) {
+                cur.push(idx);
+            } else if (cur.length === 1) {
+                const diff = Math.abs(cur[0] - idx);
+                if (diff === 1) {
+                    cur.push(idx);
+                    cur.sort((a, b) => a - b);
+                } else {
+                    cur.length = 0;
+                    cur.push(idx);
+                }
+            } else {
+                cur.length = 0;
+                cur.push(idx);
+            }
         }
-        if (shareLyricsPickerSection) {
-            shareLyricsPickerSection.classList.toggle('hidden', mode !== 'lyrics');
-            shareLyricsPickerSection.classList.toggle('flex', mode === 'lyrics');
+        updateShareLyricsUI();
+    }
+
+    function updateShareLyricsUI() {
+        const cur = currentShareState.selectedLyricIndices;
+        const lines = currentShareState.lyricLines || [];
+
+        if (shareLyricsSelectedCount) {
+            shareLyricsSelectedCount.classList.toggle('hidden', cur.length === 0);
+            shareLyricsSelectedCount.textContent = `${cur.length}/2 selected`;
         }
-        renderShareCardCanvas();
+
+        if (cur.length > 0) {
+            const selectedText = cur.map(i => lines[i]).filter(Boolean).join('\n');
+            if (shareSelectedLyricsText) shareSelectedLyricsText.textContent = `“${selectedText}”`;
+            if (shareSelectedLyricsBox) shareSelectedLyricsBox.classList.remove('hidden');
+            if (shareAddLyricsText) shareAddLyricsText.textContent = 'Change Lyrics';
+            currentShareState.hasLyrics = true;
+        } else {
+            if (shareSelectedLyricsBox) shareSelectedLyricsBox.classList.add('hidden');
+            if (shareSelectedLyricsText) shareSelectedLyricsText.textContent = '';
+            if (shareAddLyricsText) shareAddLyricsText.textContent = 'Add Lyrics';
+            currentShareState.hasLyrics = false;
+        }
+        populateShareLyricsPicker();
+    }
+
+    if (shareAddLyricsBtn) {
+        shareAddLyricsBtn.addEventListener('click', () => {
+            if (!shareLyricsPickerSection) return;
+            const isHidden = shareLyricsPickerSection.classList.contains('hidden');
+            if (isHidden) {
+                shareLyricsPickerSection.classList.remove('hidden');
+                shareLyricsPickerSection.classList.add('flex');
+                populateShareLyricsPicker();
+            } else {
+                shareLyricsPickerSection.classList.add('hidden');
+                shareLyricsPickerSection.classList.remove('flex');
+            }
+        });
+    }
+
+    if (shareRemoveLyricsBtn) {
+        shareRemoveLyricsBtn.addEventListener('click', () => {
+            currentShareState.selectedLyricIndices = [];
+            updateShareLyricsUI();
+        });
     }
 
     function openShareModal(initialMode = 'song') {
@@ -9192,22 +9132,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 mode: 'album',
                 title: currentAlbumData.name || 'Unknown Album',
                 artist: currentAlbumData.artist_name || 'Unknown Artist',
-                subtitle: `Album • ${tracks.length} ${tracks.length === 1 ? 'Track' : 'Tracks'}`,
                 artworkUrl: getProxyUrl(artwork, '500x500'),
                 shareUrl: '',
                 lyricLines: [],
                 selectedLyricIndices: [],
-                palette: null,
-                loadedCoverImg: null
+                hasLyrics: false
             };
-            currentShareState.shareUrl = getShareDeepLinkUrl();
             if (shareModalTitle) shareModalTitle.textContent = 'Share Album';
             if (shareModalSubtitle) shareModalSubtitle.textContent = `${currentShareState.title} • ${currentShareState.artist}`;
-            if (shareModeTabs) shareModeTabs.classList.add('hidden');
-            if (shareLyricsPickerSection) {
-                shareLyricsPickerSection.classList.add('hidden');
-                shareLyricsPickerSection.classList.remove('flex');
-            }
+            if (shareModalArtwork) shareModalArtwork.src = currentShareState.artworkUrl || '/yolk-circle.png';
+            if (shareModalTrackTitle) shareModalTrackTitle.textContent = currentShareState.title;
+            if (shareModalTrackArtist) shareModalTrackArtist.textContent = `${tracks.length} ${tracks.length === 1 ? 'Track' : 'Tracks'}`;
+            const lyricsWrapper = document.getElementById('share-lyrics-wrapper');
+            if (lyricsWrapper) lyricsWrapper.classList.add('hidden');
         } else {
             if (!currentTrack) {
                 showToast('Play a song first to share');
@@ -9217,68 +9154,51 @@ document.addEventListener('DOMContentLoaded', () => {
                 .filter(p => p.type === 'line' && p.text && p.text.trim())
                 .map(p => p.text.trim());
 
-            // Pre-select active lyric line + next line
-            let defaultSelected = [0];
-            const container = document.getElementById('lyrics-container');
-            if (container && typeof container._lastActiveIndex === 'number' && container._lastActiveIndex >= 0) {
-                const activeItem = parsedLyrics[container._lastActiveIndex];
-                if (activeItem && activeItem.text) {
-                    const foundIdx = cleanLines.indexOf(activeItem.text.trim());
-                    if (foundIdx > -1) {
-                        defaultSelected = cleanLines[foundIdx + 1] ? [foundIdx, foundIdx + 1] : [foundIdx];
+            let defaultSelected = [];
+            if (initialMode === 'lyrics' && cleanLines.length > 0) {
+                const container = document.getElementById('lyrics-container');
+                if (container && typeof container._lastActiveIndex === 'number' && container._lastActiveIndex >= 0) {
+                    const activeItem = parsedLyrics[container._lastActiveIndex];
+                    if (activeItem && activeItem.text) {
+                        const foundIdx = cleanLines.indexOf(activeItem.text.trim());
+                        if (foundIdx > -1) {
+                            defaultSelected = cleanLines[foundIdx + 1] ? [foundIdx, foundIdx + 1] : [foundIdx];
+                        }
                     }
+                } else if (cleanLines.length >= 2) {
+                    defaultSelected = [0, 1];
+                } else if (cleanLines.length === 1) {
+                    defaultSelected = [0];
                 }
-            } else if (cleanLines.length >= 2) {
-                defaultSelected = [0, 1];
             }
 
             const artUrl = currentTrack._offlineArtUrl || getProxyUrl(currentTrack.artwork_url || currentTrack.image, '500x500');
             currentShareState = {
-                mode: (initialMode === 'lyrics' && cleanLines.length > 0) ? 'lyrics' : 'song',
+                mode: 'song',
                 title: currentTrack.title || currentTrack.name || 'Unknown Title',
                 artist: currentTrack.artist_name || currentTrack.artist || 'Unknown Artist',
-                subtitle: 'Song',
                 artworkUrl: artUrl,
                 shareUrl: '',
                 lyricLines: cleanLines,
-                selectedLyricIndices: cleanLines.length > 0 ? defaultSelected : [],
-                palette: null,
-                loadedCoverImg: null
+                selectedLyricIndices: defaultSelected,
+                hasLyrics: defaultSelected.length > 0
             };
-            currentShareState.shareUrl = getShareDeepLinkUrl();
-            if (shareModalTitle) shareModalTitle.textContent = 'Share Song & Lyrics';
+
+            if (shareModalTitle) shareModalTitle.textContent = 'Share Song';
             if (shareModalSubtitle) shareModalSubtitle.textContent = `${currentShareState.title} • ${currentShareState.artist}`;
-            if (shareModeTabs) shareModeTabs.classList.remove('hidden');
+            if (shareModalArtwork) shareModalArtwork.src = currentShareState.artworkUrl || '/yolk-circle.png';
+            if (shareModalTrackTitle) shareModalTrackTitle.textContent = currentShareState.title;
+            if (shareModalTrackArtist) shareModalTrackArtist.textContent = currentShareState.artist;
 
-            populateShareLyricsPicker();
-            setShareModalTab(currentShareState.mode);
-        }
-
-        renderShareCardCanvas();
-
-        // Load artwork & palette for canvas card
-        if (currentShareState.artworkUrl) {
-            extractArtworkPalette(currentShareState.artworkUrl, (colors) => {
-                currentShareState.palette = colors;
-                renderShareCardCanvas();
-            });
-            const coverImg = new Image();
-            const isLocal = currentShareState.artworkUrl.startsWith('data:') || currentShareState.artworkUrl.startsWith('blob:');
-            if (!isLocal) coverImg.crossOrigin = 'Anonymous';
-            let retried = false;
-            coverImg.onload = () => {
-                currentShareState.loadedCoverImg = coverImg;
-                renderShareCardCanvas();
-            };
-            coverImg.onerror = () => {
-                if (!isLocal && !retried) {
-                    retried = true;
-                    coverImg.src = `/api/music-api?endpoint=proxy-image&url=${encodeURIComponent(currentShareState.artworkUrl)}`;
-                }
-            };
-            coverImg.src = isLocal
-                ? currentShareState.artworkUrl
-                : getCorsSafeArtworkUrl(currentShareState.artworkUrl, '500x500');
+            const lyricsWrapper = document.getElementById('share-lyrics-wrapper');
+            if (lyricsWrapper) {
+                lyricsWrapper.classList.toggle('hidden', cleanLines.length === 0);
+            }
+            if (shareLyricsPickerSection) {
+                shareLyricsPickerSection.classList.add('hidden');
+                shareLyricsPickerSection.classList.remove('flex');
+            }
+            updateShareLyricsUI();
         }
 
         shareCardModal.classList.add('active');
@@ -9295,20 +9215,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.target === shareCardModal) closeShareModal();
         });
     }
-    if (shareTabSong) {
-        shareTabSong.addEventListener('click', () => {
-            triggerHaptic('selection');
-            setShareModalTab('song');
-        });
-    }
-    if (shareTabLyrics) {
-        shareTabLyrics.addEventListener('click', () => {
-            triggerHaptic('selection');
-            setShareModalTab('lyrics');
-        });
-    }
 
-    // Wire Share buttons across Now Playing, Lyrics, Bottom Player, and Album Page
+    // Wire Share buttons across UI
     const npShareBtn = document.getElementById('np-share-btn');
     const npShareLyricsBtn = document.getElementById('np-share-lyrics-btn');
     const npMobileMoreShareBtn = document.getElementById('np-mobile-more-share-btn');
@@ -9340,18 +9248,19 @@ document.addEventListener('DOMContentLoaded', () => {
         albumShareBtn.addEventListener('click', () => openShareModal('album'));
     }
 
-    // Native iOS Share Sheet (shares rich Open Graph link preview card for iMessage) / Image Download / Copy Link Actions
     if (shareNativeBtn) {
         shareNativeBtn.addEventListener('click', async () => {
             currentShareState.shareUrl = getShareDeepLinkUrl();
             const shareTitle = `${currentShareState.title} — ${currentShareState.artist}`;
+            const lyricsQuote = currentShareState.hasLyrics && currentShareState.selectedLyricIndices.length > 0
+                ? currentShareState.selectedLyricIndices.map(i => currentShareState.lyricLines[i]).filter(Boolean).join('\n')
+                : '';
 
             try {
                 if (navigator.share) {
-                    // Share URL directly (without attaching a separate PNG file) so iMessage / social apps
-                    // render the rich Open Graph link preview card showing the song/album and lyrics!
                     await navigator.share({
                         title: shareTitle,
+                        text: lyricsQuote ? `“${lyricsQuote}”` : undefined,
                         url: currentShareState.shareUrl
                     });
                     return;
@@ -9360,28 +9269,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (err && err.name === 'AbortError') return;
             }
 
-            // Fallback: copy link to clipboard
             if (shareCopyLinkBtn) shareCopyLinkBtn.click();
-        });
-    }
-
-    if (shareDownloadImgBtn) {
-        shareDownloadImgBtn.addEventListener('click', () => {
-            triggerHaptic('light');
-            if (!shareCardCanvas) return;
-            const link = document.createElement('a');
-            const safeName = (currentShareState.title || 'yolk-card').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-            link.download = `${safeName}-${currentShareState.mode}.png`;
-            link.href = shareCardCanvas.toDataURL('image/png');
-            link.click();
-            showToast('Saved Share Card image!');
         });
     }
 
     if (shareCopyLinkBtn) {
         shareCopyLinkBtn.addEventListener('click', async () => {
             triggerHaptic('light');
-            const url = currentShareState.shareUrl || window.location.href;
+            const url = getShareDeepLinkUrl();
             try {
                 await navigator.clipboard.writeText(url);
                 showToast('Share link copied to clipboard!');
@@ -9501,7 +9396,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function computeLiveVisualizerBins(nowSec) {
         let hasRealSignal = false;
         const numBars = 32;
-        if (yolkAnalyserNode && isPlaying) {
+
+        const isAudioProducingSound = isPlaying && !currentAudio.paused && currentAudio.readyState >= 2;
+
+        if (yolkAnalyserNode && isAudioProducingSound) {
             try {
                 yolkAnalyserNode.getByteFrequencyData(_vizFreqBins);
                 for (let i = 0; i < 48; i++) {
@@ -9520,10 +9418,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let frameEnergySum = 0;
         let bassEnergy = 0;
+        const songPosSec = (isAudioProducingSound && typeof currentAudio.currentTime === 'number') ? currentAudio.currentTime : 0;
 
         for (let i = 0; i < numBars; i++) {
-            let target = 0.06;
-            if (isPlaying) {
+            let target = 0.02;
+            if (isAudioProducingSound) {
                 if (hasRealSignal) {
                     // True logarithmic spectrum mapping (lows to highs)
                     const normIdx = i / (numBars - 1);
@@ -9532,13 +9431,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     const rawNorm = (_vizFreqBins[binIdx] / 240) * trebleBoost;
                     target = Math.max(0.04, Math.min(1.0, rawNorm));
                 } else {
-                    // Smooth rhythmic simulation when audio buffer is direct/loading
+                    // Song-timeline synced rhythmic pulse
                     const centerDist = Math.abs(i - (numBars - 1) / 2) / (numBars / 2);
                     const env = Math.max(0.18, 1 - centerDist * 0.72);
-                    const wave1 = Math.sin(nowSec * 7.8 + i * 0.52) * 0.5 + 0.5;
-                    const wave2 = Math.cos(nowSec * 12.4 - i * 0.82) * 0.5 + 0.5;
-                    const kick = Math.pow(Math.sin(nowSec * 4.2) * 0.5 + 0.5, 3);
-                    target = Math.max(0.06, Math.min(0.92, (wave1 * 0.45 + wave2 * 0.35 + kick * 0.35) * env * songSeedMultiplier));
+                    const wave1 = Math.sin(songPosSec * 7.8 + i * 0.52) * 0.5 + 0.5;
+                    const wave2 = Math.cos(songPosSec * 12.4 - i * 0.82) * 0.5 + 0.5;
+                    const kick = Math.pow(Math.sin(songPosSec * 4.2) * 0.5 + 0.5, 3);
+                    target = Math.max(0.04, Math.min(0.92, (wave1 * 0.45 + wave2 * 0.35 + kick * 0.35) * env * songSeedMultiplier));
                 }
             }
             frameEnergySum += target;
@@ -9549,33 +9448,32 @@ document.addEventListener('DOMContentLoaded', () => {
         _runningSongEnergy = _runningSongEnergy * 0.96 + instantEnergy * 0.04;
 
         // Dynamic Sensitivity:
-        // - Calmer songs (lower _runningSongEnergy) are very sensitive to subtle changes (multiplier up to 2.8x)
+        // - Calmer songs (lower _runningSongEnergy) are sensitive to subtle changes
         // - Louder songs compress peaks logarithmically without pegging the top ceiling
         const dynamicSensitivity = Math.min(2.8, Math.max(0.68, 0.36 / Math.max(0.12, _runningSongEnergy)));
 
         for (let i = 0; i < numBars; i++) {
-            let target = 0.06;
-            if (isPlaying) {
+            let target = 0.02;
+            if (isAudioProducingSound) {
                 if (hasRealSignal) {
                     const normIdx = i / (numBars - 1);
                     const binIdx = Math.min(_vizFreqBins.length - 1, Math.floor(Math.pow(normIdx, 1.55) * 64) + 1);
                     const trebleBoost = 1.0 + (normIdx * 0.70);
                     const rawNorm = (_vizFreqBins[binIdx] / 240) * trebleBoost;
-                    // Apply dynamic sensitivity curve
                     target = Math.pow(rawNorm, 1.1) * dynamicSensitivity;
                 } else {
                     const centerDist = Math.abs(i - (numBars - 1) / 2) / (numBars / 2);
                     const env = Math.max(0.18, 1 - centerDist * 0.72);
-                    const wave1 = Math.sin(nowSec * 7.8 + i * 0.52) * 0.5 + 0.5;
-                    const wave2 = Math.cos(nowSec * 12.4 - i * 0.82) * 0.5 + 0.5;
-                    const kick = Math.pow(Math.sin(nowSec * 4.2) * 0.5 + 0.5, 3);
+                    const wave1 = Math.sin(songPosSec * 7.8 + i * 0.52) * 0.5 + 0.5;
+                    const wave2 = Math.cos(songPosSec * 12.4 - i * 0.82) * 0.5 + 0.5;
+                    const kick = Math.pow(Math.sin(songPosSec * 4.2) * 0.5 + 0.5, 3);
                     const raw = (wave1 * 0.45 + wave2 * 0.35 + kick * 0.35) * env;
                     target = Math.pow(raw, 1.1) * dynamicSensitivity;
                 }
-                target = Math.max(0.06, Math.min(0.95, target));
+                target = Math.max(0.03, Math.min(0.95, target));
             }
 
-            // Severe fast attack for calmer music reactivity, smooth decay
+            // Severe fast attack for reactivity, smooth decay
             const isCalmMusic = _runningSongEnergy < 0.28;
             const attackSpeed = isCalmMusic ? 0.55 : 0.42;
             const decaySpeed = isCalmMusic ? 0.28 : 0.20;
