@@ -513,6 +513,16 @@
             width: calc(100% - 32px);
         }
 
+        /* Universal Text Highlighting Disabled Across the Entire Application */
+        *, *::before, *::after {
+            -webkit-user-select: none !important;
+            user-select: none !important;
+        }
+        input, textarea, [contenteditable="true"] {
+            -webkit-user-select: text !important;
+            user-select: text !important;
+        }
+
         /* Google Material Symbols Rounded Universal Styling */
         .material-symbols-rounded {
             font-family: 'Material Symbols Rounded', sans-serif !important;
@@ -903,6 +913,29 @@
             #bottom-player:not(.is-loading) {
                 height: 68px !important;
             }
+        }
+
+        /* Ensure bottom player is NEVER visible when in lyrics mode or when floating lyrics bar is active */
+        body[data-page="now-playing"].np-lyrics-open #bottom-player,
+        body.np-lyrics-open #bottom-player,
+        body[data-page="now-playing"]:has(#np-lyrics-floating-bar:not(.hidden)) #bottom-player {
+            display: none !important;
+        }
+
+        /* Top Page Fade — Smooth White (Light) / Black (Dark) Fade for Now Playing */
+        #now-playing-top-fade {
+            display: block !important;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 96px;
+            pointer-events: none;
+            z-index: 25;
+            background: linear-gradient(180deg, rgba(252, 251, 248, 0.95) 0%, rgba(252, 251, 248, 0.6) 45%, rgba(252, 251, 248, 0) 100%) !important;
+        }
+        body.dark-mode #now-playing-top-fade {
+            background: linear-gradient(180deg, rgba(12, 12, 14, 0.95) 0%, rgba(12, 12, 14, 0.6) 45%, rgba(12, 12, 14, 0) 100%) !important;
         }
 
         /* In light mode: Quote Lyrics Button backdrop is frosted light glass with solid black icon */
@@ -2031,9 +2064,8 @@
             color: #fca5a5 !important;
             border-color: rgba(239, 68, 68, 0.35) !important;
         }
-        /* Translucent More (•••) Popovers with Opening/Closing Animation & Background Blur */
-        .more-glass-popover,
-        .more-vertical-bar {
+        /* More (•••) Popovers */
+        .more-glass-popover {
             background-color: rgba(255, 255, 255, 0.76) !important;
             backdrop-filter: blur(32px) saturate(190%) !important;
             -webkit-backdrop-filter: blur(32px) saturate(190%) !important;
@@ -2045,27 +2077,59 @@
             transform: scale(0.92) translateY(8px);
             pointer-events: none;
         }
-        .more-glass-popover.popover-open,
-        .more-vertical-bar.popover-open {
+        .more-glass-popover.popover-open {
             opacity: 1 !important;
             transform: scale(1) translateY(0) !important;
             pointer-events: auto !important;
         }
-        body.dark-mode .more-glass-popover,
-        body.dark-mode .more-vertical-bar {
+
+        /* Solid Non-Translucent Vertical More Bar — Centered Directly Over Button */
+        .more-vertical-bar {
+            left: 50% !important;
+            right: auto !important;
+            background-color: #ffffff !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            border: 1px solid #e4e4e7 !important;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18) !important;
+            transform-origin: bottom center;
+            transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+            opacity: 0;
+            transform: translateX(-50%) scale(0.92) translateY(8px);
+            pointer-events: none;
+        }
+        .more-vertical-bar.popover-open {
+            opacity: 1 !important;
+            transform: translateX(-50%) scale(1) translateY(0) !important;
+            pointer-events: auto !important;
+        }
+
+        body.dark-mode .more-glass-popover {
             background-color: rgba(20, 20, 25, 0.82) !important;
             backdrop-filter: blur(32px) saturate(190%) !important;
             -webkit-backdrop-filter: blur(32px) saturate(190%) !important;
             border: 1px solid rgba(255, 255, 255, 0.16) !important;
             box-shadow: 0 20px 52px rgba(0, 0, 0, 0.65) !important;
         }
+        body.dark-mode .more-vertical-bar {
+            background-color: #18181b !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            border: 1px solid #27272a !important;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6) !important;
+        }
         body.dark-mode .more-glass-popover button,
         body.dark-mode .more-vertical-bar button {
             color: #f4f4f5 !important;
         }
         body.dark-mode .more-glass-popover button:hover,
-        body.dark-mode .more-vertical-bar button:hover {
-            background-color: rgba(255, 255, 255, 0.1) !important;
+        body.dark-mode .more-vertical-bar button:hover,
+        body.dark-mode .more-vertical-bar button.is-drag-hovered {
+            background-color: rgba(255, 255, 255, 0.15) !important;
+        }
+        .more-vertical-bar button.is-drag-hovered {
+            background-color: rgba(0, 0, 0, 0.08) !important;
+            transform: scale(1.08) !important;
         }
         .dragging-reorder-row {
             opacity: 0.92 !important;
@@ -2312,6 +2376,7 @@
         </div>
         <!-- Top Safari / iOS Status Bar Smooth Gradient Fade -->
         <div id="now-playing-top-safari-fade" class="pointer-events-none fixed top-0 left-0 right-0 h-28 z-25 transition-all duration-700"></div>
+        <div id="now-playing-top-fade"></div>
         <div id="now-playing-bg-tint" class="pointer-events-none transition-all duration-700 opacity-0 absolute inset-0 z-0 hidden"></div>
 
         <div id="now-playing-container" class="now-playing-container relative z-10">
@@ -2344,28 +2409,27 @@
                     </div>
                 </div>
 
-                <!-- Controls Cluster (Buttons on Left: favorite, rewind/skip, play/pause, save to playlist, lyrics, volume) -->
+                <!-- Controls Cluster (Buttons: fav, lyrics, prev, play/pause, next, add, volume) -->
                 <div class="flex items-center justify-center gap-2 sm:gap-3 mt-2 shrink-0 flex-nowrap relative">
                     <button id="np-queue-btn" class="hidden !hidden" title="Play Queue"></button>
                     <button id="now-playing-fav-btn" class="bubbly-hover flex items-center justify-center w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 backdrop-blur-xl border border-black/10 dark:border-white/15 shadow-xs hover:scale-105 active:scale-95 transition-all text-current cursor-pointer shrink-0" title="Favorite">
                         <span class="material-symbols-rounded text-[20px]">favorite</span>
                     </button>
+                    <!-- Integrated Lyrics Button (Immediately on left of Prev Track) -->
+                    <button id="np-lyrics-btn" class="lyrics-glossy-btn flex items-center justify-center w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 backdrop-blur-xl border border-black/10 dark:border-white/15 shadow-xs hover:scale-105 active:scale-95 transition-all text-current cursor-pointer shrink-0" title="Lyrics">
+                        <span class="material-symbols-rounded text-[20px]">format_quote</span>
+                    </button>
                     <button id="now-playing-prev" class="bubbly-hover flex items-center justify-center w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 backdrop-blur-xl border border-black/10 dark:border-white/15 shadow-xs hover:scale-105 active:scale-95 transition-all text-current cursor-pointer shrink-0" title="Previous Track">
                         <span class="material-symbols-rounded text-[22px]">skip_previous</span>
                     </button>
                     <button id="now-playing-play-pause" class="flex items-center justify-center w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-black/45 dark:bg-white/25 hover:bg-black/60 dark:hover:bg-white/35 backdrop-blur-2xl text-white dark:text-zinc-900 border border-white/30 dark:border-white/40 shadow-xl hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0" title="Play / Pause">
-                        <span id="now-playing-play-icon" class="material-symbols-rounded text-[28px]">play_arrow</span>
+                        <span id="now-playing-play-icon" class="material-symbols-rounded text-[34px] flex items-center justify-center leading-none ml-0.5">play_arrow</span>
                     </button>
                     <button id="now-playing-next" class="bubbly-hover flex items-center justify-center w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 backdrop-blur-xl border border-black/10 dark:border-white/15 shadow-xs hover:scale-105 active:scale-95 transition-all text-current cursor-pointer shrink-0" title="Next Track">
                         <span class="material-symbols-rounded text-[22px]">skip_next</span>
                     </button>
                     <button id="now-playing-add-btn" class="bubbly-hover flex items-center justify-center w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 backdrop-blur-xl border border-black/10 dark:border-white/15 shadow-xs hover:scale-105 active:scale-95 transition-all text-current cursor-pointer shrink-0" title="Add to Playlist">
                         <span class="material-symbols-rounded text-[20px]">playlist_add</span>
-                    </button>
-
-                    <!-- Integrated Lyrics Button (Frosted Translucent) -->
-                    <button id="np-lyrics-btn" class="lyrics-glossy-btn flex items-center justify-center w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 backdrop-blur-xl border border-black/10 dark:border-white/15 shadow-xs hover:scale-105 active:scale-95 transition-all text-current cursor-pointer shrink-0" title="Lyrics">
-                        <span class="material-symbols-rounded text-[20px]">format_quote</span>
                     </button>
 
                     <!-- Circular Volume Widget (Desktop Only) -->
@@ -2393,7 +2457,7 @@
                         <button id="np-mobile-more-btn" class="bubbly-hover flex items-center justify-center w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 backdrop-blur-xl border border-black/10 dark:border-white/15 shadow-xs hover:scale-105 active:scale-95 transition-all text-current cursor-pointer shrink-0" title="More options">
                             <span class="material-symbols-rounded text-[20px]">more_horiz</span>
                         </button>
-                        <div id="np-mobile-more-popover" class="more-vertical-bar hidden absolute right-0 bottom-full mb-3 py-2 px-1.5 rounded-full bg-white/85 dark:bg-zinc-900/85 backdrop-blur-xl border border-zinc-200/90 dark:border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.18)] flex flex-col items-center gap-1.5 z-50">
+                        <div id="np-mobile-more-popover" class="more-vertical-bar hidden absolute left-1/2 -translate-x-1/2 bottom-full mb-3 py-2 px-1.5 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-[0_16px_40px_rgba(0,0,0,0.18)] flex flex-col items-center gap-1.5 z-50">
                             <button id="np-mobile-more-share-btn" type="button" class="w-10 h-10 rounded-full flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer" title="Share" aria-label="Share">
                                 <span class="material-symbols-rounded text-[20px]">share</span>
                             </button>
@@ -2434,14 +2498,14 @@
             <!-- Hidden info elements to preserve JS bindings -->
             <div id="lyrics-bar-info-container" class="hidden !hidden"><div id="lyrics-bar-info"><img id="lyrics-bar-thumb" src="" alt="Cover"><span id="lyrics-bar-title"></span><span id="lyrics-bar-artist"></span></div></div>
 
-            <!-- Lyrics Toggle Button -->
-            <button id="lyrics-bar-lyrics-toggle" class="bubbly-hover flex items-center justify-center w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 backdrop-blur-xl border border-black/10 dark:border-white/15 shadow-xs hover:scale-105 active:scale-95 transition-all text-current cursor-pointer shrink-0" title="Close Lyrics">
-                <span class="material-symbols-rounded text-[20px]">format_quote</span>
-            </button>
-
             <!-- Favorite Button -->
             <button id="lyrics-bar-fav-btn" class="bubbly-hover flex items-center justify-center w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 backdrop-blur-xl border border-black/10 dark:border-white/15 shadow-xs hover:scale-105 active:scale-95 transition-all text-current cursor-pointer shrink-0" title="Favorite">
                 <span class="material-symbols-rounded text-[20px]">favorite</span>
+            </button>
+
+            <!-- Lyrics Toggle Button (Positioned immediately on left of Prev Track) -->
+            <button id="lyrics-bar-lyrics-toggle" class="bubbly-hover flex items-center justify-center w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 backdrop-blur-xl border border-black/10 dark:border-white/15 shadow-xs hover:scale-105 active:scale-95 transition-all text-current cursor-pointer shrink-0" title="Close Lyrics">
+                <span class="material-symbols-rounded text-[20px]">format_quote</span>
             </button>
 
             <!-- Previous Track -->
@@ -2451,7 +2515,7 @@
 
             <!-- Play / Pause Button -->
             <button id="lyrics-bar-play-pause" class="flex items-center justify-center w-12 h-12 rounded-full bg-black/45 dark:bg-white/25 hover:bg-black/60 dark:hover:bg-white/35 backdrop-blur-2xl text-white dark:text-zinc-900 border border-white/30 dark:border-white/40 shadow-xl hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0" title="Play / Pause">
-                <span id="lyrics-bar-play-icon" class="material-symbols-rounded text-[26px]">play_arrow</span>
+                <span id="lyrics-bar-play-icon" class="material-symbols-rounded text-[32px] flex items-center justify-center leading-none ml-0.5">play_arrow</span>
             </button>
 
             <!-- Next Track -->
@@ -2471,7 +2535,7 @@
                 </button>
 
                 <!-- Vertical More Bar -->
-                <div id="lyrics-bar-more-popover" class="more-vertical-bar hidden absolute right-0 bottom-full mb-3 py-2 px-1.5 rounded-full bg-white/85 dark:bg-zinc-900/85 backdrop-blur-xl border border-zinc-200/90 dark:border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.18)] flex flex-col items-center gap-1.5 z-50">
+                <div id="lyrics-bar-more-popover" class="more-vertical-bar hidden absolute left-1/2 -translate-x-1/2 bottom-full mb-3 py-2 px-1.5 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-[0_16px_40px_rgba(0,0,0,0.18)] flex flex-col items-center gap-1.5 z-50">
                     <button id="lyrics-more-share-lyrics-btn" type="button" class="w-10 h-10 rounded-full flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer" title="Share" aria-label="Share">
                         <span class="material-symbols-rounded text-[20px]">share</span>
                     </button>
@@ -2510,17 +2574,16 @@
                     </div>
 
                     <div class="flex-1 text-center md:text-left min-w-0">
-                        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200/60 text-[11px] font-bold text-blue-600 mb-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                            <span class="uppercase tracking-wider">Verified Artist</span>
-                        </div>
                         <h1 id="artist-hero-name" class="text-2xl sm:text-4xl md:text-5xl font-extrabold text-zinc-900 tracking-tight leading-tight truncate">Artist Name</h1>
-                        <p id="artist-hero-desc" class="text-sm text-zinc-500 mt-1.5 sm:mt-2 line-clamp-2 max-w-xl font-medium"></p>
+                        <p id="artist-hero-desc" class="text-sm text-zinc-500 mt-1.5 sm:mt-2 line-clamp-4 max-w-xl font-medium"></p>
                         <p id="artist-hero-track-count" class="hidden"></p>
 
                         <div class="flex items-center justify-center md:justify-start gap-3 mt-4 sm:mt-5 flex-wrap">
                             <button id="artist-play-all-btn" class="bubbly-hover flex items-center justify-center w-11 h-11 rounded-full bg-zinc-900 text-white shadow-md hover:bg-zinc-800 transition-all cursor-pointer shrink-0" title="Play Top Tracks">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                            </button>
+                            <button id="artist-share-btn" class="bubbly-hover flex items-center justify-center w-11 h-11 rounded-full bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-100 border border-zinc-200/90 dark:border-zinc-700 shadow-sm transition-all cursor-pointer shrink-0" title="Share Artist">
+                                <span class="material-symbols-rounded text-[20px]">share</span>
                             </button>
                         </div>
                     </div>
@@ -2891,12 +2954,12 @@
                     <span class="material-symbols-rounded text-[22px]">skip_previous</span>
                 </button>
                 <button id="bottom-player-play-pause" class="flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-zinc-900 border border-zinc-800 text-white transition-all duration-300 shadow-md hover:scale-105 active:scale-95 shrink-0" title="Play / Pause">
-                    <span id="bp-play-icon" class="material-symbols-rounded text-[20px]">play_arrow</span>
+                    <span id="bp-play-icon" class="material-symbols-rounded text-[24px] flex items-center justify-center leading-none ml-0.5">play_arrow</span>
                 </button>
                 <button id="bottom-player-next" class="sleek-hover transition-colors p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 shrink-0 flex items-center justify-center cursor-pointer" title="Next Track">
                     <span class="material-symbols-rounded text-[22px]">skip_next</span>
                 </button>
-                <button id="bottom-player-add-btn" class="hidden sm:inline-flex sleek-hover transition-colors p-2 rounded-full hover:bg-black/5 shrink-0" title="Add to Playlist">
+                <button id="bottom-player-add-btn" class="hidden sm:inline-flex sleek-hover transition-colors p-2 rounded-full hover:bg-black/5 shrink-0 text-current" title="Add to Playlist">
                     <span class="material-symbols-rounded text-[20px]">playlist_add</span>
                 </button>
                 <button id="bp-pip-btn" class="hidden sm:inline-flex sleek-hover transition-colors p-2 rounded-full hover:bg-black/5 cursor-pointer shrink-0" title="Floating Mini-Player (PiP)">
@@ -2908,7 +2971,7 @@
                     <button id="bp-mobile-more-btn" class="sleek-hover text-zinc-600 hover:text-zinc-950 p-2 rounded-full hover:bg-black/5 cursor-pointer shrink-0" title="More options">
                         <span class="material-symbols-rounded text-[20px]">more_horiz</span>
                     </button>
-                    <div id="bp-mobile-more-popover" class="more-vertical-bar hidden absolute right-0 bottom-full mb-3 py-2 px-1.5 rounded-full bg-white/85 dark:bg-zinc-900/85 backdrop-blur-xl border border-zinc-200/90 dark:border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.18)] flex flex-col items-center gap-1.5 z-50">
+                    <div id="bp-mobile-more-popover" class="more-vertical-bar hidden absolute left-1/2 -translate-x-1/2 bottom-full mb-3 py-2 px-1.5 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-[0_16px_40px_rgba(0,0,0,0.18)] flex flex-col items-center gap-1.5 z-50">
                         <button id="bp-more-share-btn" type="button" class="w-10 h-10 rounded-full flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer" title="Share" aria-label="Share">
                             <span class="material-symbols-rounded text-[20px]">share</span>
                         </button>
@@ -3039,10 +3102,50 @@
                     </button>
                 </div>
 
-                <!-- Section A: 8 Apple Music Presets Grid -->
+                <!-- Section Top: Playlist Tint (16 options: 8 options per row, 2 rows. Last 2: Custom Wheel & Automatic) -->
+                <div class="p-4 sm:p-5 rounded-3xl bg-white/80 dark:bg-zinc-900/80 border border-zinc-200/80 dark:border-white/10 flex flex-col gap-3">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-bold text-zinc-900 dark:text-white block">Playlist Tint</span>
+                            <span id="modal-tint-status" class="text-[11px] text-zinc-500 font-medium">Automatic</span>
+                        </div>
+                        <div id="modal-tint-dot-wrapper" class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[11px] font-semibold text-zinc-700 dark:text-zinc-200">
+                            <span id="modal-tint-dot" class="w-3.5 h-3.5 rounded-full border border-black/20 inline-block" style="background-color: #FFE600;"></span>
+                            <span id="modal-tint-label">Automatic</span>
+                        </div>
+                    </div>
+                    <!-- Exactly 16 Options: 8 columns x 2 rows -->
+                    <div id="pl-quick-tints" class="grid grid-cols-8 gap-2 justify-items-center pt-2 border-t border-zinc-200/60 dark:border-zinc-800">
+                        <!-- 1-14 Vibrant Color Swatches -->
+                        <button type="button" class="pl-quick-tint-btn w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #FFE600;" data-hex="#FFE600" title="Electric Yellow"></button>
+                        <button type="button" class="pl-quick-tint-btn w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #FF9500;" data-hex="#FF9500" title="Vibrant Orange"></button>
+                        <button type="button" class="pl-quick-tint-btn w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #FF3B30;" data-hex="#FF3B30" title="Hot Crimson"></button>
+                        <button type="button" class="pl-quick-tint-btn w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #FF2D55;" data-hex="#FF2D55" title="Vivid Pink"></button>
+                        <button type="button" class="pl-quick-tint-btn w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #AF52DE;" data-hex="#AF52DE" title="Radiant Purple"></button>
+                        <button type="button" class="pl-quick-tint-btn w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #5856D6;" data-hex="#5856D6" title="Deep Violet"></button>
+                        <button type="button" class="pl-quick-tint-btn w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #007AFF;" data-hex="#007AFF" title="Ocean Blue"></button>
+                        <button type="button" class="pl-quick-tint-btn w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #34C759;" data-hex="#34C759" title="Bright Emerald"></button>
+                        <button type="button" class="pl-quick-tint-btn w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #00C7BE;" data-hex="#00C7BE" title="Teal Cyan"></button>
+                        <button type="button" class="pl-quick-tint-btn w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #30B0C7;" data-hex="#30B0C7" title="Sky Blue"></button>
+                        <button type="button" class="pl-quick-tint-btn w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #FF6482;" data-hex="#FF6482" title="Coral Rose"></button>
+                        <button type="button" class="pl-quick-tint-btn w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #8E8E93;" data-hex="#8E8E93" title="Silver Slate"></button>
+                        <button type="button" class="pl-quick-tint-btn w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #FFFFFF;" data-hex="#FFFFFF" title="Pure White"></button>
+                        <button type="button" class="pl-quick-tint-btn w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #1C1C1E;" data-hex="#1C1C1E" title="Onyx Black"></button>
+                        <!-- 15. Custom Tint Option -->
+                        <button type="button" id="modal-open-tint-wheel-btn" class="pl-quick-tint-btn w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer flex items-center justify-center relative overflow-hidden" style="background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);" title="Custom Tint">
+                            <span class="w-2.5 h-2.5 rounded-full bg-white dark:bg-zinc-900 border border-black/20"></span>
+                        </button>
+                        <!-- 16. Automatic Tint Option -->
+                        <button type="button" id="modal-tint-auto-btn" class="pl-quick-tint-btn w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-dashed border-zinc-400 dark:border-zinc-500 shadow-sm hover:scale-115 transition-transform cursor-pointer flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200" title="Automatic">
+                            <span class="material-symbols-rounded text-[14px]">auto_awesome</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Section A: 6 Presets Grid -->
                 <div id="pl-presets-section" class="flex flex-col gap-3">
                     <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block">Default Cover Style</label>
-                    <div id="pl-preset-covers-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div id="pl-preset-covers-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         <!-- 1. Stripes -->
                         <div data-preset="stripes" class="pl-preset-option group cursor-pointer border-2 border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-2 transition-all hover:border-black dark:hover:border-white flex flex-col items-center gap-2 bg-white/70 dark:bg-zinc-900/70 is-selected">
                             <div class="w-full aspect-square rounded-xl overflow-hidden shadow-xs relative bg-zinc-900">
@@ -3050,49 +3153,35 @@
                             </div>
                             <span class="text-xs font-bold text-zinc-800 dark:text-zinc-200">Stripes</span>
                         </div>
-                        <!-- 2. Vinyl -->
+                        <!-- 2. Diagonal -->
+                        <div data-preset="diagonal" class="pl-preset-option group cursor-pointer border-2 border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-2 transition-all hover:border-black dark:hover:border-white flex flex-col items-center gap-2 bg-white/70 dark:bg-zinc-900/70">
+                            <div class="w-full aspect-square rounded-xl overflow-hidden shadow-xs relative bg-zinc-900">
+                                <canvas class="pl-preset-canvas w-full h-full block" width="240" height="240" data-preset="diagonal"></canvas>
+                            </div>
+                            <span class="text-xs font-bold text-zinc-800 dark:text-zinc-200">Diagonal</span>
+                        </div>
+                        <!-- 3. Circles -->
+                        <div data-preset="circles" class="pl-preset-option group cursor-pointer border-2 border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-2 transition-all hover:border-black dark:hover:border-white flex flex-col items-center gap-2 bg-white/70 dark:bg-zinc-900/70">
+                            <div class="w-full aspect-square rounded-xl overflow-hidden shadow-xs relative bg-zinc-900">
+                                <canvas class="pl-preset-canvas w-full h-full block" width="240" height="240" data-preset="circles"></canvas>
+                            </div>
+                            <span class="text-xs font-bold text-zinc-800 dark:text-zinc-200">Circles</span>
+                        </div>
+                        <!-- 4. Checker -->
+                        <div data-preset="checker" class="pl-preset-option group cursor-pointer border-2 border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-2 transition-all hover:border-black dark:hover:border-white flex flex-col items-center gap-2 bg-white/70 dark:bg-zinc-900/70">
+                            <div class="w-full aspect-square rounded-xl overflow-hidden shadow-xs relative bg-zinc-900">
+                                <canvas class="pl-preset-canvas w-full h-full block" width="240" height="240" data-preset="checker"></canvas>
+                            </div>
+                            <span class="text-xs font-bold text-zinc-800 dark:text-zinc-200">Checker</span>
+                        </div>
+                        <!-- 5. Vinyl -->
                         <div data-preset="vinyl" class="pl-preset-option group cursor-pointer border-2 border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-2 transition-all hover:border-black dark:hover:border-white flex flex-col items-center gap-2 bg-white/70 dark:bg-zinc-900/70">
                             <div class="w-full aspect-square rounded-xl overflow-hidden shadow-xs relative bg-zinc-900">
                                 <canvas class="pl-preset-canvas w-full h-full block" width="240" height="240" data-preset="vinyl"></canvas>
                             </div>
                             <span class="text-xs font-bold text-zinc-800 dark:text-zinc-200">Vinyl</span>
                         </div>
-                        <!-- 3. Waves -->
-                        <div data-preset="waves" class="pl-preset-option group cursor-pointer border-2 border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-2 transition-all hover:border-black dark:hover:border-white flex flex-col items-center gap-2 bg-white/70 dark:bg-zinc-900/70">
-                            <div class="w-full aspect-square rounded-xl overflow-hidden shadow-xs relative bg-zinc-900">
-                                <canvas class="pl-preset-canvas w-full h-full block" width="240" height="240" data-preset="waves"></canvas>
-                            </div>
-                            <span class="text-xs font-bold text-zinc-800 dark:text-zinc-200">Waves</span>
-                        </div>
-                        <!-- 4. Aura -->
-                        <div data-preset="aura" class="pl-preset-option group cursor-pointer border-2 border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-2 transition-all hover:border-black dark:hover:border-white flex flex-col items-center gap-2 bg-white/70 dark:bg-zinc-900/70">
-                            <div class="w-full aspect-square rounded-xl overflow-hidden shadow-xs relative bg-zinc-900">
-                                <canvas class="pl-preset-canvas w-full h-full block" width="240" height="240" data-preset="aura"></canvas>
-                            </div>
-                            <span class="text-xs font-bold text-zinc-800 dark:text-zinc-200">Aura</span>
-                        </div>
-                        <!-- 5. Grid -->
-                        <div data-preset="grid" class="pl-preset-option group cursor-pointer border-2 border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-2 transition-all hover:border-black dark:hover:border-white flex flex-col items-center gap-2 bg-white/70 dark:bg-zinc-900/70">
-                            <div class="w-full aspect-square rounded-xl overflow-hidden shadow-xs relative bg-zinc-900">
-                                <canvas class="pl-preset-canvas w-full h-full block" width="240" height="240" data-preset="grid"></canvas>
-                            </div>
-                            <span class="text-xs font-bold text-zinc-800 dark:text-zinc-200">Grid</span>
-                        </div>
-                        <!-- 6. Tape -->
-                        <div data-preset="tape" class="pl-preset-option group cursor-pointer border-2 border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-2 transition-all hover:border-black dark:hover:border-white flex flex-col items-center gap-2 bg-white/70 dark:bg-zinc-900/70">
-                            <div class="w-full aspect-square rounded-xl overflow-hidden shadow-xs relative bg-zinc-900">
-                                <canvas class="pl-preset-canvas w-full h-full block" width="240" height="240" data-preset="tape"></canvas>
-                            </div>
-                            <span class="text-xs font-bold text-zinc-800 dark:text-zinc-200">Tape</span>
-                        </div>
-                        <!-- 7. Minimal -->
-                        <div data-preset="minimal" class="pl-preset-option group cursor-pointer border-2 border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-2 transition-all hover:border-black dark:hover:border-white flex flex-col items-center gap-2 bg-white/70 dark:bg-zinc-900/70">
-                            <div class="w-full aspect-square rounded-xl overflow-hidden shadow-xs relative bg-zinc-900">
-                                <canvas class="pl-preset-canvas w-full h-full block" width="240" height="240" data-preset="minimal"></canvas>
-                            </div>
-                            <span class="text-xs font-bold text-zinc-800 dark:text-zinc-200">Minimal</span>
-                        </div>
-                        <!-- 8. Neon -->
+                        <!-- 6. Neon -->
                         <div data-preset="neon" class="pl-preset-option group cursor-pointer border-2 border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-2 transition-all hover:border-black dark:hover:border-white flex flex-col items-center gap-2 bg-white/70 dark:bg-zinc-900/70">
                             <div class="w-full aspect-square rounded-xl overflow-hidden shadow-xs relative bg-zinc-900">
                                 <canvas class="pl-preset-canvas w-full h-full block" width="240" height="240" data-preset="neon"></canvas>
@@ -3128,31 +3217,6 @@
                         </button>
                     </div>
                     <input type="file" id="playlist-modal-cover-input" accept="image/*" style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;">
-                </div>
-
-                <!-- Section C: Playlist Tint (Vibrant saturated colors) -->
-                <div class="p-5 rounded-3xl bg-white/80 dark:bg-zinc-900/80 border border-zinc-200/80 dark:border-white/10 flex flex-col gap-3.5">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <span class="text-xs font-bold text-zinc-900 dark:text-white block">Playlist Tint</span>
-                            <span id="modal-tint-status" class="text-[11px] text-zinc-500 font-medium">Automatic (from artwork)</span>
-                        </div>
-                        <button type="button" id="modal-open-tint-wheel-btn" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs font-bold text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 shadow-xs transition-all cursor-pointer">
-                            <span id="modal-tint-dot" class="w-3.5 h-3.5 rounded-full border border-black/20 inline-block" style="background-color: #FFE600;"></span>
-                            <span>Choose Tint</span>
-                        </button>
-                    </div>
-                    <!-- Quick Vibrant Tint Preset Swatches -->
-                    <div id="pl-quick-tints" class="flex items-center gap-2.5 flex-wrap pt-1 border-t border-zinc-200/60 dark:border-zinc-800">
-                        <button type="button" class="pl-quick-tint-btn w-7 h-7 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #FFE600;" data-hex="#FFE600" title="Electric Yellow"></button>
-                        <button type="button" class="pl-quick-tint-btn w-7 h-7 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #FF9500;" data-hex="#FF9500" title="Vibrant Orange"></button>
-                        <button type="button" class="pl-quick-tint-btn w-7 h-7 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #FF3B30;" data-hex="#FF3B30" title="Hot Crimson"></button>
-                        <button type="button" class="pl-quick-tint-btn w-7 h-7 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #FF2D55;" data-hex="#FF2D55" title="Vivid Pink"></button>
-                        <button type="button" class="pl-quick-tint-btn w-7 h-7 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #AF52DE;" data-hex="#AF52DE" title="Radiant Purple"></button>
-                        <button type="button" class="pl-quick-tint-btn w-7 h-7 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #007AFF;" data-hex="#007AFF" title="Ocean Blue"></button>
-                        <button type="button" class="pl-quick-tint-btn w-7 h-7 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #34C759;" data-hex="#34C759" title="Bright Emerald"></button>
-                        <button type="button" class="pl-quick-tint-btn w-7 h-7 rounded-full border-2 border-white dark:border-zinc-800 shadow-sm hover:scale-115 transition-transform cursor-pointer" style="background-color: #FFFFFF;" data-hex="#FFFFFF" title="Pure White"></button>
-                    </div>
                 </div>
             </div>
         </div>
@@ -3296,7 +3360,7 @@
                 <input id="tint-brightness-slider" type="range" min="15" max="95" value="80" class="w-full h-2 rounded-full appearance-none cursor-pointer" style="background: linear-gradient(to right, #000, #FDE047, #fff);">
             </div>
 
-            <!-- Color Preview & Quick Controls -->
+            <!-- Color Preview -->
             <div class="w-full flex items-center justify-between mt-4 p-3 bg-zinc-50 rounded-2xl border border-zinc-200/80">
                 <div class="flex items-center gap-3">
                     <div id="tint-preview-swatch" class="w-9 h-9 rounded-xl border border-black/15 shadow-sm" style="background-color: #FDE047;"></div>
@@ -3305,9 +3369,6 @@
                         <span id="tint-rgb-text" class="text-[10px] text-zinc-500 font-medium">RGB(253, 224, 71)</span>
                     </div>
                 </div>
-                <button id="tint-auto-btn" type="button" class="px-3 py-1.5 text-xs font-semibold bg-white border border-zinc-200 hover:bg-zinc-100 text-zinc-700 rounded-xl transition-all shadow-xs cursor-pointer">
-                    Reset to Auto
-                </button>
             </div>
 
             <!-- Modal Actions -->
@@ -3548,7 +3609,7 @@
             function navigate() {
                 window.scrollTo(0, 0);
                 let rawHash = window.location.hash.replace('#', '') || 'search';
-                if (rawHash.startsWith('song=') || rawHash.startsWith('album=')) {
+                if (rawHash.startsWith('song=') || rawHash.startsWith('album=') || rawHash.startsWith('artist=')) {
                     if (typeof window.handleYolkDeepLink === 'function') {
                         window.handleYolkDeepLink(rawHash);
                     }

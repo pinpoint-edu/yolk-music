@@ -509,6 +509,7 @@ export default async function handler(req, res) {
 
       const songId = req.query.song || '';
       const albumId = req.query.album || '';
+      const artistQuery = req.query.artist || '';
       const title = req.query.t || 'Yolk!';
       const artist = req.query.a || '';
       const lyrics = req.query.l || '';
@@ -518,7 +519,11 @@ export default async function handler(req, res) {
       let ogDescription = 'Listen on Yolk! — Minimalist Music';
       let targetHash = '#search';
 
-      if (albumId) {
+      if (artistQuery) {
+        ogTitle = `${artistQuery} on Yolk!`;
+        ogDescription = `Listen to music by ${artistQuery} on Yolk!`;
+        targetHash = `#artist=${encodeURIComponent(artistQuery)}`;
+      } else if (albumId) {
         ogTitle = artist ? `${title} — ${artist} (Album)` : `${title} (Album)`;
         ogDescription = artist ? `Listen to ${title} by ${artist} on Yolk!` : `Listen to ${title} on Yolk!`;
         targetHash = `#album=${encodeURIComponent(albumId)}&t=${encodeURIComponent(title)}&a=${encodeURIComponent(artist)}`;
