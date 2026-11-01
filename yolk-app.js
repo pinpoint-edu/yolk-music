@@ -1692,8 +1692,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (npMobileMoreVolumeSlider) npMobileMoreVolumeSlider.value = percentVal;
         if (bpMoreVolumeSlider) bpMoreVolumeSlider.value = percentVal;
 
-        // Update circular blue loops (circumference 75.398 = 2 * PI * 12)
-        const loopOffset = (1 - currentVolume) * 75.398;
+        // Update circular loops (circumference 87.964 = 2 * PI * 14)
+        const loopOffset = (1 - currentVolume) * 87.964;
         if (bpVolLoopFill) bpVolLoopFill.style.strokeDashoffset = String(loopOffset);
         if (npVolLoopFill) npVolLoopFill.style.strokeDashoffset = String(loopOffset);
 
@@ -1714,7 +1714,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Attach Universal Circular Blue Loop Controls (Scroll & Vertical Drag)
+    // Attach Universal Circular Volume Controls (Smooth Low-Sensitivity Scroll & Vertical Drag)
     function attachCircularVolumeControl(containerEl) {
         if (!containerEl) return;
         let startY = 0;
@@ -1722,12 +1722,13 @@ document.addEventListener('DOMContentLoaded', () => {
         let isDragging = false;
         let hasMoved = false;
 
-        // Hover scroll: scroll up increases volume, scroll down decreases volume
+        // Smooth low-sensitivity hover scroll (1 notch = ~1.5% volume change instead of jumping wildly)
         containerEl.addEventListener('wheel', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            const step = e.deltaY < 0 ? 0.04 : -0.04;
-            const targetVol = Math.max(0, Math.min(1, currentVolume + step));
+            const raw = -e.deltaY;
+            const delta = Math.sign(raw) * Math.min(Math.abs(raw) * 0.00025, 0.02);
+            const targetVol = Math.max(0, Math.min(1, currentVolume + delta));
             setMasterVolume(targetVol);
         }, { passive: false });
 
@@ -1752,10 +1753,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (Math.abs(dy) > 3) {
                 hasMoved = true;
             }
-            // Drag up (dy < 0) turns volume up (closes blue loop clockwise)
-            // Drag down (dy > 0) turns volume down (opens blue loop counter-clockwise)
-            // Strictly vertical dragging (no horizontal left-to-right)
-            const delta = -dy / 100;
+            // Drag up (dy < 0) turns volume up (closes loop clockwise)
+            // Drag down (dy > 0) turns volume down (opens loop counter-clockwise)
+            // Smooth vertical travel: 180px travel for full 0-100% range
+            const delta = -dy / 180;
             const targetVol = Math.max(0, Math.min(1, startVol + delta));
             setMasterVolume(targetVol);
         });
@@ -3463,12 +3464,11 @@ document.addEventListener('DOMContentLoaded', () => {
             try { ytPlayer.stopVideo(); } catch (_) {}
         }
         currentAudio.pause();
-        currentAudio.removeAttribute('src');
-        currentAudio.load();
         currentAudio._recovering = false;
-        currentAudio.src = streamUrl;
+        if (currentAudio.src !== streamUrl) {
+            currentAudio.src = streamUrl;
+        }
         currentAudio.volume = shouldCrossfadeIn ? Math.max(0.03, currentVolume * 0.08) : currentVolume;
-        currentAudio.load();
         const playPromise = currentAudio.play();
         if (playPromise !== undefined) {
             playPromise.then(() => {
@@ -3725,16 +3725,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof window.updateCurrentTrackDownloadUI === 'function') window.updateCurrentTrackDownloadUI();
         if (typeof updateQueueModalUI === 'function') updateQueueModalUI();
 
-        // Autoplay Preload: keep queue filled with continuous recommendations
-        if (currentQueue.length <= 2 || currentQueueIndex >= currentQueue.length - 2) {
-            fetchUpNextTracks(track);
-        }
-
         // System Media Session Integration
         updateMediaSessionMetadata(track);
 
-        // Fetch lyrics
-        fetchLyrics(track);
+        // Defer non-critical network requests so audio stream gets 100% of bandwidth and instant connection
+        setTimeout(() => {
+            fetchLyrics(track);
+            if (currentQueue.length <= 2 || currentQueueIndex >= currentQueue.length - 2) {
+                fetchUpNextTracks(track);
+            }
+        }, 120);
 
         // 1. Check Offline Database FIRST (instantaneous playback, 0 network lag, works fully offline)
         const uid = getTrackUid(track);
@@ -3827,6 +3827,13 @@ document.addEventListener('DOMContentLoaded', () => {
     currentAudio.addEventListener('canplay', () => {
         showSpinner(false);
         updateMediaSessionPosition();
+        const isMobile = window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
+        if (!isMobile && visualizerEnabled) {
+            ensureWebAudioEqualizer(true);
+            if (yolkAudioCtx && yolkAudioCtx.state === 'suspended') {
+                yolkAudioCtx.resume().catch(() => {});
+            }
+        }
         if (document.body.getAttribute('data-page') !== 'now-playing') {
             bottomPlayer.classList.remove('hidden-force');
         }
@@ -3846,6 +3853,13 @@ document.addEventListener('DOMContentLoaded', () => {
         isPlaying = true;
         updatePlayPauseButtons();
         updateMediaSessionPosition();
+        const isMobile = window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
+        if (!isMobile) {
+            if (visualizerEnabled) ensureWebAudioEqualizer(true);
+            if (yolkAudioCtx && yolkAudioCtx.state === 'suspended') {
+                yolkAudioCtx.resume().catch(() => {});
+            }
+        }
         if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
         if (document.body.getAttribute('data-page') !== 'now-playing') {
             bottomPlayer.classList.remove('hidden-force');
@@ -8327,6 +8341,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const isDark = (mode === 'dark');
         document.documentElement.classList.toggle('dark-mode', isDark);
         document.body.classList.toggle('dark-mode', isDark);
+        document.documentElement.classList.toggle('dark', isDark);
+        document.body.classList.toggle('dark', isDark);
         localStorage.setItem('yolk_theme_mode', isDark ? 'dark' : 'light');
 
         if (themeToggleBtn) {
@@ -8440,7 +8456,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         const hasNonZero = eqEnabled && eqBands.some(g => Math.abs(g) > 0.05);
-        if (!yolkAudioCtx && !hasNonZero && !forceInit) {
+        if (!yolkAudioCtx && !hasNonZero && !forceInit && !visualizerEnabled) {
             return;
         }
         try {
@@ -8494,10 +8510,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     currentAudio.addEventListener('play', () => {
         const isMobile = window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
-        if (!isMobile && yolkAudioCtx && yolkAudioCtx.state === 'suspended') {
-            yolkAudioCtx.resume().catch(() => {});
-        } else if (!isMobile && eqEnabled && eqBands.some(g => Math.abs(g) > 0.05)) {
-            ensureWebAudioEqualizer();
+        if (!isMobile) {
+            if (yolkAudioCtx && yolkAudioCtx.state === 'suspended') {
+                yolkAudioCtx.resume().catch(() => {});
+            }
+            if ((visualizerEnabled || (eqEnabled && eqBands.some(g => Math.abs(g) > 0.05))) && !yolkAudioCtx) {
+                ensureWebAudioEqualizer(true);
+            }
         }
     });
 
@@ -9460,7 +9479,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (visualizerEnabled && isPlaying) {
             const isMobile = window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
-            if (!isMobile && eqEnabled) {
+            if (!isMobile) {
                 ensureWebAudioEqualizer(true);
             }
         }

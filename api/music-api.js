@@ -6,6 +6,7 @@ const MUSIC_API_BASE = 'https://bhindi1.ddns.net/music/api';
 
 // In-memory stream resolution cache for instantaneous (<5ms) sub-sequent playback & queue lookahead
 const streamUrlCache = new Map();
+const inflightStreamResolutions = new Map();
 
 let youtubeInstance = null;
 let isInitializing = false;
@@ -1715,172 +1716,206 @@ async function resolveAudioStream(videoId, requestedFormat = 'auto') {
         return cached.streamInfo;
     }
 
-    const defaultItag = requestedFormat === 'webm' ? 251 : 140;
-    const defaultMime = requestedFormat === 'webm' ? 'audio/webm' : 'audio/mp4';
-
-    // 1. Try Cloudflare Worker stream check ONLY if CF_WORKER_URL environment variable is set
-    if (process.env.CF_WORKER_URL) {
-        try {
-            const checkRes = await fetch(`${process.env.CF_WORKER_URL}?id=${videoId}&mode=stream`, {
-                method: 'HEAD',
-                signal: AbortSignal.timeout(1500)
-            });
-            if (checkRes.status === 200 || checkRes.status === 206) {
-                const cfUrl = `${process.env.CF_WORKER_URL}?id=${videoId}&mode=stream`;
-                const info = { directUrl: cfUrl, proxiedUrl: cfUrl, latestVersionUrl: cfUrl, companionUrls: [], isIpRestricted: false, mimeType: 'audio/mp4', clen: null, itag: null };
-                streamUrlCache.set(cacheKey, { streamInfo: info, expires: Date.now() + 25 * 60 * 1000 });
-                return info;
-            }
-        } catch (_) {}
+    if (inflightStreamResolutions.has(cacheKey)) {
+        return inflightStreamResolutions.get(cacheKey);
     }
 
-    // 2. High-health stream instances with live companion endpoints
-    const streamInstances = [
-        'https://yt.chocolatemoo53.com'
-    ];
+    const resolutionPromise = (async () => {
+        const defaultItag = requestedFormat === 'webm' ? 251 : 140;
+        const defaultMime = requestedFormat === 'webm' ? 'audio/webm' : 'audio/mp4';
 
-    for (const inst of streamInstances) {
-        try {
-            const vidRes = await fetch(`${inst}/api/v1/videos/${videoId}?fields=adaptiveFormats,formatStreams,lengthSeconds`, {
-                headers: { 'Accept': 'application/json' },
-                signal: AbortSignal.timeout(4500)
-            });
-            if (!vidRes.ok) throw new Error(`HTTP ${vidRes.status} from ${inst}`);
-            const data = await vidRes.json();
-
-            const adaptive = data.adaptiveFormats || [];
-            const muxed = data.formatStreams || [];
-            const lengthSeconds = data.lengthSeconds ? parseInt(data.lengthSeconds, 10) : null;
-
-            const selectBestFormat = (list) => {
-                if (!Array.isArray(list) || list.length === 0) return null;
-                // Exclude itag 139 (mp4a.40.5 HE-AAC 22050Hz) whenever standard 44.1kHz/48kHz formats exist,
-                // because mp4a.40.5 has a 44100 timescale mvhd header with 22050Hz AAC core frames, causing
-                // HTML5 <audio> demuxers to report 2x duration (2 to 4.5 minutes of trailing blank silence).
-                const nonHeAac = list.filter(f => String(f.itag) !== '139' && !f.type?.includes('mp4a.40.5') && Number(f.audioSampleRate || 44100) >= 44100);
-                const pool = nonHeAac.length > 0 ? nonHeAac : list;
-                const sorted = [...pool].sort((a, b) => parseInt(b.bitrate || 0, 10) - parseInt(a.bitrate || 0, 10));
-
-                if (requestedFormat === 'webm') {
-                    return sorted.find(f => String(f.itag) === '251')
-                        || sorted.find(f => f.type?.includes('webm') || f.container === 'webm')
-                        || sorted[0];
-                }
-                if (requestedFormat === 'mp4') {
-                    return sorted.find(f => String(f.itag) === '140')
-                        || sorted.find(f => f.type?.includes('mp4a.40.2'))
-                        || sorted.find(f => f.type?.includes('mp4') || f.container === 'm4a')
-                        || sorted[0];
-                }
-                return sorted.find(f => String(f.itag) === '140')
-                    || sorted.find(f => String(f.itag) === '251')
-                    || sorted[0];
-            };
-
-            // Tier 1: Clean audio-only adaptive formats directly hosted on googlevideo.com
-            const directAudio = adaptive.filter(f => f.type?.includes('audio') && f.url && !f.url.includes('companion') && !f.url.includes('sabr-segment'));
-            let chosenFormat = selectBestFormat(directAudio);
-
-            // Tier 2: Muxed direct googlevideo streams (itag 18 / 22)
-            if (!chosenFormat && muxed.length > 0) {
-                const directMuxed = muxed.filter(f => f.url && !f.url.includes('companion') && !f.url.includes('sabr-segment'));
-                if (directMuxed.length > 0) {
-                    chosenFormat = directMuxed.find(f => f.itag === 18 || f.itag === '18') || directMuxed[0];
-                }
-            }
-
-            // Tier 3: Companion-assisted audio formats
-            if (!chosenFormat) {
-                const companionAudio = adaptive.filter(f => f.type?.includes('audio') && f.url);
-                chosenFormat = selectBestFormat(companionAudio);
-            }
-
-            if (!chosenFormat) throw new Error(`No usable audio streams on ${inst}`);
-
-            const rawUrl = chosenFormat.url;
-            const resolvedItag = chosenFormat.itag || defaultItag;
-            let proxiedUrl = rawUrl;
-            let isIpRestricted = false;
+        // 1. Try Cloudflare Worker stream check ONLY if CF_WORKER_URL environment variable is set
+        if (process.env.CF_WORKER_URL) {
             try {
-                const u = new URL(rawUrl);
-                const sparams = u.searchParams.get('sparams') || '';
-                if (sparams.includes('gcr') || u.searchParams.has('gcr')) {
-                    isIpRestricted = true;
-                }
-                if (u.hostname.includes('googlevideo.com')) {
-                    proxiedUrl = `${inst}${u.pathname}${u.search}`;
+                const checkRes = await fetch(`${process.env.CF_WORKER_URL}?id=${videoId}&mode=stream`, {
+                    method: 'HEAD',
+                    signal: AbortSignal.timeout(1500)
+                });
+                if (checkRes.status === 200 || checkRes.status === 206) {
+                    const cfUrl = `${process.env.CF_WORKER_URL}?id=${videoId}&mode=stream`;
+                    const info = { directUrl: cfUrl, proxiedUrl: cfUrl, latestVersionUrl: cfUrl, companionUrls: [], isIpRestricted: false, mimeType: 'audio/mp4', clen: null, itag: null };
+                    streamUrlCache.set(cacheKey, { streamInfo: info, expires: Date.now() + 25 * 60 * 1000 });
+                    return info;
                 }
             } catch (_) {}
+        }
 
-            const latestVersionUrl = `${inst}/latest_version?id=${encodeURIComponent(videoId)}&itag=${encodeURIComponent(resolvedItag)}&local=true`;
-            const companionUrls = [
-                `https://yt-comp1.chocolatemoo53.com/companion/latest_version?id=${encodeURIComponent(videoId)}&itag=${encodeURIComponent(resolvedItag)}&local=true`,
-                `https://yt-comp2.chocolatemoo53.com/companion/latest_version?id=${encodeURIComponent(videoId)}&itag=${encodeURIComponent(resolvedItag)}&local=true`,
-                `https://yt-comp3.chocolatemoo53.com/companion/latest_version?id=${encodeURIComponent(videoId)}&itag=${encodeURIComponent(resolvedItag)}&local=true`
-            ];
+        // 2. High-health stream instances with live companion endpoints
+        const streamInstances = [
+            'https://yt.chocolatemoo53.com',
+            'https://inv.nadeko.net',
+            'https://invidious.nerdvpn.de'
+        ];
 
-            const info = {
-                directUrl: rawUrl,
-                proxiedUrl: proxiedUrl,
-                latestVersionUrl: latestVersionUrl,
-                companionUrls: companionUrls,
-                isIpRestricted: isIpRestricted,
-                mimeType: chosenFormat.type?.split(';')[0]?.trim() || defaultMime,
-                clen: chosenFormat.clen ? parseInt(chosenFormat.clen, 10) : null,
-                itag: resolvedItag,
-                lengthSeconds: lengthSeconds
-            };
+        for (const inst of streamInstances) {
+            try {
+                const vidRes = await fetch(`${inst}/api/v1/videos/${videoId}?fields=adaptiveFormats,formatStreams,lengthSeconds`, {
+                    headers: { 'Accept': 'application/json' },
+                    signal: AbortSignal.timeout(2800)
+                });
+                if (!vidRes.ok) throw new Error(`HTTP ${vidRes.status} from ${inst}`);
+                const data = await vidRes.json();
 
-            streamUrlCache.set(cacheKey, { streamInfo: info, expires: Date.now() + 25 * 60 * 1000 });
-            return info;
-        } catch (_) {}
+                const adaptive = data.adaptiveFormats || [];
+                const muxed = data.formatStreams || [];
+                const lengthSeconds = data.lengthSeconds ? parseInt(data.lengthSeconds, 10) : null;
+
+                const selectBestFormat = (list) => {
+                    if (!Array.isArray(list) || list.length === 0) return null;
+                    const nonHeAac = list.filter(f => String(f.itag) !== '139' && !f.type?.includes('mp4a.40.5') && Number(f.audioSampleRate || 44100) >= 44100);
+                    const pool = nonHeAac.length > 0 ? nonHeAac : list;
+                    const sorted = [...pool].sort((a, b) => parseInt(b.bitrate || 0, 10) - parseInt(a.bitrate || 0, 10));
+
+                    if (requestedFormat === 'webm') {
+                        return sorted.find(f => String(f.itag) === '251')
+                            || sorted.find(f => f.type?.includes('webm') || f.container === 'webm')
+                            || sorted[0];
+                    }
+                    if (requestedFormat === 'mp4') {
+                        return sorted.find(f => String(f.itag) === '140')
+                            || sorted.find(f => f.type?.includes('mp4a.40.2'))
+                            || sorted.find(f => f.type?.includes('mp4') || f.container === 'm4a')
+                            || sorted[0];
+                    }
+                    return sorted.find(f => String(f.itag) === '140')
+                        || sorted.find(f => String(f.itag) === '251')
+                        || sorted[0];
+                };
+
+                // Tier 1: Clean audio-only adaptive formats directly hosted on googlevideo.com
+                const directAudio = adaptive.filter(f => f.type?.includes('audio') && f.url && !f.url.includes('companion') && !f.url.includes('sabr-segment'));
+                let chosenFormat = selectBestFormat(directAudio);
+
+                // Tier 2: Muxed direct googlevideo streams (itag 18 / 22)
+                if (!chosenFormat && muxed.length > 0) {
+                    const directMuxed = muxed.filter(f => f.url && !f.url.includes('companion') && !f.url.includes('sabr-segment'));
+                    if (directMuxed.length > 0) {
+                        chosenFormat = directMuxed.find(f => f.itag === 18 || f.itag === '18') || directMuxed[0];
+                    }
+                }
+
+                // Tier 3: Companion-assisted audio formats
+                if (!chosenFormat) {
+                    const companionAudio = adaptive.filter(f => f.type?.includes('audio') && f.url);
+                    chosenFormat = selectBestFormat(companionAudio);
+                }
+
+                if (!chosenFormat) throw new Error(`No usable audio streams on ${inst}`);
+
+                const rawUrl = chosenFormat.url;
+                const resolvedItag = chosenFormat.itag || defaultItag;
+                let proxiedUrl = rawUrl;
+                let isIpRestricted = false;
+                try {
+                    const u = new URL(rawUrl);
+                    const sparams = u.searchParams.get('sparams') || '';
+                    if (sparams.includes('gcr') || u.searchParams.has('gcr')) {
+                        isIpRestricted = true;
+                    }
+                    if (u.hostname.includes('googlevideo.com')) {
+                        proxiedUrl = `${inst}${u.pathname}${u.search}`;
+                    }
+                } catch (_) {}
+
+                const latestVersionUrl = `${inst}/latest_version?id=${encodeURIComponent(videoId)}&itag=${encodeURIComponent(resolvedItag)}&local=true`;
+                const companionUrls = [
+                    `https://yt-comp1.chocolatemoo53.com/companion/latest_version?id=${encodeURIComponent(videoId)}&itag=${encodeURIComponent(resolvedItag)}&local=true`,
+                    `https://yt-comp2.chocolatemoo53.com/companion/latest_version?id=${encodeURIComponent(videoId)}&itag=${encodeURIComponent(resolvedItag)}&local=true`,
+                    `https://yt-comp3.chocolatemoo53.com/companion/latest_version?id=${encodeURIComponent(videoId)}&itag=${encodeURIComponent(resolvedItag)}&local=true`
+                ];
+
+                const info = {
+                    directUrl: rawUrl,
+                    proxiedUrl: proxiedUrl,
+                    latestVersionUrl: latestVersionUrl,
+                    companionUrls: companionUrls,
+                    isIpRestricted: isIpRestricted,
+                    mimeType: chosenFormat.type?.split(';')[0]?.trim() || defaultMime,
+                    clen: chosenFormat.clen ? parseInt(chosenFormat.clen, 10) : null,
+                    itag: resolvedItag,
+                    lengthSeconds: lengthSeconds
+                };
+
+                streamUrlCache.set(cacheKey, { streamInfo: info, expires: Date.now() + 25 * 60 * 1000 });
+                return info;
+            } catch (_) {}
+        }
+
+        // Fallback directly to latest_version companion streams if /api/v1/videos metadata timed out
+        return {
+            directUrl: null,
+            proxiedUrl: null,
+            latestVersionUrl: `https://yt.chocolatemoo53.com/latest_version?id=${encodeURIComponent(videoId)}&itag=${defaultItag}&local=true`,
+            companionUrls: [
+                `https://yt-comp1.chocolatemoo53.com/companion/latest_version?id=${encodeURIComponent(videoId)}&itag=${defaultItag}&local=true`,
+                `https://yt-comp2.chocolatemoo53.com/companion/latest_version?id=${encodeURIComponent(videoId)}&itag=${defaultItag}&local=true`,
+                `https://yt-comp3.chocolatemoo53.com/companion/latest_version?id=${encodeURIComponent(videoId)}&itag=${defaultItag}&local=true`
+            ],
+            isIpRestricted: true,
+            mimeType: defaultMime,
+            clen: null,
+            itag: defaultItag,
+            lengthSeconds: null
+        };
+    })();
+
+    inflightStreamResolutions.set(cacheKey, resolutionPromise);
+    try {
+        return await resolutionPromise;
+    } finally {
+        inflightStreamResolutions.delete(cacheKey);
     }
-
-    // Fallback directly to latest_version companion streams if /api/v1/videos metadata timed out
-    return {
-        directUrl: null,
-        proxiedUrl: null,
-        latestVersionUrl: `https://yt.chocolatemoo53.com/latest_version?id=${encodeURIComponent(videoId)}&itag=${defaultItag}&local=true`,
-        companionUrls: [
-            `https://yt-comp1.chocolatemoo53.com/companion/latest_version?id=${encodeURIComponent(videoId)}&itag=${defaultItag}&local=true`,
-            `https://yt-comp2.chocolatemoo53.com/companion/latest_version?id=${encodeURIComponent(videoId)}&itag=${defaultItag}&local=true`,
-            `https://yt-comp3.chocolatemoo53.com/companion/latest_version?id=${encodeURIComponent(videoId)}&itag=${defaultItag}&local=true`
-        ],
-        isIpRestricted: true,
-        mimeType: defaultMime,
-        clen: null,
-        itag: defaultItag,
-        lengthSeconds: null
-    };
 }
 
 async function openUpstreamAudioStream(streamInfo, upstreamHeaders) {
     const candidates = [];
     if (streamInfo.isIpRestricted) {
-        // IP/region-bound streams (gcr=us) return 403 on directUrl; use fresh companion latest_version first
         if (streamInfo.latestVersionUrl) candidates.push(streamInfo.latestVersionUrl);
         if (Array.isArray(streamInfo.companionUrls)) candidates.push(...streamInfo.companionUrls);
         if (streamInfo.directUrl) candidates.push(streamInfo.directUrl);
         if (streamInfo.proxiedUrl && streamInfo.proxiedUrl !== streamInfo.directUrl) candidates.push(streamInfo.proxiedUrl);
     } else {
-        // Non-restricted streams stream fastest directly from Google CDN, with latest_version fallback
         if (streamInfo.directUrl) candidates.push(streamInfo.directUrl);
         if (streamInfo.latestVersionUrl) candidates.push(streamInfo.latestVersionUrl);
         if (Array.isArray(streamInfo.companionUrls)) candidates.push(...streamInfo.companionUrls);
         if (streamInfo.proxiedUrl && streamInfo.proxiedUrl !== streamInfo.directUrl) candidates.push(streamInfo.proxiedUrl);
     }
 
-    for (const candidateUrl of candidates) {
-        if (!candidateUrl) continue;
+    const unique = [...new Set(candidates.filter(Boolean))];
+    if (unique.length === 0) return null;
+
+    async function tryFetch(url, timeoutMs = 2800) {
         try {
-            const res = await fetch(candidateUrl, {
+            const res = await fetch(url, {
                 headers: upstreamHeaders,
-                signal: AbortSignal.timeout(7500)
+                signal: AbortSignal.timeout(timeoutMs)
             });
-            if (res.ok || res.status === 206) {
-                return res;
-            }
+            if (res.ok || res.status === 206) return res;
         } catch (_) {}
+        return null;
+    }
+
+    // Try primary candidate immediately
+    const primaryPromise = tryFetch(unique[0], 2800);
+    if (unique.length === 1) {
+        return await primaryPromise;
+    }
+
+    // If primary stream does not respond within 850ms, start backup candidates in parallel!
+    const delayTimer = new Promise(resolve => setTimeout(resolve, 850));
+    const fastResult = await Promise.race([
+        primaryPromise,
+        delayTimer.then(() => null)
+    ]);
+    if (fastResult) return fastResult;
+
+    // Primary took > 850ms, race with remaining candidates
+    const secondaryPromises = unique.slice(1, 3).map(u => tryFetch(u, 2600));
+    const all = [primaryPromise, ...secondaryPromises];
+
+    for (const p of all) {
+        const res = await p;
+        if (res) return res;
     }
     return null;
 }

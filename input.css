@@ -2,6 +2,8 @@
 @source "./index.html";
 @source "./yolk-app.js";
 
+@custom-variant dark (&:where(.dark-mode, .dark-mode *));
+
 @theme {
   --color-creme: #FCFBF8;
   --color-yolk-yellow: #FDE047;
