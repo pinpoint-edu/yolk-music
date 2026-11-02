@@ -597,6 +597,7 @@
         @media (min-width: 640px) {
             #safari-top-color-shim,
             #now-playing-top-safari-fade,
+            #now-playing-top-fade,
             #main-header {
                 display: none !important;
                 opacity: 0 !important;
@@ -915,9 +916,9 @@
             display: none !important;
         }
 
-        /* Top Page Fade — Smooth White (Light) / Black (Dark) Fade for Now Playing */
+        /* Top Page Fade — Smooth Creme (Light) / Black (Dark) Fade for Now Playing Mobile Only */
         #now-playing-top-fade {
-            display: block !important;
+            display: block;
             position: fixed;
             top: 0;
             left: 0;
@@ -925,10 +926,15 @@
             height: 96px;
             pointer-events: none;
             z-index: 25;
-            background: linear-gradient(180deg, #ffffff 0%, rgba(255, 255, 255, 0.95) 25%, rgba(255, 255, 255, 0.5) 60%, rgba(255, 255, 255, 0) 100%) !important;
+            background: linear-gradient(180deg, #FCFBF8 0%, rgba(252, 251, 248, 0.95) 25%, rgba(252, 251, 248, 0.5) 60%, rgba(252, 251, 248, 0) 100%) !important;
         }
         body.dark-mode #now-playing-top-fade {
-            background: linear-gradient(180deg, #000000 0%, rgba(0, 0, 0, 0.95) 25%, rgba(0, 0, 0, 0.5) 60%, rgba(0, 0, 0, 0) 100%) !important;
+            background: linear-gradient(180deg, #0c0c0e 0%, rgba(12, 12, 14, 0.95) 25%, rgba(12, 12, 14, 0.5) 60%, rgba(12, 12, 14, 0) 100%) !important;
+        }
+        @media (min-width: 640px) {
+            #now-playing-top-fade {
+                display: none !important;
+            }
         }
 
         /* Downloaded Offline Badge: Solid Black in Light Mode, Dark Emerald Green in Dark Mode */

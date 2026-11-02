@@ -5719,8 +5719,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (fadeEl) {
             fadeEl.style.background = isDark
-                ? `linear-gradient(180deg, #000000 0%, rgba(${blendR}, ${blendG}, ${blendB}, 0.78) 42%, transparent 100%)`
-                : `linear-gradient(180deg, #ffffff 0%, rgba(${blendR}, ${blendG}, ${blendB}, 0.78) 42%, transparent 100%)`;
+                ? `linear-gradient(180deg, #0c0c0e 0%, rgba(${blendR}, ${blendG}, ${blendB}, 0.78) 42%, transparent 100%)`
+                : `linear-gradient(180deg, #FCFBF8 0%, rgba(${blendR}, ${blendG}, ${blendB}, 0.78) 42%, transparent 100%)`;
             fadeEl.style.opacity = '1';
         }
         const topWhiteBlackFade = document.getElementById('now-playing-top-fade');
